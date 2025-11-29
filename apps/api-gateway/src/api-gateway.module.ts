@@ -1,0 +1,140 @@
+import {
+  BaseModule,
+  dataSourceAsyncOptions,
+  Environment,
+  validateEnviornmentVariables,
+} from '@app/common';
+import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
+import { minutes, ThrottlerModule } from '@nestjs/throttler';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import {
+  Contains,
+  Equals,
+  IsAlphanumeric,
+  IsBooleanString,
+  IsEnum,
+  IsInt,
+  IsNotEmpty,
+  IsNumberString,
+  IsPositive,
+  IsString,
+  IsUrl,
+  Max,
+  Min,
+  ValidateIf,
+} from 'class-validator';
+import { ApiGatewayController } from './api-gateway.controller';
+import { ApiGatewayService } from './api-gateway.service';
+
+class EnvironmentVariables {
+  @IsEnum(Environment)
+  ENVIRONMENT: Environment;
+
+  @IsInt()
+  @Min(1)
+  @Max(65535)
+  PORT: number;
+
+  @IsNumberString()
+  VERSION: string;
+
+  @IsString()
+  @Equals('api')
+  GLOBAL_PREFIX: string;
+
+  @IsUrl({ protocols: ['postgresql'] })
+  DATABASE_URL: string;
+
+  @IsInt()
+  @IsPositive()
+  ROUNDS: number;
+
+  @IsAlphanumeric()
+  ACCESS_TOKEN_SECRET: string;
+
+  @IsAlphanumeric()
+  REFRESH_TOKEN_SECRET: string;
+
+  @IsString()
+  @IsNotEmpty()
+  ACCESS_TOKEN_EXPIRATION_TIME: string;
+
+  @IsString()
+  @IsNotEmpty()
+  REFRESH_TOKEN_EXPIRATION_TIME: string;
+
+  @IsString()
+  @IsNotEmpty()
+  ISSUER: string;
+
+  @IsString()
+  @IsNotEmpty()
+  AUDIENCE: string;
+
+  @IsAlphanumeric()
+  COOKIES_SECRET: string;
+
+  @IsInt()
+  @IsPositive()
+  COOKIES_EXPIRATION_TIME: number;
+
+  @IsInt()
+  @IsPositive()
+  EGYPT_TIME: number;
+
+  @ValidateIf(
+    (environmentVariables: EnvironmentVariables) =>
+      environmentVariables.ENVIRONMENT === Environment.PRODUCTION,
+  )
+  @IsString()
+  @IsNotEmpty()
+  @Contains(',')
+  METHODS: string;
+
+  @ValidateIf(
+    (environmentVariables: EnvironmentVariables) =>
+      environmentVariables.ENVIRONMENT === Environment.PRODUCTION,
+  )
+  @IsString()
+  @IsNotEmpty()
+  @Contains(',')
+  ALLOWED_HEADERS: string;
+
+  @ValidateIf(
+    (environmentVariables: EnvironmentVariables) =>
+      environmentVariables.ENVIRONMENT === Environment.PRODUCTION,
+  )
+  @IsBooleanString()
+  CREDENTIALS: string;
+}
+
+@Module({
+  imports: [
+    ConfigModule.forRoot({
+      isGlobal: true,
+      validate: (config) =>
+        validateEnviornmentVariables(EnvironmentVariables, config),
+      validationOptions: {
+        allowUnknown: false,
+        abortEarly: true,
+      },
+      envFilePath: './apps/api-gateway/.env',
+    }),
+    TypeOrmModule.forRootAsync(dataSourceAsyncOptions),
+    ThrottlerModule.forRoot([
+      {
+        ttl: minutes(2),
+        limit: 40,
+        blockDuration: minutes(1),
+      },
+    ]),
+  ],
+  controllers: [ApiGatewayController],
+  providers: [ApiGatewayService],
+})
+export class ApiGatewayModule extends BaseModule {
+  constructor() {
+    super(ApiGatewayModule.name);
+  }
+}
