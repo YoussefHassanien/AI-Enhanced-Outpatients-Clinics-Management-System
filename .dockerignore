@@ -1,0 +1,25 @@
+# Versioning and metadata
+.git
+.gitignore
+.dockerignore
+**/Dockerfile
+Dockerfile
+
+# Build dependencies
+dist.do
+node_modules
+
+# Environment (contains sensitive data)
+*.env
+
+# Misc
+.eslintrc.js
+.prettierrc
+README.md
+
+# Testing directroy
+# Testing directory (ignore at any level)
+test
+**/test
+test/
+**/test/

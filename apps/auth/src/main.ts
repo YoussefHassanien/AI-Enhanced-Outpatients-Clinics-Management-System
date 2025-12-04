@@ -58,7 +58,7 @@ const bootstrap = async () => {
   await app.listen(port);
 
   const appUrl = await app.getUrl();
-  logger.log(`Server started at: ${appUrl}/${globalPrefix}/v${version}`);
+  logger.log(`Server started at: ${appUrl}/${globalPrefix}/v${version}/auth`);
 };
 
 bootstrap().catch((error) => {

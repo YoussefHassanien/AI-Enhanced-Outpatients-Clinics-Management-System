@@ -6,7 +6,6 @@ import {
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
-import { PassportModule } from '@nestjs/passport';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
@@ -28,7 +27,6 @@ import { JwtStrategy, LocalStrategy } from './strategies';
     TypeOrmModule.forRootAsync(dataSourceAsyncOptions),
     TypeOrmModule.forFeature([User, Patient, Doctor, Admin]),
     JwtModule.register({ global: true }),
-    PassportModule.register({ defaultStrategy: 'jwt' }),
   ],
   controllers: [AuthController],
   providers: [AuthService, LocalStrategy, JwtStrategy],

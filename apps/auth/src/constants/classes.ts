@@ -1,6 +1,5 @@
 import { BaseEntity, Environment, Language } from '@app/common';
 import { ApiProperty } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
 import {
   Contains,
   Equals,
@@ -89,11 +88,6 @@ export class EnvironmentVariables {
   @IsInt()
   @IsPositive()
   COOKIES_EXPIRATION_TIME: number;
-
-  @IsInt()
-  @IsPositive()
-  @Type(() => Number)
-  EGYPT_TIME: number;
 
   @ValidateIf(
     (environmentVariables: EnvironmentVariables) =>

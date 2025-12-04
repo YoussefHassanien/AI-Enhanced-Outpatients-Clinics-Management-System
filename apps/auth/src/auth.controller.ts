@@ -1,4 +1,4 @@
-import { Environment } from '@app/common';
+import { Environment, Role, Roles } from '@app/common';
 import {
   BadRequestException,
   Body,
@@ -12,7 +12,12 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { Request, Response } from 'express';
 import { AuthService } from './auth.service';
-import { CreateDoctorDto, CreatePatientDto, LoginDto } from './dto';
+import {
+  CreateAdminDto,
+  CreateDoctorDto,
+  CreatePatientDto,
+  LoginDto,
+} from './dto';
 import { User } from './entities';
 import { JwtAuthGuard, LocalAuthGuard } from './guards';
 
@@ -38,24 +43,45 @@ export class AuthController {
   }
 
   @UseGuards(LocalAuthGuard)
-  @Post('doctor/login')
+  @Post('login')
   async doctorLogin(
     @Req() req: Request,
     @Res() res: Response,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     @Body() loginDto: LoginDto,
   ) {
-    const credentials = await this.authService.generateCredentials(
-      req.user as User,
-    );
+    const user = req.user as User;
+    const credentials = await this.authService.generateCredentials(user);
     this.setAuthCookies(res, credentials.token);
 
     return res.status(201).json({
       name: credentials.name,
       language: credentials.language,
+      role: user.role,
+    });
+  }
+
+  @Post('admin/create')
+  @Roles(Role.SUPER_ADMIN)
+  @UseGuards(JwtAuthGuard)
+  async adminCreate(
+    @Res() res: Response,
+    @Body() createAdminDto: CreateAdminDto,
+  ) {
+    const admin = await this.authService.createAdmin(createAdminDto);
+
+    if (!admin) {
+      throw new BadRequestException({ message: 'Failed to create admin' });
+    }
+
+    return res.status(201).json({
+      message: 'Admin is successfully created',
     });
   }
 
   @Post('doctor/create')
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @UseGuards(JwtAuthGuard)
   async doctorCreate(
     @Res() res: Response,
     @Body() createDoctorDto: CreateDoctorDto,
@@ -71,6 +97,7 @@ export class AuthController {
     });
   }
 
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN, Role.DOCTOR)
   @UseGuards(JwtAuthGuard)
   @Post('patient/create')
   async patientCreate(
