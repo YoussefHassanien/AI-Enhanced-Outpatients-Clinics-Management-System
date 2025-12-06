@@ -1,0 +1,37 @@
+services:
+  rabbitMq:
+    image: rabbitmq:4.1.6-alpine
+    ports:
+      - 5672:5672
+    networks:
+      - services-network
+  auth:
+    build:
+      context: .
+      dockerfile: ./apps/auth/Dockerfile
+    env_file:
+      - ./apps/auth/.env
+    depends_on:
+      - rabbitMq
+    command: node auth/main
+    networks:
+      - services-network
+
+  api-gateway:
+    build:
+      context: .
+      dockerfile: ./apps/api-gateway/Dockerfile
+    env_file:
+      - ./apps/api-gateway/.env
+    ports:
+      - 4000:4000
+    depends_on:
+      - rabbitMq
+      - auth
+    command: node api-gateway/main
+    networks:
+      - services-network
+
+networks:
+  services-network:
+    driver: bridge

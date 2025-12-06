@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
-import { CreateUserDto } from '../constants/classes';
+import { CreateUserDto } from '../constants';
 
 export class CreatePatientDto extends CreateUserDto {
   @ApiProperty({

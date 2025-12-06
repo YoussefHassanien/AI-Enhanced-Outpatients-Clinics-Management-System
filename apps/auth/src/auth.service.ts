@@ -10,8 +10,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcrypt';
 import { Algorithm } from 'jsonwebtoken';
 import { EntityManager, Repository } from 'typeorm';
-import { CreateUserDto } from './constants/classes';
-import { JwtPayload } from './constants/types';
+import { CreateUserDto, JwtPayload } from './constants';
 import {
   CreateAdminDto,
   CreateDoctorDto,
@@ -172,8 +171,8 @@ export class AuthService {
     return admin;
   };
 
-  getHello(): string {
-    return 'Hello World!';
+  isUp(): string {
+    return 'Auth service is up';
   }
 
   validateUser = async (

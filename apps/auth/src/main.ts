@@ -1,70 +1,48 @@
-import { Environment } from '@app/common';
-import { Logger, ValidationPipe, VersioningType } from '@nestjs/common';
+import { Logger, ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
-import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import cookieParser from 'cookie-parser';
-import helmet from 'helmet';
+import { AsyncMicroserviceOptions, Transport } from '@nestjs/microservices';
 import { AuthModule } from './auth.module';
 
 const bootstrap = async () => {
-  const logger = new Logger('Bootstrap');
-  const app = await NestFactory.create(AuthModule);
-  const configService = app.get(ConfigService);
-  const port = configService.getOrThrow<number>('PORT');
-  const globalPrefix = configService.getOrThrow<string>('GLOBAL_PREFIX');
-  const version = configService.getOrThrow<string>('VERSION');
-  const environment = configService.getOrThrow<Environment>('ENVIRONMENT');
-  const cookiesSecret = configService.getOrThrow<string>('COOKIES_SECRET');
+  const logger = new Logger(AuthModule.name);
 
-  app.setGlobalPrefix(globalPrefix);
-  app.enableVersioning({
-    type: VersioningType.URI,
-    defaultVersion: version,
-  });
-  app.use(helmet());
-  app.use(cookieParser(cookiesSecret));
+  const app = await NestFactory.createMicroservice<AsyncMicroserviceOptions>(
+    AuthModule,
+    {
+      useFactory: (configService: ConfigService) => ({
+        transport: Transport.RMQ,
+        options: {
+          urls: [configService.getOrThrow<string>('RABBIT_MQ_URL')],
+          queue: configService.getOrThrow<string>('RABBIT_MQ_AUTH_QUEUE'),
+          queueOptions: {
+            durable: false,
+          },
+        },
+      }),
+      logger: ['debug'],
+      inject: [ConfigService],
+    },
+  );
+
   app.useGlobalPipes(
     new ValidationPipe({
       transform: true,
-      forbidNonWhitelisted: true,
+      whitelist: true,
     }),
   );
 
-  if (environment === Environment.DEVELOPMENT) {
-    app.enableCors();
-    const config = new DocumentBuilder()
-      .setTitle('CodeBlue Project APIs Documentation')
-      .setDescription(
-        'These APIs are made for CodeBlue project that mainly serve pregnant El Kasr El Ainy Outpatients Clinics',
-      )
-      .setVersion('1.0.0')
-      .build();
-    const documentFactory = () => SwaggerModule.createDocument(app, config);
-    SwaggerModule.setup(
-      `${globalPrefix}/v${version}/docs`,
-      app,
-      documentFactory,
-    );
-  } else if (environment === Environment.PRODUCTION) {
-    app.enableCors({
-      origin: configService.getOrThrow<string>('AUDIENCE'),
-      methods: configService.getOrThrow<string[]>('METHODS'),
-      allowedHeaders: configService.getOrThrow<string[]>('ALLOWED_HEADERS'),
-      credentials: configService.getOrThrow<boolean>('CREDENTIALS'),
-    });
-  }
+  await app.listen();
 
-  await app.listen(port);
-
-  const appUrl = await app.getUrl();
-  logger.log(`Server started at: ${appUrl}/${globalPrefix}/v${version}/auth`);
+  logger.log(
+    `Auth microservice listening on queue '${process.env.RABBIT_MQ_AUTH_QUEUE}' via ${process.env.RABBIT_MQ_URL}`,
+  );
 };
 
 bootstrap().catch((error) => {
-  const logger = new Logger('Bootstrap');
+  const logger = new Logger(AuthModule.name);
   logger.error(
-    'Server failed to start',
+    'Auth microservice failed to start',
     error instanceof Error ? error.stack : String(error),
   );
 });

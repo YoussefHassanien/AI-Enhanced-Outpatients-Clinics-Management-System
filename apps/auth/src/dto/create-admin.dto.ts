@@ -1,3 +1,3 @@
-import { BaseStaffDto } from '../constants/classes';
+import { BaseStaffDto } from '../constants';
 
 export class CreateAdminDto extends BaseStaffDto {}

@@ -1,17 +1,16 @@
 import {
-  BaseModule,
   dataSourceAsyncOptions,
   validateEnviornmentVariables,
 } from '@app/common';
-import { Module } from '@nestjs/common';
+import { Logger, Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { DataSource } from 'typeorm';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
-import { EnvironmentVariables } from './constants/classes';
+import { EnvironmentVariables } from './constants';
 import { Admin, Doctor, Patient, User } from './entities';
-import { JwtStrategy, LocalStrategy } from './strategies';
 
 @Module({
   imports: [
@@ -29,10 +28,14 @@ import { JwtStrategy, LocalStrategy } from './strategies';
     JwtModule.register({ global: true }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, LocalStrategy, JwtStrategy],
+  providers: [AuthService],
 })
-export class AuthModule extends BaseModule {
-  constructor() {
-    super(AuthModule.name);
+export class AuthModule {
+  private readonly logger = new Logger(AuthModule.name);
+  constructor(private readonly dataSource: DataSource) {
+    const connectionStatus: string = this.dataSource.isInitialized
+      ? 'succeeded'
+      : 'failed';
+    this.logger.log(`Database connection ${connectionStatus}`);
   }
 }

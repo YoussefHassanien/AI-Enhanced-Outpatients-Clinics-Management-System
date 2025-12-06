@@ -1,6 +1,6 @@
 import { Inject, Logger, MiddlewareConsumer, NestModule } from '@nestjs/common';
 import { DataSource } from 'typeorm';
-import { LoggerMiddleware } from '../middlewares/logger.middleware';
+import { LoggerMiddleware } from '../middlewares';
 
 export abstract class BaseModule implements NestModule {
   @Inject(DataSource)

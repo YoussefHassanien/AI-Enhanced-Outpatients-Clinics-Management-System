@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsNotEmpty, IsString, MaxLength } from 'class-validator';
-import { BaseStaffDto } from '../constants/classes';
+import { BaseStaffDto } from '../constants';
 
 export class CreateDoctorDto extends BaseStaffDto {
   @ApiProperty({

@@ -1,16 +1,12 @@
-import { BaseEntity, Environment, Language } from '@app/common';
+import { BaseEntity, Language } from '@app/common';
 import { ApiProperty } from '@nestjs/swagger';
 import {
-  Contains,
-  Equals,
   IsAlphanumeric,
-  IsBooleanString,
   IsEmail,
   IsEnum,
   IsIn,
   IsInt,
   IsNotEmpty,
-  IsNumberString,
   IsOptional,
   IsPhoneNumber,
   IsPositive,
@@ -19,10 +15,7 @@ import {
   IsUrl,
   Length,
   Matches,
-  Max,
   MaxLength,
-  Min,
-  ValidateIf,
 } from 'class-validator';
 import { Column } from 'typeorm';
 
@@ -41,21 +34,6 @@ export abstract class BaseStaff extends BaseEntity {
 }
 
 export class EnvironmentVariables {
-  @IsEnum(Environment)
-  ENVIRONMENT: Environment;
-
-  @IsInt()
-  @Min(1)
-  @Max(65535)
-  PORT: number;
-
-  @IsNumberString()
-  VERSION: string;
-
-  @IsString()
-  @Equals('api')
-  GLOBAL_PREFIX: string;
-
   @IsUrl({ protocols: ['postgresql'] })
   DATABASE_URL: string;
 
@@ -82,37 +60,13 @@ export class EnvironmentVariables {
   @IsNotEmpty()
   AUDIENCE: string;
 
-  @IsAlphanumeric()
-  COOKIES_SECRET: string;
-
-  @IsInt()
-  @IsPositive()
-  COOKIES_EXPIRATION_TIME: number;
-
-  @ValidateIf(
-    (environmentVariables: EnvironmentVariables) =>
-      environmentVariables.ENVIRONMENT === Environment.PRODUCTION,
-  )
   @IsString()
   @IsNotEmpty()
-  @Contains(',')
-  METHODS: string;
+  RABBIT_MQ_URL: string;
 
-  @ValidateIf(
-    (environmentVariables: EnvironmentVariables) =>
-      environmentVariables.ENVIRONMENT === Environment.PRODUCTION,
-  )
   @IsString()
   @IsNotEmpty()
-  @Contains(',')
-  ALLOWED_HEADERS: string;
-
-  @ValidateIf(
-    (environmentVariables: EnvironmentVariables) =>
-      environmentVariables.ENVIRONMENT === Environment.PRODUCTION,
-  )
-  @IsBooleanString()
-  CREDENTIALS: string;
+  RABBIT_MQ_AUTH_QUEUE: string;
 }
 
 export abstract class CreateUserDto {
