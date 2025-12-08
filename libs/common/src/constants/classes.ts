@@ -20,3 +20,13 @@ export abstract class BaseModule implements NestModule {
     consumer.apply(LoggerMiddleware).forRoutes('*path');
   }
 }
+
+export class ErrorResponse {
+  public message: string;
+  public status: number;
+
+  constructor(message: string, status: number) {
+    this.message = message;
+    this.status = status;
+  }
+}

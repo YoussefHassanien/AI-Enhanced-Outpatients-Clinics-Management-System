@@ -1,9 +1,13 @@
-import { LoggerMiddleware, validateEnviornmentVariables } from '@app/common';
+import {
+  CatchEverythingFilter,
+  LoggerMiddleware,
+  validateEnviornmentVariables,
+} from '@app/common';
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { APP_FILTER } from '@nestjs/core';
 import { minutes, ThrottlerModule } from '@nestjs/throttler';
 import { ApiGatewayController } from './api-gateway.controller';
-import { ApiGatewayService } from './api-gateway.service';
 import { AuthModule } from './auth/auth.module';
 import { EnvironmentVariables } from './constants';
 
@@ -29,7 +33,7 @@ import { EnvironmentVariables } from './constants';
     AuthModule,
   ],
   controllers: [ApiGatewayController],
-  providers: [ApiGatewayService],
+  providers: [{ provide: APP_FILTER, useClass: CatchEverythingFilter }],
 })
 export class ApiGatewayModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {

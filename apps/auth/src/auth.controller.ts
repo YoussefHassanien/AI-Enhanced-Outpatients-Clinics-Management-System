@@ -1,5 +1,12 @@
-import { Controller } from '@nestjs/common';
-import { MessagePattern, RpcException } from '@nestjs/microservices';
+import { ErrorResponse } from '@app/common';
+import { Controller, Logger } from '@nestjs/common';
+import {
+  Ctx,
+  MessagePattern,
+  Payload,
+  RmqContext,
+  RpcException,
+} from '@nestjs/microservices';
 import { AuthService } from './auth.service';
 import { AuthPatterns } from './constants';
 import {
@@ -11,22 +18,37 @@ import {
 
 @Controller()
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  private readonly logger: Logger;
+  constructor(private readonly authService: AuthService) {
+    this.logger = new Logger(AuthController.name);
+  }
 
   @MessagePattern({ cmd: AuthPatterns.IS_UP })
-  isUp(): string {
+  isUp(@Ctx() context: RmqContext): string {
+    this.logger.log(
+      `Message of fields: ${JSON.stringify(context.getMessage().fields)} and properties: ${JSON.stringify(context.getMessage().properties)} received with Pattern: ${context.getPattern()}`,
+    );
+
     return this.authService.isUp();
   }
 
   @MessagePattern({ cmd: AuthPatterns.LOGIN })
-  async login(loginDto: LoginDto) {
+  async login(@Payload() loginDto: LoginDto, @Ctx() context: RmqContext) {
+    this.logger.log(
+      `Message of fields: ${JSON.stringify(context.getMessage().fields)} and properties: ${JSON.stringify(context.getMessage().properties)} received with Pattern: ${context.getPattern()}`,
+    );
+
     const user = await this.authService.validateUser(
       loginDto.email,
       loginDto.password,
     );
 
     if (!user) {
-      throw new RpcException({ message: 'Invalid credentials' });
+      const rpcException = new RpcException(
+        new ErrorResponse('Invalid credentials', 401),
+      );
+      this.logger.error(rpcException.getError());
+      throw rpcException;
     }
 
     const credentials = await this.authService.generateCredentials(user);
@@ -38,35 +60,68 @@ export class AuthController {
   }
 
   @MessagePattern({ cmd: AuthPatterns.ADMIN_CREATE })
-  async adminCreate(createAdminDto: CreateAdminDto) {
+  async adminCreate(
+    @Payload() createAdminDto: CreateAdminDto,
+    @Ctx() context: RmqContext,
+  ) {
+    this.logger.log(
+      `Message of fields: ${JSON.stringify(context.getMessage().fields)} and properties: ${JSON.stringify(context.getMessage().properties)} received with Pattern: ${context.getPattern()}`,
+    );
+
     const admin = await this.authService.createAdmin(createAdminDto);
 
-    if (!admin) {
-      throw new RpcException({ message: 'Failed to create admin' });
+    if (admin instanceof RpcException) {
+      this.logger.error(admin.getError());
+      throw admin;
     }
 
     return { message: 'Admin is successfully created', id: admin.globalId };
   }
 
   @MessagePattern({ cmd: AuthPatterns.DOCTOR_CREATE })
-  async doctorCreate(createDoctorDto: CreateDoctorDto) {
+  async doctorCreate(
+    @Payload() createDoctorDto: CreateDoctorDto,
+    @Ctx() context: RmqContext,
+  ) {
+    this.logger.log(
+      `Message of fields: ${JSON.stringify(context.getMessage().fields)} and properties: ${JSON.stringify(context.getMessage().properties)} received with Pattern: ${context.getPattern()}`,
+    );
+
     const doctor = await this.authService.createDoctor(createDoctorDto);
 
-    if (!doctor) {
-      throw new RpcException({ message: 'Failed to create doctor' });
+    if (doctor instanceof RpcException) {
+      this.logger.error(doctor.getError());
+      throw doctor;
     }
 
     return { message: 'Doctor is successfully created', id: doctor.globalId };
   }
 
   @MessagePattern({ cmd: AuthPatterns.PATIENT_CREATE })
-  async patientCreate(createPatientDto: CreatePatientDto) {
+  async patientCreate(
+    @Payload() createPatientDto: CreatePatientDto,
+    @Ctx() context: RmqContext,
+  ) {
+    this.logger.log(
+      `Message of fields: ${JSON.stringify(context.getMessage().fields)} and properties: ${JSON.stringify(context.getMessage().properties)} received with Pattern: ${context.getPattern()}`,
+    );
+
     const patient = await this.authService.createPatient(createPatientDto);
 
-    if (!patient) {
-      throw new RpcException({ message: 'Failed to create patient' });
+    if (patient instanceof RpcException) {
+      this.logger.error(patient.getError());
+      throw patient;
     }
 
     return { message: 'Patient is successfully created', id: patient.globalId };
+  }
+
+  @MessagePattern({ cmd: AuthPatterns.GET_USER })
+  async getUser(@Payload() id: number, @Ctx() context: RmqContext) {
+    this.logger.log(
+      `Message of fields: ${JSON.stringify(context.getMessage().fields)} and properties: ${JSON.stringify(context.getMessage().properties)} received with Pattern: ${context.getPattern()}`,
+    );
+
+    return await this.authService.getUser(id);
   }
 }

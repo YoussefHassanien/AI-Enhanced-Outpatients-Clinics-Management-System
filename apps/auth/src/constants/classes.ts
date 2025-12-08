@@ -1,4 +1,4 @@
-import { BaseEntity, Language } from '@app/common';
+import { BaseEntity, Environment, Language } from '@app/common';
 import { ApiProperty } from '@nestjs/swagger';
 import {
   IsAlphanumeric,
@@ -34,6 +34,9 @@ export abstract class BaseStaff extends BaseEntity {
 }
 
 export class EnvironmentVariables {
+  @IsEnum(Environment)
+  ENVIRONMENT: Environment;
+
   @IsUrl({ protocols: ['postgresql'] })
   DATABASE_URL: string;
 

@@ -2,7 +2,7 @@ services:
   rabbitMq:
     image: rabbitmq:4.1.6-alpine
     ports:
-      - 5672:5672
+      - 5672
     networks:
       - services-network
   auth:

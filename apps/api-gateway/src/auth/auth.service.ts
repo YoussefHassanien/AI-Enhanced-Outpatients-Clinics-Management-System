@@ -9,19 +9,21 @@ import {
   CreatePatientDto,
   LoginDto,
 } from '../../../auth/src/dto';
+import { User } from '../../../auth/src/entities';
 import { Services } from '../constants';
 
 @Injectable()
 export class AuthService {
   constructor(
-    @Inject(Services.AUTH) private readonly authService: ClientProxy,
+    @Inject(Services.AUTH) private readonly authClient: ClientProxy,
   ) {}
 
   async isUp() {
     return await lastValueFrom<string>(
-      this.authService.send({ cmd: AuthPatterns.IS_UP }, {}),
+      this.authClient.send({ cmd: AuthPatterns.IS_UP }, {}),
     );
   }
+
   async login(loginDto: LoginDto) {
     return await lastValueFrom<
       Promise<{
@@ -30,7 +32,7 @@ export class AuthService {
         language: Language;
         token: string;
       }>
-    >(this.authService.send({ cmd: AuthPatterns.LOGIN }, loginDto));
+    >(this.authClient.send({ cmd: AuthPatterns.LOGIN }, loginDto));
   }
 
   async createAdmin(createAdminDto: CreateAdminDto) {
@@ -39,9 +41,7 @@ export class AuthService {
         message: string;
         id: string;
       }>
-    >(
-      this.authService.send({ cmd: AuthPatterns.ADMIN_CREATE }, createAdminDto),
-    );
+    >(this.authClient.send({ cmd: AuthPatterns.ADMIN_CREATE }, createAdminDto));
   }
 
   async createDoctor(createDoctorDto: CreateDoctorDto) {
@@ -51,7 +51,7 @@ export class AuthService {
         id: string;
       }>
     >(
-      this.authService.send(
+      this.authClient.send(
         { cmd: AuthPatterns.DOCTOR_CREATE },
         createDoctorDto,
       ),
@@ -65,10 +65,16 @@ export class AuthService {
         id: string;
       }>
     >(
-      this.authService.send(
+      this.authClient.send(
         { cmd: AuthPatterns.PATIENT_CREATE },
         createPatientDto,
       ),
+    );
+  }
+
+  async getUser(id: number) {
+    return await lastValueFrom<Promise<User | null>>(
+      this.authClient.send({ cmd: AuthPatterns.GET_USER }, id),
     );
   }
 }

@@ -1,11 +1,11 @@
-import { Logger, ValidationPipe } from '@nestjs/common';
+import { Environment } from '@app/common';
+import { ConsoleLogger, Logger, ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 import { AsyncMicroserviceOptions, Transport } from '@nestjs/microservices';
 import { AuthModule } from './auth.module';
-
 const bootstrap = async () => {
-  const logger = new Logger(AuthModule.name);
+  const logger = new Logger('Auth microservice');
 
   const app = await NestFactory.createMicroservice<AsyncMicroserviceOptions>(
     AuthModule,
@@ -20,7 +20,14 @@ const bootstrap = async () => {
           },
         },
       }),
-      logger: ['debug'],
+      logger: new ConsoleLogger({
+        logLevels:
+          process.env.ENVIRONMENT === Environment.PRODUCTION
+            ? ['error', 'fatal', 'warn']
+            : ['log', 'fatal', 'error', 'warn', 'debug', 'verbose'],
+        timestamp: true,
+      }),
+
       inject: [ConfigService],
     },
   );
@@ -40,7 +47,7 @@ const bootstrap = async () => {
 };
 
 bootstrap().catch((error) => {
-  const logger = new Logger(AuthModule.name);
+  const logger = new Logger('Auth microservice');
   logger.error(
     'Auth microservice failed to start',
     error instanceof Error ? error.stack : String(error),

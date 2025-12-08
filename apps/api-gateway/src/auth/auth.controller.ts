@@ -8,8 +8,8 @@ import {
   CreatePatientDto,
   LoginDto,
 } from '../../../auth/src/dto';
-import { JwtAuthGuard } from '../../../auth/src/guards';
 import { AuthService } from './auth.service';
+import { JwtAuthGuard } from './guards';
 
 @Controller('auth')
 export class AuthController {

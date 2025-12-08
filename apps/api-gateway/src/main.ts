@@ -2,14 +2,16 @@ import { Environment } from '@app/common';
 import { Logger, ValidationPipe, VersioningType } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
+import { NestExpressApplication } from '@nestjs/platform-express';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import { ApiGatewayModule } from './api-gateway.module';
 
 async function bootstrap() {
-  const logger = new Logger(ApiGatewayModule.name);
-  const app = await NestFactory.create(ApiGatewayModule);
+  const logger = new Logger('API Gateway');
+  const app =
+    await NestFactory.create<NestExpressApplication>(ApiGatewayModule);
 
   const configService = app.get(ConfigService);
   const port = configService.getOrThrow<number>('PORT');
@@ -33,7 +35,14 @@ async function bootstrap() {
     }),
   );
 
-  if (environment === Environment.DEVELOPMENT) {
+  if (environment === Environment.PRODUCTION) {
+    app.enableCors({
+      origin: configService.getOrThrow<string>('AUDIENCE'),
+      methods: configService.getOrThrow<string[]>('METHODS'),
+      allowedHeaders: configService.getOrThrow<string[]>('ALLOWED_HEADERS'),
+      credentials: configService.getOrThrow<boolean>('CREDENTIALS'),
+    });
+  } else {
     app.enableCors();
     const config = new DocumentBuilder()
       .setTitle('CodeBlue Project APIs Documentation')
@@ -48,22 +57,17 @@ async function bootstrap() {
       app,
       documentFactory,
     );
-  } else if (environment === Environment.PRODUCTION) {
-    app.enableCors({
-      origin: configService.getOrThrow<string>('AUDIENCE'),
-      methods: configService.getOrThrow<string[]>('METHODS'),
-      allowedHeaders: configService.getOrThrow<string[]>('ALLOWED_HEADERS'),
-      credentials: configService.getOrThrow<boolean>('CREDENTIALS'),
-    });
   }
 
   await app.listen(port);
   const appUrl = await app.getUrl();
-  logger.log(`API Gateway listening at: ${appUrl}/${globalPrefix}/v${version}`);
+  logger.log(
+    `API Gateway is running at: ${appUrl}/${globalPrefix}/v${version}`,
+  );
 }
 
 bootstrap().catch((error) => {
-  const logger = new Logger(ApiGatewayModule.name);
+  const logger = new Logger('API Gateway');
   logger.error(
     'API Gateway failed to start',
     error instanceof Error ? error.stack : String(error),

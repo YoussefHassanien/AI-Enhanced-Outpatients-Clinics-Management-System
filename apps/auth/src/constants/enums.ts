@@ -4,4 +4,5 @@ export enum AuthPatterns {
   ADMIN_CREATE = 'auth.admin.create',
   DOCTOR_CREATE = 'auth.doctor.create',
   PATIENT_CREATE = 'auth.patient.create',
+  GET_USER = 'auth.getUser',
 }

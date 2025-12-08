@@ -32,6 +32,17 @@ export class EnvironmentVariables {
   GLOBAL_PREFIX: string;
 
   @IsAlphanumeric()
+  ACCESS_TOKEN_SECRET: string;
+
+  @IsString()
+  @IsNotEmpty()
+  ISSUER: string;
+
+  @IsString()
+  @IsNotEmpty()
+  AUDIENCE: string;
+
+  @IsAlphanumeric()
   COOKIES_SECRET: string;
 
   @IsInt()

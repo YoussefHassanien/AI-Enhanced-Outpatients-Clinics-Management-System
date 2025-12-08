@@ -1,11 +1,11 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
 import { Request } from 'express';
 import { Strategy } from 'passport-jwt';
+import { JwtPayload } from '../../../../auth/src/constants';
+import { User } from '../../../../auth/src/entities';
 import { AuthService } from '../auth.service';
-import { JwtPayload } from '../constants';
-import { User } from '../entities';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
@@ -13,20 +13,33 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     private readonly authService: AuthService,
     configService: ConfigService,
   ) {
+    const logger = new Logger('Jwt Strategy');
+
     const extractAuthenticationCookie = (req: Request): string | null => {
       if (req.signedCookies && req.signedCookies['accessToken']) {
+        logger.log('Token from signed cookies found');
+
         return req.signedCookies['accessToken'] as string;
       }
+
+      logger.log('No token found');
       return null;
     };
 
     super({
       jwtFromRequest: extractAuthenticationCookie,
+      ignoreExpiration: false,
       secretOrKey: configService.getOrThrow<string>('ACCESS_TOKEN_SECRET'),
+      // audience: configService.getOrThrow('AUDIENCE'),
+      // issuer: configService.getOrThrow('ISSUER'),
     });
   }
 
   async validate(payload: JwtPayload): Promise<User> {
+    const logger = new Logger('Jwt Strategy');
+
+    logger.log('JWT Payload received');
+
     const user = await this.authService.getUser(payload.sub);
 
     if (!user) {
@@ -34,6 +47,8 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
         message: 'Incorrect email or password',
       });
     }
+
+    logger.log('User fetched');
 
     return user;
   }
