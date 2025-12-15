@@ -34,17 +34,14 @@ jobs:
           tenant-id: ${{ secrets.AUTHSERVICE_AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AUTHSERVICE_AZURE_SUBSCRIPTION_ID }}
 
-      # - name: Build and push container image to registry
-      #   uses: azure/container-apps-deploy-action@v2
-      #   with:
-      #     appSourcePath: ${{ github.workspace }}/apps/auth
-      #     _dockerfilePathKey_: _dockerfilePath_
-      #     _targetLabelKey_: _targetLabel_
-      #     registryUrl: docker.io
-      #     registryUsername: ${{ secrets.AUTHSERVICE_REGISTRY_USERNAME }}
-      #     registryPassword: ${{ secrets.AUTHSERVICE_REGISTRY_PASSWORD }}
-      #     containerAppName: auth-service
-      #     resourceGroup: Graduation-Project
-      #     imageToBuild: youssefhassanien1/auth-service:${{ github.sha }}
-      #     _buildArgumentsKey_: |
-      #       _buildArgumentsValues_
+      - name: Build and push container image to registry
+        uses: azure/container-apps-deploy-action@v2
+        with:
+          appSourcePath: ${{ github.workspace }}/apps/auth
+          dockerfilePath: Dockerfile
+          registryUrl: docker.io
+          registryUsername: ${{ secrets.AUTHSERVICE_REGISTRY_USERNAME }}
+          registryPassword: ${{ secrets.AUTHSERVICE_REGISTRY_PASSWORD }}
+          containerAppName: auth-service
+          resourceGroup: Graduation-Project
+          imageToBuild: youssefhassanien1/auth-service:${{ github.sha }}
