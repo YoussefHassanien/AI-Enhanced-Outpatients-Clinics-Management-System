@@ -30,8 +30,8 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       jwtFromRequest: extractAuthenticationCookie,
       ignoreExpiration: false,
       secretOrKey: configService.getOrThrow<string>('ACCESS_TOKEN_SECRET'),
-      // audience: configService.getOrThrow('AUDIENCE'),
-      // issuer: configService.getOrThrow('ISSUER'),
+      audience: configService.getOrThrow('AUDIENCE'),
+      issuer: configService.getOrThrow('ISSUER'),
     });
   }
 

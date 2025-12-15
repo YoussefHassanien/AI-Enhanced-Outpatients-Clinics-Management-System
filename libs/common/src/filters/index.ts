@@ -1,1 +1,1 @@
-export * from './rpc-exception.filter';
+export * from './catch-everything.filter';
