@@ -7,7 +7,6 @@ services:
     networks:
       - services-network
   auth:
-    image: youssefhassanien1/ai-enhanced-outpatient-clinics-management-system-auth-service
     container_name: auth
     build:
       context: .
@@ -21,7 +20,6 @@ services:
       - services-network
 
   api-gateway:
-    image: youssefhassanien1/ai-enhanced-outpatient-clinics-management-system-api-gateway-service
     container_name: api-gateway
     build:
       context: .
