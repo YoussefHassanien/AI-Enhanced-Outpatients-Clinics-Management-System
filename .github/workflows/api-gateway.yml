@@ -43,5 +43,5 @@ jobs:
           registryUsername: ${{ secrets.APIGATEWAY_REGISTRY_USERNAME }}
           registryPassword: ${{ secrets.APIGATEWAY_REGISTRY_PASSWORD }}
           containerAppName: api-gateway
-          resourceGroup: Graduation-Project
+          resourceGroup: CodeBlue
           imageToBuild: youssefhassanien1/api-gateway:${{ github.sha }}

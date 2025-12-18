@@ -43,5 +43,5 @@ jobs:
           registryUsername: ${{ secrets.AUTHSERVICE_REGISTRY_USERNAME }}
           registryPassword: ${{ secrets.AUTHSERVICE_REGISTRY_PASSWORD }}
           containerAppName: auth-service
-          resourceGroup: Graduation-Project
+          resourceGroup: CodeBlue
           imageToBuild: youssefhassanien1/auth-service:${{ github.sha }}
