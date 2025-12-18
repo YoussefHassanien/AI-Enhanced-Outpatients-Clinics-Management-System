@@ -1,13 +1,21 @@
 import { Environment, Role, Roles } from '@app/common';
-import { Body, Controller, Get, Post, Res, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Post,
+  Req,
+  Res,
+  UseGuards,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Response } from 'express';
+import { Request, Response } from 'express';
 import {
   CreateAdminDto,
   CreateDoctorDto,
   CreatePatientDto,
   LoginDto,
-} from '../../../auth/src/dto';
+} from '../../../auth/src/dtos';
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './guards';
 
@@ -60,8 +68,11 @@ export class AuthController {
   @Roles(Role.SUPER_ADMIN, Role.ADMIN)
   @UseGuards(JwtAuthGuard)
   @Post('doctor/create')
-  async createDoctor(@Body() createDoctorDto: CreateDoctorDto) {
-    return await this.authService.createDoctor(createDoctorDto);
+  async createDoctor(
+    @Body() createDoctorDto: CreateDoctorDto,
+    @Req() req: Request,
+  ) {
+    return await this.authService.createDoctor(createDoctorDto, req);
   }
 
   @Roles(Role.SUPER_ADMIN, Role.ADMIN, Role.DOCTOR)

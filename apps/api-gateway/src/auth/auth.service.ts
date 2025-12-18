@@ -1,14 +1,16 @@
 import { Language, Role } from '@app/common';
 import { Inject, Injectable } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
+import { Request } from 'express';
 import { lastValueFrom } from 'rxjs';
 import { AuthPatterns } from '../../../auth/src/constants';
 import {
   CreateAdminDto,
   CreateDoctorDto,
+  CreateDoctorInternalDto,
   CreatePatientDto,
   LoginDto,
-} from '../../../auth/src/dto';
+} from '../../../auth/src/dtos';
 import { User } from '../../../auth/src/entities';
 import { Services } from '../constants';
 
@@ -44,7 +46,14 @@ export class AuthService {
     >(this.authClient.send({ cmd: AuthPatterns.ADMIN_CREATE }, createAdminDto));
   }
 
-  async createDoctor(createDoctorDto: CreateDoctorDto) {
+  async createDoctor(createDoctorDto: CreateDoctorDto, req: Request) {
+    const user = req.user as User;
+
+    const internalDoctorDto = new CreateDoctorInternalDto(
+      createDoctorDto,
+      user.role === Role.SUPER_ADMIN,
+    );
+
     return await lastValueFrom<
       Promise<{
         message: string;
@@ -53,7 +62,7 @@ export class AuthService {
     >(
       this.authClient.send(
         { cmd: AuthPatterns.DOCTOR_CREATE },
-        createDoctorDto,
+        internalDoctorDto,
       ),
     );
   }

@@ -11,10 +11,10 @@ import { AuthService } from './auth.service';
 import { AuthPatterns } from './constants';
 import {
   CreateAdminDto,
-  CreateDoctorDto,
+  CreateDoctorInternalDto,
   CreatePatientDto,
   LoginDto,
-} from './dto';
+} from './dtos';
 
 @Controller()
 export class AuthController {
@@ -80,7 +80,7 @@ export class AuthController {
 
   @MessagePattern({ cmd: AuthPatterns.DOCTOR_CREATE })
   async doctorCreate(
-    @Payload() createDoctorDto: CreateDoctorDto,
+    @Payload() createDoctorDto: CreateDoctorInternalDto,
     @Ctx() context: RmqContext,
   ) {
     this.logger.log(
@@ -94,7 +94,12 @@ export class AuthController {
       throw doctor;
     }
 
-    return { message: 'Doctor is successfully created', id: doctor.globalId };
+    return {
+      message: doctor.isApproved
+        ? 'Doctor is successfully created'
+        : 'Doctor is waiting for being approved',
+      id: doctor.globalId,
+    };
   }
 
   @MessagePattern({ cmd: AuthPatterns.PATIENT_CREATE })
