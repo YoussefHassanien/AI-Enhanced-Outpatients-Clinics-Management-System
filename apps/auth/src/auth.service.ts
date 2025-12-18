@@ -7,13 +7,14 @@ import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcrypt';
 import { Algorithm } from 'jsonwebtoken';
 import { EntityManager, Repository } from 'typeorm';
-import { CreateUserDto, JwtPayload } from './constants';
+import { JwtPayload } from './constants';
 import {
   CreateAdminDto,
-  CreateDoctorDto,
+  CreateDoctorInternalDto,
   CreatePatientDto,
+  CreateUserDto,
   CredentialsResponseDto,
-} from './dto';
+} from './dtos';
 import { Admin, Doctor, Patient, User } from './entities';
 
 @Injectable()
@@ -260,7 +261,9 @@ export class AuthService {
     );
   };
 
-  createDoctor = async (doctorDto: CreateDoctorDto): Promise<Doctor> => {
+  createDoctor = async (
+    doctorDto: CreateDoctorInternalDto,
+  ): Promise<Doctor> => {
     const existingUser = await this.checkExistingUser(
       doctorDto.socialSecurityNumber,
     );
@@ -306,6 +309,7 @@ export class AuthService {
           password: hashedPassword,
           speciality: doctorDto.speciality,
           phone: doctorDto.phone,
+          isApproved: doctorDto.isApproved,
         });
         this.logger.log('Successfully created a doctor');
 
