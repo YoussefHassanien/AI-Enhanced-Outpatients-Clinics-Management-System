@@ -1,132 +1,127 @@
-import { Environment, Role, Roles } from '@app/common';
+import { ErrorResponse } from '@app/common';
+import { Controller, Logger } from '@nestjs/common';
 import {
-  BadRequestException,
-  Body,
-  Controller,
-  Get,
-  Post,
-  Req,
-  Res,
-  UseGuards,
-} from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { Request, Response } from 'express';
+  Ctx,
+  MessagePattern,
+  Payload,
+  RmqContext,
+  RpcException,
+} from '@nestjs/microservices';
 import { AuthService } from './auth.service';
+import { AuthPatterns } from './constants';
 import {
   CreateAdminDto,
   CreateDoctorDto,
   CreatePatientDto,
   LoginDto,
 } from './dto';
-import { User } from './entities';
-import { JwtAuthGuard, LocalAuthGuard } from './guards';
 
-@Controller('auth')
+@Controller()
 export class AuthController {
-  private readonly cookiesExpirationTime: number;
-  private readonly environment: Environment;
-  constructor(
-    private readonly authService: AuthService,
-    private readonly configService: ConfigService,
-  ) {
-    this.cookiesExpirationTime = this.configService.getOrThrow<number>(
-      'COOKIES_EXPIRATION_TIME',
+  private readonly logger: Logger;
+  constructor(private readonly authService: AuthService) {
+    this.logger = new Logger(AuthController.name);
+  }
+
+  @MessagePattern({ cmd: AuthPatterns.IS_UP })
+  isUp(@Ctx() context: RmqContext): string {
+    this.logger.log(
+      `Message of fields: ${JSON.stringify(context.getMessage().fields)} and properties: ${JSON.stringify(context.getMessage().properties)} received with Pattern: ${context.getPattern()}`,
     );
 
-    this.environment =
-      this.configService.getOrThrow<Environment>('ENVIRONMENT');
+    return this.authService.isUp();
   }
 
-  @Get()
-  getHello(): string {
-    return this.authService.getHello();
-  }
+  @MessagePattern({ cmd: AuthPatterns.LOGIN })
+  async login(@Payload() loginDto: LoginDto, @Ctx() context: RmqContext) {
+    this.logger.log(
+      `Message of fields: ${JSON.stringify(context.getMessage().fields)} and properties: ${JSON.stringify(context.getMessage().properties)} received with Pattern: ${context.getPattern()}`,
+    );
 
-  @UseGuards(LocalAuthGuard)
-  @Post('login')
-  async doctorLogin(
-    @Req() req: Request,
-    @Res() res: Response,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    @Body() loginDto: LoginDto,
-  ) {
-    const user = req.user as User;
+    const user = await this.authService.validateUser(
+      loginDto.email,
+      loginDto.password,
+    );
+
+    if (!user) {
+      const rpcException = new RpcException(
+        new ErrorResponse('Invalid credentials', 401),
+      );
+      this.logger.error(rpcException.getError());
+      throw rpcException;
+    }
+
     const credentials = await this.authService.generateCredentials(user);
-    this.setAuthCookies(res, credentials.token);
 
-    return res.status(201).json({
-      name: credentials.name,
-      language: credentials.language,
+    return {
+      ...credentials,
       role: user.role,
-    });
+    };
   }
 
-  @Post('admin/create')
-  @Roles(Role.SUPER_ADMIN)
-  @UseGuards(JwtAuthGuard)
+  @MessagePattern({ cmd: AuthPatterns.ADMIN_CREATE })
   async adminCreate(
-    @Res() res: Response,
-    @Body() createAdminDto: CreateAdminDto,
+    @Payload() createAdminDto: CreateAdminDto,
+    @Ctx() context: RmqContext,
   ) {
+    this.logger.log(
+      `Message of fields: ${JSON.stringify(context.getMessage().fields)} and properties: ${JSON.stringify(context.getMessage().properties)} received with Pattern: ${context.getPattern()}`,
+    );
+
     const admin = await this.authService.createAdmin(createAdminDto);
 
-    if (!admin) {
-      throw new BadRequestException({ message: 'Failed to create admin' });
+    if (admin instanceof RpcException) {
+      this.logger.error(admin.getError());
+      throw admin;
     }
 
-    return res.status(201).json({
-      message: 'Admin is successfully created',
-    });
+    return { message: 'Admin is successfully created', id: admin.globalId };
   }
 
-  @Post('doctor/create')
-  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
-  @UseGuards(JwtAuthGuard)
+  @MessagePattern({ cmd: AuthPatterns.DOCTOR_CREATE })
   async doctorCreate(
-    @Res() res: Response,
-    @Body() createDoctorDto: CreateDoctorDto,
+    @Payload() createDoctorDto: CreateDoctorDto,
+    @Ctx() context: RmqContext,
   ) {
+    this.logger.log(
+      `Message of fields: ${JSON.stringify(context.getMessage().fields)} and properties: ${JSON.stringify(context.getMessage().properties)} received with Pattern: ${context.getPattern()}`,
+    );
+
     const doctor = await this.authService.createDoctor(createDoctorDto);
 
-    if (!doctor) {
-      throw new BadRequestException({ message: 'Failed to create doctor' });
+    if (doctor instanceof RpcException) {
+      this.logger.error(doctor.getError());
+      throw doctor;
     }
 
-    return res.status(201).json({
-      message: 'Doctor is successfully created',
-    });
+    return { message: 'Doctor is successfully created', id: doctor.globalId };
   }
 
-  @Roles(Role.ADMIN, Role.SUPER_ADMIN, Role.DOCTOR)
-  @UseGuards(JwtAuthGuard)
-  @Post('patient/create')
+  @MessagePattern({ cmd: AuthPatterns.PATIENT_CREATE })
   async patientCreate(
-    @Res() res: Response,
-    @Body() createPatientDto: CreatePatientDto,
+    @Payload() createPatientDto: CreatePatientDto,
+    @Ctx() context: RmqContext,
   ) {
+    this.logger.log(
+      `Message of fields: ${JSON.stringify(context.getMessage().fields)} and properties: ${JSON.stringify(context.getMessage().properties)} received with Pattern: ${context.getPattern()}`,
+    );
+
     const patient = await this.authService.createPatient(createPatientDto);
 
-    if (!patient) {
-      throw new BadRequestException({ message: 'Failed to create doctor' });
+    if (patient instanceof RpcException) {
+      this.logger.error(patient.getError());
+      throw patient;
     }
 
-    return res.status(201).json({
-      message: 'Patient is successfully created',
-    });
+    return { message: 'Patient is successfully created', id: patient.globalId };
   }
 
-  private setAuthCookies(res: Response, accessToken: string) {
-    const cookieOptions = {
-      expires: new Date(Date.now() + this.cookiesExpirationTime),
-      httpOnly: true,
-      signed: true,
-      secure: this.environment === Environment.PRODUCTION ? true : false,
-      sameSite:
-        this.environment === Environment.DEVELOPMENT
-          ? ('lax' as const)
-          : ('none' as const),
-    };
+  @MessagePattern({ cmd: AuthPatterns.GET_USER })
+  async getUser(@Payload() id: number, @Ctx() context: RmqContext) {
+    this.logger.log(
+      `Message of fields: ${JSON.stringify(context.getMessage().fields)} and properties: ${JSON.stringify(context.getMessage().properties)} received with Pattern: ${context.getPattern()}`,
+    );
 
-    res.cookie('accessToken', accessToken, cookieOptions);
+    return await this.authService.getUser(id);
   }
 }

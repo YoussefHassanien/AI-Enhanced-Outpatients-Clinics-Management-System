@@ -1,24 +1,30 @@
-FROM node:24-alpine AS development
+FROM node:24-alpine AS builder
 
 WORKDIR /app
 
-# Copy package files first for better layer caching
-COPY package.json .
-COPY package-lock.json .
-COPY tsconfig.json .
-COPY tsconfig.build.json .
-COPY nest-cli.json .
+# copy package.json, package-lock.json tsconfig.json, tsconfig.build.json, and nest-cli.json files
+COPY package.json package-lock.json ./
+COPY tsconfig.json tsconfig.build.json nest-cli.json ./
 
-# Copy only the auth service and libs (preserve paths for nest build)
-COPY ./apps/auth ./apps/auth
-COPY ./libs ./libs
+# copy only auth and libs folders
+COPY ./apps/auth /app/apps/auth
+COPY ./libs /app/libs
 
-# Install dependencies
-RUN npm install
-
-# Build the application
+# install all deps including dev and build
+RUN npm ci
 RUN npm run build auth
 
-EXPOSE 4001
+########################################################
 
-CMD ["node", "dist/apps/auth/main"]
+FROM node:24-alpine AS runtime
+
+WORKDIR /app
+
+# copy package.json and package-lock.json files only for runtime
+COPY package.json package-lock.json ./
+
+# install only production deps for smaller image
+RUN npm ci --only=production
+
+# copy built output
+COPY --from=builder /app/dist/apps/auth /app/auth

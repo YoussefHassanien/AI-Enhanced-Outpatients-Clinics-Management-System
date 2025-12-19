@@ -1,6 +1,6 @@
 import { Language } from '@app/common';
 
-export class CredentialsResponse {
+export class CredentialsResponseDto {
   readonly name: string;
   readonly language: Language;
   readonly token: string;

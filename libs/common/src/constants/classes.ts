@@ -1,6 +1,6 @@
 import { Inject, Logger, MiddlewareConsumer, NestModule } from '@nestjs/common';
 import { DataSource } from 'typeorm';
-import { LoggerMiddleware } from '../middlewares/logger.middleware';
+import { LoggerMiddleware } from '../middlewares';
 
 export abstract class BaseModule implements NestModule {
   @Inject(DataSource)
@@ -18,5 +18,15 @@ export abstract class BaseModule implements NestModule {
 
   configure(consumer: MiddlewareConsumer) {
     consumer.apply(LoggerMiddleware).forRoutes('*path');
+  }
+}
+
+export class ErrorResponse {
+  public message: string;
+  public status: number;
+
+  constructor(message: string, status: number) {
+    this.message = message;
+    this.status = status;
   }
 }

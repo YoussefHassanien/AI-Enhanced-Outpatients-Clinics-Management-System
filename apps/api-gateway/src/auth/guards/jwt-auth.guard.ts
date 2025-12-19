@@ -3,7 +3,7 @@ import { ExecutionContext, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { AuthGuard } from '@nestjs/passport';
 import { Request } from 'express';
-import { User } from '../entities';
+import { User } from '../../../../auth/src/entities';
 
 @Injectable()
 export class JwtAuthGuard extends AuthGuard('jwt') {

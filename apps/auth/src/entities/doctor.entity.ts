@@ -1,6 +1,6 @@
 import { Column, Entity, JoinColumn, OneToOne } from 'typeorm';
-import { BaseStaff } from '../constants/classes';
 import { User } from '.';
+import { BaseStaff } from '../constants';
 
 @Entity('Doctors')
 export class Doctor extends BaseStaff {
