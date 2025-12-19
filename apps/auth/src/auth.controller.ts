@@ -1,5 +1,5 @@
 import { ErrorResponse } from '@app/common';
-import { Controller, Logger } from '@nestjs/common';
+import { Controller, Logger, ParseUUIDPipe } from '@nestjs/common';
 import {
   Ctx,
   MessagePattern,
@@ -19,6 +19,7 @@ import {
 @Controller()
 export class AuthController {
   private readonly logger: Logger;
+
   constructor(private readonly authService: AuthService) {
     this.logger = new Logger(AuthController.name);
   }
@@ -96,8 +97,8 @@ export class AuthController {
 
     return {
       message: doctor.isApproved
-        ? 'Doctor is successfully created'
-        : 'Doctor is waiting for being approved',
+        ? 'Doctor is successfully created and approved'
+        : 'Doctor is successfully created, but waiting for approval',
       id: doctor.globalId,
     };
   }
@@ -128,5 +129,59 @@ export class AuthController {
     );
 
     return await this.authService.getUser(id);
+  }
+
+  @MessagePattern({ cmd: AuthPatterns.GET_DOCTOR })
+  async getDoctor(
+    @Payload(
+      new ParseUUIDPipe({
+        exceptionFactory: () =>
+          new RpcException(new ErrorResponse('Invalid UUID', 400)),
+      }),
+    )
+    id: string,
+    @Ctx() context: RmqContext,
+  ) {
+    this.logger.log(
+      `Message of fields: ${JSON.stringify(context.getMessage().fields)} and properties: ${JSON.stringify(context.getMessage().properties)} received with Pattern: ${context.getPattern()}`,
+    );
+
+    return await this.authService.getDoctor(id);
+  }
+
+  @MessagePattern({ cmd: AuthPatterns.GET_PATIENT })
+  async getPatient(
+    @Payload(
+      new ParseUUIDPipe({
+        exceptionFactory: () =>
+          new RpcException(new ErrorResponse('Invalid UUID', 400)),
+      }),
+    )
+    id: string,
+    @Ctx() context: RmqContext,
+  ) {
+    this.logger.log(
+      `Message of fields: ${JSON.stringify(context.getMessage().fields)} and properties: ${JSON.stringify(context.getMessage().properties)} received with Pattern: ${context.getPattern()}`,
+    );
+
+    return await this.authService.getPatient(id);
+  }
+
+  @MessagePattern({ cmd: AuthPatterns.GET_ADMIN })
+  async getAdmin(
+    @Payload(
+      new ParseUUIDPipe({
+        exceptionFactory: () =>
+          new RpcException(new ErrorResponse('Invalid UUID', 400)),
+      }),
+    )
+    id: string,
+    @Ctx() context: RmqContext,
+  ) {
+    this.logger.log(
+      `Message of fields: ${JSON.stringify(context.getMessage().fields)} and properties: ${JSON.stringify(context.getMessage().properties)} received with Pattern: ${context.getPattern()}`,
+    );
+
+    return await this.authService.getAdmin(id);
   }
 }

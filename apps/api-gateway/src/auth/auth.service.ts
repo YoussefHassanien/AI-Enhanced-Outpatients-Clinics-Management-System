@@ -11,7 +11,7 @@ import {
   CreatePatientDto,
   LoginDto,
 } from '../../../auth/src/dtos';
-import { User } from '../../../auth/src/entities';
+import { Doctor, User } from '../../../auth/src/entities';
 import { Services } from '../constants';
 
 @Injectable()
@@ -84,6 +84,12 @@ export class AuthService {
   async getUser(id: number) {
     return await lastValueFrom<Promise<User | null>>(
       this.authClient.send({ cmd: AuthPatterns.GET_USER }, id),
+    );
+  }
+
+  async getDoctor(id: string) {
+    return await lastValueFrom<Promise<Doctor | null>>(
+      this.authClient.send({ cmd: AuthPatterns.GET_DOCTOR }, id),
     );
   }
 }

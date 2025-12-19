@@ -246,6 +246,24 @@ export class AuthService {
     });
   };
 
+  getDoctor = async (globalId: string): Promise<Doctor | null> => {
+    return await this.doctorRepository.findOneBy({
+      globalId,
+    });
+  };
+
+  getPatient = async (globalId: string): Promise<Patient | null> => {
+    return await this.patientRepository.findOneBy({
+      globalId,
+    });
+  };
+
+  getAdmin = async (globalId: string): Promise<Admin | null> => {
+    return await this.adminRepository.findOneBy({
+      globalId,
+    });
+  };
+
   generateCredentials = async (user: User): Promise<CredentialsResponseDto> => {
     const token = await this.generateAccessToken({
       socialSecurityNumber: String(user.socialSecurityNumber),
