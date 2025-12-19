@@ -35,6 +35,19 @@ services:
     networks:
       - services-network
 
+  doctor:
+    container_name: doctor
+    build:
+      context: .
+      dockerfile: ./apps/doctor/Dockerfile
+    env_file:
+      - ./apps/doctor/.env
+    depends_on:
+      - rabbitMq
+    command: node doctor/main
+    networks:
+      - services-network
+
 networks:
   services-network:
     driver: bridge

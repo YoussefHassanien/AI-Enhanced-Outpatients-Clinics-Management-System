@@ -6,7 +6,7 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 COPY tsconfig.json tsconfig.build.json nest-cli.json ./
 
-# copy only auth and libs folders
+# copy only needed folders and libs
 COPY ./apps/auth /app/apps/auth
 COPY ./libs /app/libs
 

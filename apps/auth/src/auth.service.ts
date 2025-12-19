@@ -403,7 +403,6 @@ export class AuthService {
         const patientRepository = manager.getRepository(Patient);
 
         const createdPatient = patientRepository.create({
-          userId: createdUser.id,
           job: patientDto.job ?? null,
           address: patientDto.address ?? null,
         });

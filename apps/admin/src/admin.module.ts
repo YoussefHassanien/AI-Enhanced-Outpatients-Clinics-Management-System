@@ -1,5 +1,4 @@
 import {
-  BaseModule,
   dataSourceAsyncOptions,
   Environment,
   validateEnviornmentVariables,
@@ -125,8 +124,4 @@ class EnvironmentVariables {
   controllers: [AdminController],
   providers: [AdminService],
 })
-export class AdminModule extends BaseModule {
-  constructor() {
-    super(AdminModule.name);
-  }
-}
+export class AdminModule {}

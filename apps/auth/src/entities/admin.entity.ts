@@ -4,7 +4,7 @@ import { BaseStaff } from '../constants';
 
 @Entity('Admins')
 export class Admin extends BaseStaff {
-  @OneToOne(() => User, (user) => user.admin, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'userId' })
+  @OneToOne(() => User, { onDelete: 'CASCADE' })
+  @JoinColumn()
   user: User;
 }

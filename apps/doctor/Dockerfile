@@ -1,0 +1,30 @@
+FROM node:24-alpine AS builder
+
+WORKDIR /app
+
+# copy package.json, package-lock.json tsconfig.json, tsconfig.build.json, and nest-cli.json files
+COPY package.json package-lock.json ./
+COPY tsconfig.json tsconfig.build.json nest-cli.json ./
+
+# copy only needed folders and libs
+COPY ./apps/doctor /app/apps/doctor
+COPY ./libs /app/libs
+
+# install all deps including dev and build
+RUN npm ci
+RUN npm run build doctor
+
+########################################################
+
+FROM node:24-alpine AS runtime
+
+WORKDIR /app
+
+# copy package.json and package-lock.json files only for runtime
+COPY package.json package-lock.json ./
+
+# install only production deps for smaller image
+RUN npm ci --only=production
+
+# copy built output
+COPY --from=builder /app/dist/apps/doctor /app/doctor

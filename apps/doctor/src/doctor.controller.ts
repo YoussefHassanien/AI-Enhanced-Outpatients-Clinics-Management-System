@@ -1,12 +1,21 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Logger } from '@nestjs/common';
+import { Ctx, MessagePattern, RmqContext } from '@nestjs/microservices';
+import { DoctorPatterns } from './constants';
 import { DoctorService } from './doctor.service';
 
 @Controller()
 export class DoctorController {
-  constructor(private readonly doctorService: DoctorService) {}
+  private readonly logger: Logger;
+  constructor(private readonly doctorService: DoctorService) {
+    this.logger = new Logger(DoctorController.name);
+  }
 
-  @Get()
-  getHello(): string {
-    return this.doctorService.getHello();
+  @MessagePattern({ cmd: DoctorPatterns.IS_UP })
+  isUp(@Ctx() context: RmqContext): string {
+    this.logger.log(
+      `Message of fields: ${JSON.stringify(context.getMessage().fields)} and properties: ${JSON.stringify(context.getMessage().properties)} received with Pattern: ${context.getPattern()}`,
+    );
+
+    return this.doctorService.isUp();
   }
 }

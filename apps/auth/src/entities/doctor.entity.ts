@@ -10,7 +10,7 @@ export class Doctor extends BaseStaff {
   @Column('bool', { default: false })
   isApproved: boolean;
 
-  @OneToOne(() => User, (user) => user.doctor, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'userId' })
+  @OneToOne(() => User, { onDelete: 'CASCADE' })
+  @JoinColumn()
   user: User;
 }
