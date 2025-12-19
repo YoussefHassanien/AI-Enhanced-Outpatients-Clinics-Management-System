@@ -1,4 +1,4 @@
-import { ApiProperty } from '@nestjs/swagger/dist/decorators';
+import { ApiProperty } from '@nestjs/swagger';
 import { IsBoolean } from 'class-validator';
 import { CreateDoctorDto } from './create-doctor.dto';
 
