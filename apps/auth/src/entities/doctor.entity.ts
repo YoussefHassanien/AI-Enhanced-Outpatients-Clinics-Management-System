@@ -1,9 +1,9 @@
 import { Column, Entity, JoinColumn, OneToOne } from 'typeorm';
 import { User } from '.';
-import { BaseStaff } from '../constants';
+import { BaseStaffEntity } from './bass-staff.entity';
 
 @Entity('Doctors')
-export class Doctor extends BaseStaff {
+export class Doctor extends BaseStaffEntity {
   @Column('varchar', { length: 512 })
   speciality: string;
 

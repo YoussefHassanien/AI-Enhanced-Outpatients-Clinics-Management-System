@@ -1,5 +1,10 @@
-import { ErrorResponse } from '@app/common';
-import { Controller, Logger, ParseUUIDPipe } from '@nestjs/common';
+import { AuthPatterns, ErrorResponse } from '@app/common';
+import {
+  Controller,
+  Logger,
+  ParseIntPipe,
+  ParseUUIDPipe,
+} from '@nestjs/common';
 import {
   Ctx,
   MessagePattern,
@@ -8,7 +13,6 @@ import {
   RpcException,
 } from '@nestjs/microservices';
 import { AuthService } from './auth.service';
-import { AuthPatterns } from './constants';
 import {
   CreateAdminDto,
   CreateDoctorInternalDto,
@@ -39,25 +43,14 @@ export class AuthController {
       `Message of fields: ${JSON.stringify(context.getMessage().fields)} and properties: ${JSON.stringify(context.getMessage().properties)} received with Pattern: ${context.getPattern()}`,
     );
 
-    const user = await this.authService.validateUser(
-      loginDto.email,
-      loginDto.password,
-    );
+    const credentials = await this.authService.login(loginDto);
 
-    if (!user) {
-      const rpcException = new RpcException(
-        new ErrorResponse('Invalid credentials', 401),
-      );
-      this.logger.error(rpcException.getError());
-      throw rpcException;
+    if (credentials instanceof RpcException) {
+      this.logger.error(credentials.getError());
+      throw credentials;
     }
 
-    const credentials = await this.authService.generateCredentials(user);
-
-    return {
-      ...credentials,
-      role: user.role,
-    };
+    return credentials;
   }
 
   @MessagePattern({ cmd: AuthPatterns.ADMIN_CREATE })
@@ -123,7 +116,16 @@ export class AuthController {
   }
 
   @MessagePattern({ cmd: AuthPatterns.GET_USER })
-  async getUser(@Payload() id: number, @Ctx() context: RmqContext) {
+  async getUser(
+    @Payload(
+      new ParseIntPipe({
+        exceptionFactory: () =>
+          new RpcException(new ErrorResponse('Invalid id', 400)),
+      }),
+    )
+    id: number,
+    @Ctx() context: RmqContext,
+  ) {
     this.logger.log(
       `Message of fields: ${JSON.stringify(context.getMessage().fields)} and properties: ${JSON.stringify(context.getMessage().properties)} received with Pattern: ${context.getPattern()}`,
     );
@@ -131,25 +133,25 @@ export class AuthController {
     return await this.authService.getUser(id);
   }
 
-  @MessagePattern({ cmd: AuthPatterns.GET_DOCTOR })
+  @MessagePattern({ cmd: AuthPatterns.GET_DOCTOR_BY_USER_ID })
   async getDoctor(
     @Payload(
-      new ParseUUIDPipe({
+      new ParseIntPipe({
         exceptionFactory: () =>
-          new RpcException(new ErrorResponse('Invalid UUID', 400)),
+          new RpcException(new ErrorResponse('Invalid id', 400)),
       }),
     )
-    id: string,
+    doctorUserId: number,
     @Ctx() context: RmqContext,
   ) {
     this.logger.log(
       `Message of fields: ${JSON.stringify(context.getMessage().fields)} and properties: ${JSON.stringify(context.getMessage().properties)} received with Pattern: ${context.getPattern()}`,
     );
 
-    return await this.authService.getDoctor(id);
+    return await this.authService.getDoctorByUserId(doctorUserId);
   }
 
-  @MessagePattern({ cmd: AuthPatterns.GET_PATIENT })
+  @MessagePattern({ cmd: AuthPatterns.GET_PATIENT_BY_GLOBAL_ID })
   async getPatient(
     @Payload(
       new ParseUUIDPipe({
@@ -157,31 +159,31 @@ export class AuthController {
           new RpcException(new ErrorResponse('Invalid UUID', 400)),
       }),
     )
-    id: string,
+    patientGlobalId: string,
     @Ctx() context: RmqContext,
   ) {
     this.logger.log(
       `Message of fields: ${JSON.stringify(context.getMessage().fields)} and properties: ${JSON.stringify(context.getMessage().properties)} received with Pattern: ${context.getPattern()}`,
     );
 
-    return await this.authService.getPatient(id);
+    return await this.authService.getPatientByGlobalId(patientGlobalId);
   }
 
-  @MessagePattern({ cmd: AuthPatterns.GET_ADMIN })
+  @MessagePattern({ cmd: AuthPatterns.GET_ADMIN_BY_USER_ID })
   async getAdmin(
     @Payload(
-      new ParseUUIDPipe({
+      new ParseIntPipe({
         exceptionFactory: () =>
-          new RpcException(new ErrorResponse('Invalid UUID', 400)),
+          new RpcException(new ErrorResponse('Invalid id', 400)),
       }),
     )
-    id: string,
+    adminUserId: number,
     @Ctx() context: RmqContext,
   ) {
     this.logger.log(
       `Message of fields: ${JSON.stringify(context.getMessage().fields)} and properties: ${JSON.stringify(context.getMessage().properties)} received with Pattern: ${context.getPattern()}`,
     );
 
-    return await this.authService.getAdmin(id);
+    return await this.authService.getAdminByUserId(adminUserId);
   }
 }

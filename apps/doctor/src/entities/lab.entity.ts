@@ -1,8 +1,8 @@
 import { Column, Entity } from 'typeorm';
-import { DoctorPatientRelation } from '.';
+import { DoctorPatientRelationEntity } from '.';
 
 @Entity('Labs')
-export class Labs extends DoctorPatientRelation {
+export class Lab extends DoctorPatientRelationEntity {
   @Column('varchar', { length: 256 })
   name: string;
 

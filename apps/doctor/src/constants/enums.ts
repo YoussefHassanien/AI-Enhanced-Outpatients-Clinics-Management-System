@@ -68,7 +68,3 @@ export enum ScanTypes {
   PET_CT,
   MAMOGRAPHY,
 }
-
-export enum DoctorPatterns {
-  IS_UP = 'doctor.isUp',
-}

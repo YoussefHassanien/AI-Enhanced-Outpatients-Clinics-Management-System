@@ -1,7 +1,7 @@
 import { BaseEntity } from '@app/common';
 import { Column, Index } from 'typeorm';
 
-export abstract class DoctorPatientRelation extends BaseEntity {
+export abstract class DoctorPatientRelationEntity extends BaseEntity {
   @Column()
   @Index()
   patientId: number;

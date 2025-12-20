@@ -6,7 +6,7 @@ import { RpcException } from '@nestjs/microservices';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcrypt';
 import { Algorithm } from 'jsonwebtoken';
-import { EntityManager, Repository } from 'typeorm';
+import { EntityManager, IsNull, Repository } from 'typeorm';
 import { JwtPayload } from './constants';
 import {
   CreateAdminDto,
@@ -14,6 +14,7 @@ import {
   CreatePatientDto,
   CreateUserDto,
   CredentialsResponseDto,
+  LoginDto,
 } from './dtos';
 import { Admin, Doctor, Patient, User } from './entities';
 
@@ -51,6 +52,79 @@ export class AuthService {
     this.audience = this.configService.getOrThrow<string>('AUDIENCE');
     this.logger = new Logger(AuthService.name);
   }
+
+  private validateUser = async (
+    email: string,
+    password: string,
+  ): Promise<User | null> => {
+    email = email.trim().toLowerCase();
+
+    const admin = await this.adminRepository.findOne({
+      where: { email, deletedAt: IsNull() },
+    });
+
+    if (admin && (await bcrypt.compare(password, admin.password))) {
+      this.logger.log('Validated an admin');
+
+      const adminUser = await this.userRepository.findOne({
+        where: {
+          id: admin.userId,
+          deletedAt: IsNull(),
+        },
+      });
+
+      if (!adminUser) {
+        this.logger.log('Admin user not found');
+      } else {
+        this.logger.log('Admin user found');
+      }
+
+      return adminUser;
+    }
+
+    const doctor = await this.doctorRepository.findOne({
+      where: { email, deletedAt: IsNull(), isApproved: true },
+    });
+
+    if (doctor && (await bcrypt.compare(password, doctor.password))) {
+      this.logger.log('Validated a doctor');
+
+      const doctorUser = await this.userRepository.findOne({
+        where: {
+          id: doctor.userId,
+          deletedAt: IsNull(),
+        },
+      });
+
+      if (!doctorUser) {
+        this.logger.log('Doctor user not found');
+      } else {
+        this.logger.log('Doctor user found');
+      }
+
+      return doctorUser;
+    }
+
+    this.logger.log('User is not validated');
+    return null;
+  };
+
+  private generateCredentials = async (
+    user: User,
+  ): Promise<CredentialsResponseDto> => {
+    const token = await this.generateAccessToken({
+      socialSecurityNumber: String(user.socialSecurityNumber),
+      globalId: user.globalId,
+      sub: user.id,
+      role: user.role,
+    });
+
+    return new CredentialsResponseDto(
+      `${user.firstName} ${user.lastName}`,
+      user.language,
+      token,
+    );
+  };
 
   private extractBirthDateFromSocialSecurityNumber = (
     socialSecurityNumber: string,
@@ -121,7 +195,7 @@ export class AuthService {
 
     const userRepository = manager.getRepository(User);
 
-    const createdUser = userRepository.create({
+    const user = userRepository.create({
       firstName: userDto.firstName,
       lastName: userDto.lastName,
       role,
@@ -132,17 +206,20 @@ export class AuthService {
     });
     this.logger.log('Successfully created a user');
 
-    const savedUser = await userRepository.save(createdUser);
-    this.logger.log('Successfully saved a user');
+    await userRepository.insert(user);
+    this.logger.log('Successfully inserted a user');
 
-    return savedUser;
+    return user;
   };
 
   private checkExistingUser = async (
     socialSecurityNumber: string,
   ): Promise<User | null> => {
-    const user = await this.userRepository.findOneBy({
-      socialSecurityNumber: BigInt(socialSecurityNumber),
+    const user = await this.userRepository.findOne({
+      where: {
+        socialSecurityNumber: BigInt(socialSecurityNumber),
+        deletedAt: IsNull(),
+      },
     });
 
     if (!user) {
@@ -158,10 +235,13 @@ export class AuthService {
     email: string,
     phone: string,
   ): Promise<Doctor | null> => {
-    email = email.trim().toLocaleLowerCase();
+    email = email.trim().toLowerCase();
 
     const doctor = await this.doctorRepository.findOne({
-      where: [{ email }, { phone }],
+      where: [
+        { email, deletedAt: IsNull(), isApproved: true },
+        { phone, deletedAt: IsNull(), isApproved: true },
+      ],
     });
 
     if (!doctor) {
@@ -177,10 +257,13 @@ export class AuthService {
     email: string,
     phone: string,
   ): Promise<Admin | null> => {
-    email = email.trim().toLocaleLowerCase();
+    email = email.trim().toLowerCase();
 
     const admin = await this.adminRepository.findOne({
-      where: [{ email }, { phone }],
+      where: [
+        { email, deletedAt: IsNull() },
+        { phone, deletedAt: IsNull() },
+      ],
     });
 
     if (!admin) {
@@ -192,91 +275,60 @@ export class AuthService {
     return admin;
   };
 
-  isUp(): string {
+  isUp = (): string => {
     return 'Auth service is up';
-  }
+  };
 
-  validateUser = async (
-    email: string,
-    password: string,
-  ): Promise<User | null> => {
-    email = email.trim().toLowerCase();
+  login = async (loginDto: LoginDto) => {
+    const user = await this.validateUser(loginDto.email, loginDto.password);
 
-    const admin = await this.adminRepository.findOneBy({ email });
-    if (admin && (await bcrypt.compare(password, admin.password))) {
-      this.logger.log('Validated an admin');
-
-      const adminUser = await this.userRepository.findOneBy({
-        id: admin.userId,
-      });
-
-      if (!adminUser) {
-        this.logger.log('Admin user not found');
-      } else {
-        this.logger.log('Admin user found');
-      }
-
-      return adminUser;
+    if (!user) {
+      throw new RpcException(new ErrorResponse('Invalid credentials', 401));
     }
 
-    const doctor = await this.doctorRepository.findOneBy({ email });
-    if (doctor && (await bcrypt.compare(password, doctor.password))) {
-      this.logger.log('Validated a doctor');
+    const credentials = await this.generateCredentials(user);
 
-      const doctorUser = await this.userRepository.findOneBy({
-        id: doctor.userId,
-      });
-
-      if (!doctorUser) {
-        this.logger.log('Doctor user not found');
-      } else {
-        this.logger.log('Doctor user found');
-      }
-
-      return doctorUser;
-    }
-
-    this.logger.log('User is not validated');
-    return null;
+    return {
+      ...credentials,
+      role: user.role,
+    };
   };
 
   getUser = async (id: number): Promise<User | null> => {
-    return await this.userRepository.findOneBy({
-      id,
+    return await this.userRepository.findOne({
+      where: {
+        id,
+        deletedAt: IsNull(),
+      },
     });
   };
 
-  getDoctor = async (globalId: string): Promise<Doctor | null> => {
-    return await this.doctorRepository.findOneBy({
-      globalId,
+  getDoctorByUserId = async (userId: number): Promise<Doctor | null> => {
+    return await this.doctorRepository.findOne({
+      where: {
+        userId,
+        deletedAt: IsNull(),
+        isApproved: true,
+      },
     });
   };
 
-  getPatient = async (globalId: string): Promise<Patient | null> => {
-    return await this.patientRepository.findOneBy({
-      globalId,
+  getPatientByGlobalId = async (globalId: string): Promise<Patient | null> => {
+    return await this.patientRepository.findOne({
+      where: {
+        globalId,
+        deletedAt: IsNull(),
+      },
     });
   };
 
-  getAdmin = async (globalId: string): Promise<Admin | null> => {
-    return await this.adminRepository.findOneBy({
-      globalId,
+  getAdminByUserId = async (userId: number): Promise<Admin | null> => {
+    return await this.adminRepository.findOne({
+      where: {
+        userId,
+        deletedAt: IsNull(),
+      },
     });
-  };
-
-  generateCredentials = async (user: User): Promise<CredentialsResponseDto> => {
-    const token = await this.generateAccessToken({
-      socialSecurityNumber: String(user.socialSecurityNumber),
-      globalId: user.globalId,
-      sub: user.id,
-      role: user.role,
-    });
-
-    return new CredentialsResponseDto(
-      `${user.firstName} ${user.lastName}`,
-      user.language,
-      token,
-    );
   };
 
   createDoctor = async (
@@ -321,20 +373,20 @@ export class AuthService {
 
         const doctorRepository = manager.getRepository(Doctor);
 
-        const createdDoctor = doctorRepository.create({
+        const doctor = doctorRepository.create({
           userId: createdUser.id,
-          email: doctorDto.email.trim().toLocaleLowerCase(),
+          email: doctorDto.email.trim().toLowerCase(),
           password: hashedPassword,
           speciality: doctorDto.speciality,
           phone: doctorDto.phone,
-          isApproved: doctorDto.isApproved,
+          isApproved: doctorDto.role === Role.SUPER_ADMIN,
         });
         this.logger.log('Successfully created a doctor');
 
-        const savedDoctor = await doctorRepository.save(createdDoctor);
-        this.logger.log('Successfully saved a doctor');
+        await doctorRepository.insert(doctor);
+        this.logger.log('Successfully inserted a doctor');
 
-        return savedDoctor;
+        return doctor;
       },
     );
   };
@@ -379,18 +431,18 @@ export class AuthService {
 
         const adminRepository = manager.getRepository(Admin);
 
-        const createdAdmin = adminRepository.create({
+        const admin = adminRepository.create({
           userId: createdUser.id,
-          email: adminDto.email.trim().toLocaleLowerCase(),
+          email: adminDto.email.trim().toLowerCase(),
           password: hashedPassword,
           phone: adminDto.phone,
         });
         this.logger.log('Successfully created an admin');
 
-        const savedAdmin = await adminRepository.save(createdAdmin);
-        this.logger.log('Successfully saved an admin');
+        await adminRepository.insert(admin);
+        this.logger.log('Successfully inserted an admin');
 
-        return savedAdmin;
+        return admin;
       },
     );
   };
@@ -420,16 +472,16 @@ export class AuthService {
 
         const patientRepository = manager.getRepository(Patient);
 
-        const createdPatient = patientRepository.create({
+        const patient = patientRepository.create({
           job: patientDto.job ?? null,
           address: patientDto.address ?? null,
         });
         this.logger.log('Successfully created a patient');
 
-        const savedPatient = await patientRepository.save(createdPatient);
-        this.logger.log('Successfully saved a patient');
+        await patientRepository.insert(patient);
+        this.logger.log('Successfully inserted a patient');
 
-        return savedPatient;
+        return patient;
       },
     );
   };

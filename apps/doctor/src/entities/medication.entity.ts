@@ -1,9 +1,9 @@
 import { Column, Entity } from 'typeorm';
-import { DoctorPatientRelation } from '.';
+import { DoctorPatientRelationEntity } from '.';
 import { MedicationDosage, MedicationPeriod } from '../constants';
 
 @Entity('Medications')
-export class Medications extends DoctorPatientRelation {
+export class Medication extends DoctorPatientRelationEntity {
   @Column('varchar', { length: 256 })
   name: string;
 

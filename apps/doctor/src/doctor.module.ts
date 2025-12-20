@@ -1,15 +1,17 @@
 import {
   dataSourceAsyncOptions,
+  Services,
   validateEnviornmentVariables,
 } from '@app/common';
 import { Logger, Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { ClientsModule, Transport } from '@nestjs/microservices';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 import { EnvironmentVariables } from './constants';
 import { DoctorController } from './doctor.controller';
 import { DoctorService } from './doctor.service';
-import { Labs, Medications, Scans, Visits } from './entities';
+import { Lab, Medication, Scan, Visit } from './entities';
 
 @Module({
   imports: [
@@ -24,7 +26,24 @@ import { Labs, Medications, Scans, Visits } from './entities';
       envFilePath: './apps/doctor/.env',
     }),
     TypeOrmModule.forRootAsync(dataSourceAsyncOptions),
-    TypeOrmModule.forFeature([Scans, Labs, Medications, Visits]),
+    TypeOrmModule.forFeature([Scan, Lab, Medication, Visit]),
+    ClientsModule.registerAsync([
+      {
+        name: Services.AUTH,
+        imports: [ConfigModule],
+        useFactory: (configService: ConfigService) => ({
+          transport: Transport.RMQ,
+          options: {
+            urls: [configService.getOrThrow<string>('RABBIT_MQ_URL')],
+            queue: configService.getOrThrow<string>('RABBIT_MQ_AUTH_QUEUE'),
+            queueOptions: {
+              durable: false,
+            },
+          },
+        }),
+        inject: [ConfigService],
+      },
+    ]),
   ],
   controllers: [DoctorController],
   providers: [DoctorService],

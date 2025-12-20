@@ -1,8 +1,12 @@
-import { Environment } from '@app/common';
+import { Environment, ErrorResponse } from '@app/common';
 import { ConsoleLogger, Logger, ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
-import { AsyncMicroserviceOptions, Transport } from '@nestjs/microservices';
+import {
+  AsyncMicroserviceOptions,
+  RpcException,
+  Transport,
+} from '@nestjs/microservices';
 import { DoctorModule } from './doctor.module';
 const bootstrap = async () => {
   const logger = new Logger('Doctor microservice');
@@ -35,7 +39,9 @@ const bootstrap = async () => {
   app.useGlobalPipes(
     new ValidationPipe({
       transform: true,
-      whitelist: true,
+      forbidUnknownValues: true,
+      exceptionFactory: () =>
+        new RpcException(new ErrorResponse('Invalid payload', 400)),
     }),
   );
 

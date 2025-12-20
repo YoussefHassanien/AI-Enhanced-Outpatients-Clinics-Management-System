@@ -1,4 +1,4 @@
-import { BaseEntity, Environment } from '@app/common';
+import { Environment } from '@app/common';
 import {
   IsAlphanumeric,
   IsEnum,
@@ -9,21 +9,6 @@ import {
   IsString,
   IsUrl,
 } from 'class-validator';
-import { Column } from 'typeorm';
-
-export abstract class BaseStaff extends BaseEntity {
-  @Column('varchar', { length: 15 })
-  phone: string;
-
-  @Column('varchar', { length: 256, unique: true })
-  email: string;
-
-  @Column('varchar', { length: 256 })
-  password: string;
-
-  @Column({ unique: true })
-  userId: number;
-}
 
 export class EnvironmentVariables {
   @IsEnum(Environment)

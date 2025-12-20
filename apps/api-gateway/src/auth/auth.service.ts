@@ -1,9 +1,8 @@
-import { Language, Role } from '@app/common';
+import { AuthPatterns, Language, Role, Services } from '@app/common';
 import { Inject, Injectable } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { Request } from 'express';
 import { lastValueFrom } from 'rxjs';
-import { AuthPatterns } from '../../../auth/src/constants';
 import {
   CreateAdminDto,
   CreateDoctorDto,
@@ -11,8 +10,7 @@ import {
   CreatePatientDto,
   LoginDto,
 } from '../../../auth/src/dtos';
-import { Doctor, User } from '../../../auth/src/entities';
-import { Services } from '../constants';
+import { User } from '../../../auth/src/entities';
 
 @Injectable()
 export class AuthService {
@@ -47,11 +45,9 @@ export class AuthService {
   }
 
   async createDoctor(createDoctorDto: CreateDoctorDto, req: Request) {
-    const user = req.user as User;
-
     const internalDoctorDto = new CreateDoctorInternalDto(
       createDoctorDto,
-      user.role === Role.SUPER_ADMIN,
+      (req.user as User).role,
     );
 
     return await lastValueFrom<
@@ -84,12 +80,6 @@ export class AuthService {
   async getUser(id: number) {
     return await lastValueFrom<Promise<User | null>>(
       this.authClient.send({ cmd: AuthPatterns.GET_USER }, id),
-    );
-  }
-
-  async getDoctor(id: string) {
-    return await lastValueFrom<Promise<Doctor | null>>(
-      this.authClient.send({ cmd: AuthPatterns.GET_DOCTOR }, id),
     );
   }
 }

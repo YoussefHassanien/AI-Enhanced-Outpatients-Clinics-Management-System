@@ -1,8 +1,8 @@
 import { Column, Entity } from 'typeorm';
-import { DoctorPatientRelation } from './doctor-patient-relation.entity';
+import { DoctorPatientRelationEntity } from './doctor-patient-relation.entity';
 
 @Entity('Visits')
-export class Visits extends DoctorPatientRelation {
+export class Visit extends DoctorPatientRelationEntity {
   @Column('text')
   diagnoses: string;
 }

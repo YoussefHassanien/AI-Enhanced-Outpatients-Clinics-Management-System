@@ -3,7 +3,6 @@ import {
   Body,
   Controller,
   Get,
-  Param,
   Post,
   Req,
   Res,
@@ -81,10 +80,5 @@ export class AuthController {
   @Post('patient/create')
   async createPatient(@Body() createPatientDto: CreatePatientDto) {
     return await this.authService.createPatient(createPatientDto);
-  }
-
-  @Get('doctor/:id')
-  async getDoctor(@Param('id') id: string) {
-    return await this.authService.getDoctor(id);
   }
 }
