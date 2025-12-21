@@ -51,14 +51,7 @@ export class AuthController {
       `Message of fields: ${JSON.stringify(context.getMessage().fields)} and properties: ${JSON.stringify(context.getMessage().properties)} received with Pattern: ${context.getPattern()}`,
     );
 
-    const credentials = await this.authService.login(loginDto);
-
-    if (credentials instanceof RpcException) {
-      this.logger.error(credentials.getError());
-      throw credentials;
-    }
-
-    return credentials;
+    return await this.authService.login(loginDto);
   }
 
   @MessagePattern({ cmd: AuthPatterns.ADMIN_CREATE })

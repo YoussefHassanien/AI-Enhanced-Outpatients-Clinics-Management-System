@@ -28,7 +28,7 @@ export class DoctorService {
   private async getDoctorByUserId(
     doctorUserId: number,
   ): Promise<Doctor | null> {
-    const doctor = await lastValueFrom<Promise<Doctor | null>>(
+    const doctor = await lastValueFrom<Doctor | null>(
       this.authClient.send(
         { cmd: AuthPatterns.GET_DOCTOR_BY_USER_ID },
         doctorUserId,
@@ -47,7 +47,7 @@ export class DoctorService {
   private async getPatientByGlobalId(
     patientGlobalId: string,
   ): Promise<Patient | null> {
-    const patient = await lastValueFrom<Promise<Patient | null>>(
+    const patient = await lastValueFrom<Patient | null>(
       this.authClient.send(
         { cmd: AuthPatterns.GET_PATIENT_BY_GLOBAL_ID },
         patientGlobalId,

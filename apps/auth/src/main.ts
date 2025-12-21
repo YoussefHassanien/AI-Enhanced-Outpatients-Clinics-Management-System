@@ -36,6 +36,8 @@ const bootstrap = async () => {
     },
   );
 
+  const configService = app.get(ConfigService);
+
   app.useGlobalPipes(
     new ValidationPipe({
       transform: true,
@@ -48,7 +50,7 @@ const bootstrap = async () => {
   await app.listen();
 
   logger.log(
-    `Auth microservice listening on queue '${process.env.RABBIT_MQ_AUTH_QUEUE}' via ${process.env.RABBIT_MQ_URL}`,
+    `Auth microservice listening on queue '${configService.getOrThrow<string>('RABBIT_MQ_AUTH_QUEUE')}' via ${configService.getOrThrow<string>('RABBIT_MQ_URL')}`,
   );
 };
 
