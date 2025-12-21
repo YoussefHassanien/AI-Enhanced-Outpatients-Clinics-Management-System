@@ -1,4 +1,4 @@
-import { ErrorResponse, Gender, Role } from '@app/common';
+import { ErrorResponse, Gender, Language, Role } from '@app/common';
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
@@ -6,7 +6,7 @@ import { RpcException } from '@nestjs/microservices';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcrypt';
 import { Algorithm } from 'jsonwebtoken';
-import { EntityManager, IsNull, Repository } from 'typeorm';
+import { EntityManager, IsNull, Not, Repository } from 'typeorm';
 import { JwtPayload } from './constants';
 import {
   CreateAdminDto,
@@ -53,65 +53,50 @@ export class AuthService {
     this.logger = new Logger(AuthService.name);
   }
 
-  private validateUser = async (
+  private async validateUser(
     email: string,
     password: string,
-  ): Promise<User | null> => {
+  ): Promise<User | null> {
     email = email.trim().toLowerCase();
 
-    const admin = await this.adminRepository.findOne({
-      where: { email, deletedAt: IsNull() },
-    });
-
-    if (admin && (await bcrypt.compare(password, admin.password))) {
-      this.logger.log('Validated an admin');
-
-      const adminUser = await this.userRepository.findOne({
-        where: {
-          id: admin.userId,
-          deletedAt: IsNull(),
-        },
-      });
-
-      if (!adminUser) {
-        this.logger.log('Admin user not found');
-      } else {
-        this.logger.log('Admin user found');
-      }
-
-      return adminUser;
-    }
-
     const doctor = await this.doctorRepository.findOne({
-      where: { email, deletedAt: IsNull(), isApproved: true },
+      relations: { user: true },
+      where: {
+        email,
+        deletedAt: IsNull(),
+        isApproved: true,
+        user: Not(IsNull()),
+      },
     });
 
     if (doctor && (await bcrypt.compare(password, doctor.password))) {
       this.logger.log('Validated a doctor');
 
-      const doctorUser = await this.userRepository.findOne({
-        where: {
-          id: doctor.userId,
-          deletedAt: IsNull(),
-        },
-      });
+      return doctor.user;
+    }
 
-      if (!doctorUser) {
-        this.logger.log('Doctor user not found');
-      } else {
-        this.logger.log('Doctor user found');
-      }
+    const admin = await this.adminRepository.findOne({
+      relations: { user: true },
+      where: {
+        email,
+        deletedAt: IsNull(),
+        user: Not(IsNull()),
+      },
+    });
 
-      return doctorUser;
+    if (admin && (await bcrypt.compare(password, admin.password))) {
+      this.logger.log('Validated an admin');
+
+      return admin.user;
     }
 
     this.logger.log('User is not validated');
     return null;
-  };
+  }
 
-  private generateCredentials = async (
+  private async generateCredentials(
     user: User,
-  ): Promise<CredentialsResponseDto> => {
+  ): Promise<CredentialsResponseDto> {
     const token = await this.generateAccessToken({
       socialSecurityNumber: String(user.socialSecurityNumber),
       globalId: user.globalId,
@@ -124,11 +109,11 @@ export class AuthService {
       user.language,
       token,
     );
-  };
+  }
 
-  private extractBirthDateFromSocialSecurityNumber = (
+  private extractBirthDateFromSocialSecurityNumber(
     socialSecurityNumber: string,
-  ): Date | null => {
+  ): Date | null {
     if (socialSecurityNumber.length !== 7) {
       this.logger.log(
         'Birthdate extraction from social security number failed, passed number length is not 7',
@@ -160,11 +145,9 @@ export class AuthService {
       'Successfully extracted birthdate from social security number',
     );
     return new Date(`${fullYear}-${mm}-${dd}`);
-  };
+  }
 
-  private generateAccessToken = async (
-    payload: JwtPayload,
-  ): Promise<string> => {
+  private async generateAccessToken(payload: JwtPayload): Promise<string> {
     const token = await this.jwtService.signAsync<JwtPayload>(payload, {
       algorithm: this.hashingAlgorithm,
       secret: this.accessTokenSecret,
@@ -175,13 +158,13 @@ export class AuthService {
 
     this.logger.log('Successfully generated an access token');
     return token;
-  };
+  }
 
-  private createUser = async (
+  private async createUser(
     userDto: CreateUserDto,
     role: Role,
     manager: EntityManager,
-  ): Promise<User | null> => {
+  ): Promise<User | null> {
     const genderIndex: number = parseInt(userDto.socialSecurityNumber[12]);
     const gender: Gender = genderIndex % 2 == 0 ? Gender.FEMALE : Gender.MALE;
 
@@ -210,11 +193,11 @@ export class AuthService {
     this.logger.log('Successfully inserted a user');
 
     return user;
-  };
+  }
 
-  private checkExistingUser = async (
+  private async checkExistingUser(
     socialSecurityNumber: string,
-  ): Promise<User | null> => {
+  ): Promise<User | null> {
     const user = await this.userRepository.findOne({
       where: {
         socialSecurityNumber: BigInt(socialSecurityNumber),
@@ -229,12 +212,12 @@ export class AuthService {
 
     this.logger.log('User already exists');
     return user;
-  };
+  }
 
-  private checkExistingDoctor = async (
+  private async checkExistingDoctor(
     email: string,
     phone: string,
-  ): Promise<Doctor | null> => {
+  ): Promise<Doctor | null> {
     email = email.trim().toLowerCase();
 
     const doctor = await this.doctorRepository.findOne({
@@ -251,12 +234,12 @@ export class AuthService {
 
     this.logger.log('Doctor already exists');
     return doctor;
-  };
+  }
 
-  private checkExistingAdmin = async (
+  private async checkExistingAdmin(
     email: string,
     phone: string,
-  ): Promise<Admin | null> => {
+  ): Promise<Admin | null> {
     email = email.trim().toLowerCase();
 
     const admin = await this.adminRepository.findOne({
@@ -273,13 +256,18 @@ export class AuthService {
 
     this.logger.log('Admin already exists');
     return admin;
-  };
+  }
 
-  isUp = (): string => {
+  isUp(): string {
     return 'Auth service is up';
-  };
+  }
 
-  login = async (loginDto: LoginDto) => {
+  async login(loginDto: LoginDto): Promise<{
+    role: Role;
+    name: string;
+    language: Language;
+    token: string;
+  }> {
     const user = await this.validateUser(loginDto.email, loginDto.password);
 
     if (!user) {
@@ -292,48 +280,71 @@ export class AuthService {
       ...credentials,
       role: user.role,
     };
-  };
+  }
 
-  getUser = async (id: number): Promise<User | null> => {
+  async getUser(id: number): Promise<User | null> {
     return await this.userRepository.findOne({
+      select: { createdAt: false, updatedAt: false, deletedAt: false },
       where: {
         id,
         deletedAt: IsNull(),
       },
     });
-  };
+  }
 
-  getDoctorByUserId = async (userId: number): Promise<Doctor | null> => {
+  async getDoctorByUserId(userId: number): Promise<Doctor | null> {
     return await this.doctorRepository.findOne({
+      relations: { user: true },
+      select: {
+        createdAt: false,
+        updatedAt: false,
+        deletedAt: false,
+        password: false,
+        isApproved: false,
+        user: { id: true },
+      },
       where: {
-        userId,
+        user: { id: userId },
         deletedAt: IsNull(),
         isApproved: true,
       },
     });
-  };
+  }
 
-  getPatientByGlobalId = async (globalId: string): Promise<Patient | null> => {
+  async getPatientByGlobalId(globalId: string): Promise<Patient | null> {
     return await this.patientRepository.findOne({
+      select: {
+        createdAt: false,
+        updatedAt: false,
+        deletedAt: false,
+      },
       where: {
         globalId,
         deletedAt: IsNull(),
       },
     });
-  };
+  }
 
-  getAdminByUserId = async (userId: number): Promise<Admin | null> => {
+  async getAdminByUserId(userId: number): Promise<Admin | null> {
     return await this.adminRepository.findOne({
+      relations: { user: true },
+      select: {
+        createdAt: false,
+        updatedAt: false,
+        deletedAt: false,
+        password: false,
+        user: { id: true },
+      },
       where: {
-        userId,
+        user: { id: userId },
         deletedAt: IsNull(),
       },
     });
-  };
+  }
 
-  createDoctor = async (
+  async createDoctor(
     doctorDto: CreateDoctorInternalDto,
-  ): Promise<Doctor> => {
+  ): Promise<{ globalId: string; isApproved: boolean }> {
     const existingUser = await this.checkExistingUser(
       doctorDto.socialSecurityNumber,
     );
@@ -374,7 +385,7 @@ export class AuthService {
         const doctorRepository = manager.getRepository(Doctor);
 
         const doctor = doctorRepository.create({
-          userId: createdUser.id,
+          user: createdUser,
           email: doctorDto.email.trim().toLowerCase(),
           password: hashedPassword,
           speciality: doctorDto.speciality,
@@ -386,12 +397,12 @@ export class AuthService {
         await doctorRepository.insert(doctor);
         this.logger.log('Successfully inserted a doctor');
 
-        return doctor;
+        return { globalId: doctor.globalId, isApproved: doctor.isApproved };
       },
     );
-  };
+  }
 
-  createAdmin = async (adminDto: CreateAdminDto): Promise<Admin> => {
+  async createAdmin(adminDto: CreateAdminDto): Promise<string> {
     const existingUser = await this.checkExistingUser(
       adminDto.socialSecurityNumber,
     );
@@ -432,7 +443,7 @@ export class AuthService {
         const adminRepository = manager.getRepository(Admin);
 
         const admin = adminRepository.create({
-          userId: createdUser.id,
+          user: createdUser,
           email: adminDto.email.trim().toLowerCase(),
           password: hashedPassword,
           phone: adminDto.phone,
@@ -442,12 +453,12 @@ export class AuthService {
         await adminRepository.insert(admin);
         this.logger.log('Successfully inserted an admin');
 
-        return admin;
+        return admin.globalId;
       },
     );
-  };
+  }
 
-  createPatient = async (patientDto: CreatePatientDto): Promise<Patient> => {
+  async createPatient(patientDto: CreatePatientDto): Promise<string> {
     const existingUser = await this.checkExistingUser(
       patientDto.socialSecurityNumber,
     );
@@ -473,6 +484,7 @@ export class AuthService {
         const patientRepository = manager.getRepository(Patient);
 
         const patient = patientRepository.create({
+          user: createdUser,
           job: patientDto.job ?? null,
           address: patientDto.address ?? null,
         });
@@ -481,8 +493,8 @@ export class AuthService {
         await patientRepository.insert(patient);
         this.logger.log('Successfully inserted a patient');
 
-        return patient;
+        return patient.globalId;
       },
     );
-  };
+  }
 }

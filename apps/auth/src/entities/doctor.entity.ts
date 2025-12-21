@@ -1,5 +1,4 @@
-import { Column, Entity, JoinColumn, OneToOne } from 'typeorm';
-import { User } from '.';
+import { Column, Entity } from 'typeorm';
 import { BaseStaffEntity } from './bass-staff.entity';
 
 @Entity('Doctors')
@@ -9,8 +8,4 @@ export class Doctor extends BaseStaffEntity {
 
   @Column('bool', { default: false })
   isApproved: boolean;
-
-  @OneToOne(() => User, { onDelete: 'CASCADE' })
-  @JoinColumn()
-  user: User;
 }

@@ -5,7 +5,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { lastValueFrom } from 'rxjs';
 import { Repository } from 'typeorm';
 import { Doctor, Patient } from '../../auth/src/entities';
-import { CreateVisitInternalDto } from './dtos';
+import { CreateMedicationInternalDto, CreateVisitInternalDto } from './dtos';
 import { Lab, Medication, Scan, Visit } from './entities';
 
 @Injectable()
@@ -25,7 +25,9 @@ export class DoctorService {
     this.logger = new Logger(DoctorService.name);
   }
 
-  private async getDoctorByUserId(doctorUserId: number) {
+  private async getDoctorByUserId(
+    doctorUserId: number,
+  ): Promise<Doctor | null> {
     const doctor = await lastValueFrom<Promise<Doctor | null>>(
       this.authClient.send(
         { cmd: AuthPatterns.GET_DOCTOR_BY_USER_ID },
@@ -42,7 +44,9 @@ export class DoctorService {
     return doctor;
   }
 
-  private async getPatientByGlobalId(patientGlobalId: string) {
+  private async getPatientByGlobalId(
+    patientGlobalId: string,
+  ): Promise<Patient | null> {
     const patient = await lastValueFrom<Promise<Patient | null>>(
       this.authClient.send(
         { cmd: AuthPatterns.GET_PATIENT_BY_GLOBAL_ID },
@@ -60,12 +64,12 @@ export class DoctorService {
   }
 
   isUp(): string {
-    return 'Auth service is up';
+    return 'Doctor service is up';
   }
 
   async createVisit(
     createVisitInternalDto: CreateVisitInternalDto,
-  ): Promise<Visit> {
+  ): Promise<void> {
     const doctor = await this.getDoctorByUserId(
       createVisitInternalDto.doctorUserId,
     );
@@ -91,7 +95,38 @@ export class DoctorService {
 
     await this.visitsRepository.insert(visit);
     this.logger.log('Successfully inserted visit');
+  }
 
-    return visit;
+  async createMedication(
+    createMedicationInternalDto: CreateMedicationInternalDto,
+  ): Promise<void> {
+    const doctor = await this.getDoctorByUserId(
+      createMedicationInternalDto.doctorUserId,
+    );
+
+    if (!doctor) {
+      throw new RpcException(new ErrorResponse('Doctor not found!', 404));
+    }
+
+    const patient = await this.getPatientByGlobalId(
+      createMedicationInternalDto.patientId,
+    );
+
+    if (!patient) {
+      throw new RpcException(new ErrorResponse('Patient not found!', 404));
+    }
+
+    const medication = this.medicationsRepository.create({
+      name: createMedicationInternalDto.name,
+      dosage: createMedicationInternalDto.dosage,
+      period: createMedicationInternalDto.period,
+      comments: createMedicationInternalDto.comments,
+      patientId: patient.id,
+      doctorId: doctor.id,
+    });
+    this.logger.log('Successfully created medication');
+
+    await this.medicationsRepository.insert(medication);
+    this.logger.log('Successfully inserted medication');
   }
 }

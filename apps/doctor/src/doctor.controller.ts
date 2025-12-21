@@ -5,10 +5,9 @@ import {
   MessagePattern,
   Payload,
   RmqContext,
-  RpcException,
 } from '@nestjs/microservices';
 import { DoctorService } from './doctor.service';
-import { CreateVisitInternalDto } from './dtos';
+import { CreateMedicationInternalDto, CreateVisitInternalDto } from './dtos';
 
 @Controller()
 export class DoctorController {
@@ -35,13 +34,22 @@ export class DoctorController {
       `Message of fields: ${JSON.stringify(context.getMessage().fields)} and properties: ${JSON.stringify(context.getMessage().properties)} received with Pattern: ${context.getPattern()}`,
     );
 
-    const visit = await this.doctorService.createVisit(createVisitInternalDto);
-
-    if (visit instanceof RpcException) {
-      this.logger.error(visit.getError());
-      throw visit;
-    }
+    await this.doctorService.createVisit(createVisitInternalDto);
 
     return { message: 'Visit is successfully created' };
+  }
+
+  @MessagePattern({ cmd: DoctorPatterns.MEDICATION_CREATE })
+  async medicationCreate(
+    @Payload() createMedicationInternalDto: CreateMedicationInternalDto,
+    @Ctx() context: RmqContext,
+  ) {
+    this.logger.log(
+      `Message of fields: ${JSON.stringify(context.getMessage().fields)} and properties: ${JSON.stringify(context.getMessage().properties)} received with Pattern: ${context.getPattern()}`,
+    );
+
+    await this.doctorService.createMedication(createMedicationInternalDto);
+
+    return { message: 'Medication is successfully created' };
   }
 }

@@ -18,44 +18,54 @@ export class AuthService {
     @Inject(Services.AUTH) private readonly authClient: ClientProxy,
   ) {}
 
-  async isUp() {
+  async isUp(): Promise<string> {
     return await lastValueFrom<string>(
       this.authClient.send({ cmd: AuthPatterns.IS_UP }, {}),
     );
   }
 
-  async login(loginDto: LoginDto) {
-    return await lastValueFrom<
-      Promise<{
-        role: Role;
-        name: string;
-        language: Language;
-        token: string;
-      }>
-    >(this.authClient.send({ cmd: AuthPatterns.LOGIN }, loginDto));
+  async login(loginDto: LoginDto): Promise<{
+    role: Role;
+    name: string;
+    language: Language;
+    token: string;
+  }> {
+    return await lastValueFrom<{
+      role: Role;
+      name: string;
+      language: Language;
+      token: string;
+    }>(this.authClient.send({ cmd: AuthPatterns.LOGIN }, loginDto));
   }
 
-  async createAdmin(createAdminDto: CreateAdminDto) {
-    return await lastValueFrom<
-      Promise<{
-        message: string;
-        id: string;
-      }>
-    >(this.authClient.send({ cmd: AuthPatterns.ADMIN_CREATE }, createAdminDto));
+  async createAdmin(createAdminDto: CreateAdminDto): Promise<{
+    message: string;
+    id: string;
+  }> {
+    return await lastValueFrom<{
+      message: string;
+      id: string;
+    }>(
+      this.authClient.send({ cmd: AuthPatterns.ADMIN_CREATE }, createAdminDto),
+    );
   }
 
-  async createDoctor(createDoctorDto: CreateDoctorDto, req: Request) {
+  async createDoctor(
+    createDoctorDto: CreateDoctorDto,
+    req: Request,
+  ): Promise<{
+    message: string;
+    id: string;
+  }> {
     const internalDoctorDto = new CreateDoctorInternalDto(
       createDoctorDto,
       (req.user as User).role,
     );
 
-    return await lastValueFrom<
-      Promise<{
-        message: string;
-        id: string;
-      }>
-    >(
+    return await lastValueFrom<{
+      message: string;
+      id: string;
+    }>(
       this.authClient.send(
         { cmd: AuthPatterns.DOCTOR_CREATE },
         internalDoctorDto,
@@ -63,13 +73,14 @@ export class AuthService {
     );
   }
 
-  async createPatient(createPatientDto: CreatePatientDto) {
-    return await lastValueFrom<
-      Promise<{
-        message: string;
-        id: string;
-      }>
-    >(
+  async createPatient(createPatientDto: CreatePatientDto): Promise<{
+    message: string;
+    id: string;
+  }> {
+    return await lastValueFrom<{
+      message: string;
+      id: string;
+    }>(
       this.authClient.send(
         { cmd: AuthPatterns.PATIENT_CREATE },
         createPatientDto,
@@ -77,8 +88,8 @@ export class AuthService {
     );
   }
 
-  async getUser(id: number) {
-    return await lastValueFrom<Promise<User | null>>(
+  async getUser(id: number): Promise<User | null> {
+    return await lastValueFrom<User | null>(
       this.authClient.send({ cmd: AuthPatterns.GET_USER }, id),
     );
   }

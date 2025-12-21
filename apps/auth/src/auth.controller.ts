@@ -1,4 +1,4 @@
-import { AuthPatterns, ErrorResponse } from '@app/common';
+import { AuthPatterns, ErrorResponse, Language, Role } from '@app/common';
 import {
   Controller,
   Logger,
@@ -38,7 +38,15 @@ export class AuthController {
   }
 
   @MessagePattern({ cmd: AuthPatterns.LOGIN })
-  async login(@Payload() loginDto: LoginDto, @Ctx() context: RmqContext) {
+  async login(
+    @Payload() loginDto: LoginDto,
+    @Ctx() context: RmqContext,
+  ): Promise<{
+    role: Role;
+    name: string;
+    language: Language;
+    token: string;
+  }> {
     this.logger.log(
       `Message of fields: ${JSON.stringify(context.getMessage().fields)} and properties: ${JSON.stringify(context.getMessage().properties)} received with Pattern: ${context.getPattern()}`,
     );
@@ -57,42 +65,33 @@ export class AuthController {
   async adminCreate(
     @Payload() createAdminDto: CreateAdminDto,
     @Ctx() context: RmqContext,
-  ) {
+  ): Promise<{ message: string; id: string }> {
     this.logger.log(
       `Message of fields: ${JSON.stringify(context.getMessage().fields)} and properties: ${JSON.stringify(context.getMessage().properties)} received with Pattern: ${context.getPattern()}`,
     );
 
-    const admin = await this.authService.createAdmin(createAdminDto);
+    const adminGlobalId = await this.authService.createAdmin(createAdminDto);
 
-    if (admin instanceof RpcException) {
-      this.logger.error(admin.getError());
-      throw admin;
-    }
-
-    return { message: 'Admin is successfully created', id: admin.globalId };
+    return { message: 'Admin is successfully created', id: adminGlobalId };
   }
 
   @MessagePattern({ cmd: AuthPatterns.DOCTOR_CREATE })
   async doctorCreate(
     @Payload() createDoctorDto: CreateDoctorInternalDto,
     @Ctx() context: RmqContext,
-  ) {
+  ): Promise<{ message: string; id: string }> {
     this.logger.log(
       `Message of fields: ${JSON.stringify(context.getMessage().fields)} and properties: ${JSON.stringify(context.getMessage().properties)} received with Pattern: ${context.getPattern()}`,
     );
 
-    const doctor = await this.authService.createDoctor(createDoctorDto);
-
-    if (doctor instanceof RpcException) {
-      this.logger.error(doctor.getError());
-      throw doctor;
-    }
+    const { isApproved, globalId } =
+      await this.authService.createDoctor(createDoctorDto);
 
     return {
-      message: doctor.isApproved
+      message: isApproved
         ? 'Doctor is successfully created and approved'
         : 'Doctor is successfully created, but waiting for approval',
-      id: doctor.globalId,
+      id: globalId,
     };
   }
 
@@ -100,19 +99,15 @@ export class AuthController {
   async patientCreate(
     @Payload() createPatientDto: CreatePatientDto,
     @Ctx() context: RmqContext,
-  ) {
+  ): Promise<{ message: string; id: string }> {
     this.logger.log(
       `Message of fields: ${JSON.stringify(context.getMessage().fields)} and properties: ${JSON.stringify(context.getMessage().properties)} received with Pattern: ${context.getPattern()}`,
     );
 
-    const patient = await this.authService.createPatient(createPatientDto);
+    const patientGlobalId =
+      await this.authService.createPatient(createPatientDto);
 
-    if (patient instanceof RpcException) {
-      this.logger.error(patient.getError());
-      throw patient;
-    }
-
-    return { message: 'Patient is successfully created', id: patient.globalId };
+    return { message: 'Patient is successfully created', id: patientGlobalId };
   }
 
   @MessagePattern({ cmd: AuthPatterns.GET_USER })
@@ -134,7 +129,7 @@ export class AuthController {
   }
 
   @MessagePattern({ cmd: AuthPatterns.GET_DOCTOR_BY_USER_ID })
-  async getDoctor(
+  async getDoctorByUserId(
     @Payload(
       new ParseIntPipe({
         exceptionFactory: () =>
@@ -152,7 +147,7 @@ export class AuthController {
   }
 
   @MessagePattern({ cmd: AuthPatterns.GET_PATIENT_BY_GLOBAL_ID })
-  async getPatient(
+  async getPatientByGlobalId(
     @Payload(
       new ParseUUIDPipe({
         exceptionFactory: () =>
@@ -170,7 +165,7 @@ export class AuthController {
   }
 
   @MessagePattern({ cmd: AuthPatterns.GET_ADMIN_BY_USER_ID })
-  async getAdmin(
+  async getAdminByUserId(
     @Payload(
       new ParseIntPipe({
         exceptionFactory: () =>

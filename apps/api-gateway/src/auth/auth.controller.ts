@@ -1,4 +1,4 @@
-import { Environment, Role, Roles } from '@app/common';
+import { Environment, Language, Role, Roles } from '@app/common';
 import {
   Body,
   Controller,
@@ -27,7 +27,7 @@ export class AuthController {
   ) {}
 
   @Get()
-  async isUp() {
+  async isUp(): Promise<string> {
     return await this.authService.isUp();
   }
 
@@ -35,7 +35,11 @@ export class AuthController {
   async login(
     @Body() loginDto: LoginDto,
     @Res({ passthrough: true }) res: Response,
-  ) {
+  ): Promise<{
+    name: string;
+    language: Language;
+    role: Role;
+  }> {
     const result = await this.authService.login(loginDto);
 
     const cookiesExpirationTime = this.configService.getOrThrow<number>(
@@ -61,7 +65,9 @@ export class AuthController {
   @Roles(Role.SUPER_ADMIN)
   @UseGuards(JwtAuthGuard)
   @Post('admin/create')
-  async createAdmin(@Body() createAdminDto: CreateAdminDto) {
+  async createAdmin(
+    @Body() createAdminDto: CreateAdminDto,
+  ): Promise<{ message: string; id: string }> {
     return await this.authService.createAdmin(createAdminDto);
   }
 
@@ -71,14 +77,16 @@ export class AuthController {
   async createDoctor(
     @Body() createDoctorDto: CreateDoctorDto,
     @Req() req: Request,
-  ) {
+  ): Promise<{ message: string; id: string }> {
     return await this.authService.createDoctor(createDoctorDto, req);
   }
 
   @Roles(Role.SUPER_ADMIN, Role.ADMIN, Role.DOCTOR)
   @UseGuards(JwtAuthGuard)
   @Post('patient/create')
-  async createPatient(@Body() createPatientDto: CreatePatientDto) {
+  async createPatient(
+    @Body() createPatientDto: CreatePatientDto,
+  ): Promise<{ message: string; id: string }> {
     return await this.authService.createPatient(createPatientDto);
   }
 }
