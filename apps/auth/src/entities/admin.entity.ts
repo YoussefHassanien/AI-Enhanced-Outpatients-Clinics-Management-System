@@ -1,10 +1,5 @@
-import { Entity, JoinColumn, OneToOne } from 'typeorm';
-import { User } from '.';
-import { BaseStaff } from '../constants';
+import { Entity } from 'typeorm';
+import { BaseStaffEntity } from './bass-staff.entity';
 
 @Entity('Admins')
-export class Admin extends BaseStaff {
-  @OneToOne(() => User, (user) => user.admin, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'userId' })
-  user: User;
-}
+export class Admin extends BaseStaffEntity {}

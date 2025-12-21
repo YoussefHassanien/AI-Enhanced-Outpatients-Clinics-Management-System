@@ -10,10 +10,7 @@ export class Patient extends BaseEntity {
   @Column('varchar', { length: 128, nullable: true })
   job: string;
 
-  @Column({ unique: true })
-  userId: number;
-
-  @OneToOne(() => User, (user) => user.patient, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'userId' })
+  @OneToOne(() => User, { onDelete: 'CASCADE', nullable: false })
+  @JoinColumn()
   user: User;
 }

@@ -10,6 +10,7 @@ import { minutes, ThrottlerModule } from '@nestjs/throttler';
 import { ApiGatewayController } from './api-gateway.controller';
 import { AuthModule } from './auth/auth.module';
 import { EnvironmentVariables } from './constants';
+import { DoctorModule } from './doctor/doctor.module';
 
 @Module({
   imports: [
@@ -31,6 +32,7 @@ import { EnvironmentVariables } from './constants';
       },
     ]),
     AuthModule,
+    DoctorModule,
   ],
   controllers: [ApiGatewayController],
   providers: [{ provide: APP_FILTER, useClass: CatchEverythingFilter }],

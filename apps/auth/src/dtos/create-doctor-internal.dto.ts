@@ -1,17 +1,11 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsBoolean } from 'class-validator';
+import { Role } from '@app/common';
 import { CreateDoctorDto } from './create-doctor.dto';
 
 export class CreateDoctorInternalDto extends CreateDoctorDto {
-  @ApiProperty({
-    description: 'Whether the doctor is approved',
-    default: false,
-  })
-  @IsBoolean()
-  isApproved: boolean;
-  constructor(createDoctorDto: CreateDoctorDto, isApproved: boolean = false) {
+  readonly role: Role;
+  constructor(createDoctorDto: CreateDoctorDto, role: Role) {
     super();
     Object.assign(this, createDoctorDto);
-    this.isApproved = isApproved;
+    this.role = role;
   }
 }

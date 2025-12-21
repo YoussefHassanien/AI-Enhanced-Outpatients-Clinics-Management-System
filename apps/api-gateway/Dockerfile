@@ -2,13 +2,21 @@ FROM node:24-alpine AS builder
 
 WORKDIR /app
 
+# update npm
+RUN npm install -g npm@11.7.0
+
 # copy package.json, package-lock.json tsconfig.json, tsconfig.build.json, and nest-cli.json files
 COPY package.json package-lock.json ./
 COPY tsconfig.json tsconfig.build.json nest-cli.json ./
 
-# copy only api-gateway, auth, and libs folders
+# copy only needed folders and libs
 COPY ./apps/api-gateway /app/apps/api-gateway
-COPY ./apps/auth /app/apps/auth
+COPY ./apps/auth/src/dtos /app/apps/auth/src/dtos
+COPY ./apps/auth/src/constants /app/apps/auth/src/constants
+COPY ./apps/auth/src/entities /app/apps/auth/src/entities
+COPY ./apps/doctor/src/dtos /app/apps/doctor/src/dtos
+COPY ./apps/doctor/src/constants /app/apps/doctor/src/constants
+COPY ./apps/doctor/src/entities /app/apps/doctor/src/entities
 COPY ./libs /app/libs
 
 # install all deps including dev and build
