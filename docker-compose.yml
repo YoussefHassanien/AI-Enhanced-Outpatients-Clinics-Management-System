@@ -7,7 +7,6 @@ services:
     networks:
       - services-network
   auth:
-    container_name: auth
     build:
       context: .
       dockerfile: ./apps/auth/Dockerfile
@@ -20,7 +19,6 @@ services:
       - services-network
 
   api-gateway:
-    container_name: api-gateway
     build:
       context: .
       dockerfile: ./apps/api-gateway/Dockerfile
@@ -31,12 +29,12 @@ services:
     depends_on:
       - rabbitMq
       - auth
+      - doctor
     command: node api-gateway/main
     networks:
       - services-network
 
   doctor:
-    container_name: doctor
     build:
       context: .
       dockerfile: ./apps/doctor/Dockerfile
