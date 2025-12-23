@@ -1,5 +1,11 @@
-import { AuthPatterns, ErrorResponse, Services } from '@app/common';
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import {
+  AuthPatterns,
+  CommonServices,
+  ErrorResponse,
+  LoggingService,
+  Microservices,
+} from '@app/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { ClientProxy, RpcException } from '@nestjs/microservices';
 import { InjectRepository } from '@nestjs/typeorm';
 import { lastValueFrom } from 'rxjs';
@@ -10,7 +16,7 @@ import { Lab, Medication, Scan, Visit } from './entities';
 
 @Injectable()
 export class DoctorService {
-  private readonly logger: Logger;
+  private readonly logger: LoggingService;
   constructor(
     @InjectRepository(Lab)
     private readonly labsRepository: Repository<Lab>,
@@ -20,9 +26,10 @@ export class DoctorService {
     private readonly medicationsRepository: Repository<Medication>,
     @InjectRepository(Scan)
     private readonly scansRepository: Repository<Scan>,
-    @Inject(Services.AUTH) private readonly authClient: ClientProxy,
+    @Inject(Microservices.AUTH) private readonly authClient: ClientProxy,
+    @Inject(CommonServices.LOGGING) logger: LoggingService,
   ) {
-    this.logger = new Logger(DoctorService.name);
+    this.logger = logger;
   }
 
   private async getDoctorByUserId(

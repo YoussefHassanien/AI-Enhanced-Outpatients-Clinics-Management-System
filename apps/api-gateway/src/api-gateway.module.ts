@@ -1,10 +1,11 @@
 import {
   CatchEverythingFilter,
-  LoggerMiddleware,
+  CommonServices,
+  LoggingService,
   validateEnviornmentVariables,
 } from '@app/common';
-import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
+import { Module } from '@nestjs/common';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_FILTER } from '@nestjs/core';
 import { minutes, ThrottlerModule } from '@nestjs/throttler';
 import { ApiGatewayController } from './api-gateway.controller';
@@ -35,10 +36,15 @@ import { DoctorModule } from './doctor/doctor.module';
     DoctorModule,
   ],
   controllers: [ApiGatewayController],
-  providers: [{ provide: APP_FILTER, useClass: CatchEverythingFilter }],
+  providers: [
+    { provide: APP_FILTER, useClass: CatchEverythingFilter },
+    {
+      provide: CommonServices.LOGGING,
+      useFactory: (configService: ConfigService) => {
+        return new LoggingService(configService, 'api-gateway');
+      },
+      inject: [ConfigService],
+    },
+  ],
 })
-export class ApiGatewayModule implements NestModule {
-  configure(consumer: MiddlewareConsumer) {
-    consumer.apply(LoggerMiddleware).forRoutes('*path');
-  }
-}
+export class ApiGatewayModule {}

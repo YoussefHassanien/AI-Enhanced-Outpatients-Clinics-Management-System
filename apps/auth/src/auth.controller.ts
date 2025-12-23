@@ -1,17 +1,6 @@
 import { AuthPatterns, ErrorResponse, Language, Role } from '@app/common';
-import {
-  Controller,
-  Logger,
-  ParseIntPipe,
-  ParseUUIDPipe,
-} from '@nestjs/common';
-import {
-  Ctx,
-  MessagePattern,
-  Payload,
-  RmqContext,
-  RpcException,
-} from '@nestjs/microservices';
+import { Controller, ParseIntPipe, ParseUUIDPipe } from '@nestjs/common';
+import { MessagePattern, Payload, RpcException } from '@nestjs/microservices';
 import { AuthService } from './auth.service';
 import {
   CreateAdminDto,
@@ -22,47 +11,27 @@ import {
 
 @Controller()
 export class AuthController {
-  private readonly logger: Logger;
-
-  constructor(private readonly authService: AuthService) {
-    this.logger = new Logger(AuthController.name);
-  }
+  constructor(private readonly authService: AuthService) {}
 
   @MessagePattern({ cmd: AuthPatterns.IS_UP })
-  isUp(@Ctx() context: RmqContext): string {
-    this.logger.log(
-      `Message of fields: ${JSON.stringify(context.getMessage().fields)} and properties: ${JSON.stringify(context.getMessage().properties)} received with Pattern: ${context.getPattern()}`,
-    );
-
+  isUp(): string {
     return this.authService.isUp();
   }
 
   @MessagePattern({ cmd: AuthPatterns.LOGIN })
-  async login(
-    @Payload() loginDto: LoginDto,
-    @Ctx() context: RmqContext,
-  ): Promise<{
+  async login(@Payload() loginDto: LoginDto): Promise<{
     role: Role;
     name: string;
     language: Language;
     token: string;
   }> {
-    this.logger.log(
-      `Message of fields: ${JSON.stringify(context.getMessage().fields)} and properties: ${JSON.stringify(context.getMessage().properties)} received with Pattern: ${context.getPattern()}`,
-    );
-
     return await this.authService.login(loginDto);
   }
 
   @MessagePattern({ cmd: AuthPatterns.ADMIN_CREATE })
   async adminCreate(
     @Payload() createAdminDto: CreateAdminDto,
-    @Ctx() context: RmqContext,
   ): Promise<{ message: string; id: string }> {
-    this.logger.log(
-      `Message of fields: ${JSON.stringify(context.getMessage().fields)} and properties: ${JSON.stringify(context.getMessage().properties)} received with Pattern: ${context.getPattern()}`,
-    );
-
     const adminGlobalId = await this.authService.createAdmin(createAdminDto);
 
     return { message: 'Admin is successfully created', id: adminGlobalId };
@@ -71,12 +40,7 @@ export class AuthController {
   @MessagePattern({ cmd: AuthPatterns.DOCTOR_CREATE })
   async doctorCreate(
     @Payload() createDoctorDto: CreateDoctorInternalDto,
-    @Ctx() context: RmqContext,
   ): Promise<{ message: string; id: string }> {
-    this.logger.log(
-      `Message of fields: ${JSON.stringify(context.getMessage().fields)} and properties: ${JSON.stringify(context.getMessage().properties)} received with Pattern: ${context.getPattern()}`,
-    );
-
     const { isApproved, globalId } =
       await this.authService.createDoctor(createDoctorDto);
 
@@ -91,12 +55,7 @@ export class AuthController {
   @MessagePattern({ cmd: AuthPatterns.PATIENT_CREATE })
   async patientCreate(
     @Payload() createPatientDto: CreatePatientDto,
-    @Ctx() context: RmqContext,
   ): Promise<{ message: string; id: string }> {
-    this.logger.log(
-      `Message of fields: ${JSON.stringify(context.getMessage().fields)} and properties: ${JSON.stringify(context.getMessage().properties)} received with Pattern: ${context.getPattern()}`,
-    );
-
     const patientGlobalId =
       await this.authService.createPatient(createPatientDto);
 
@@ -112,12 +71,7 @@ export class AuthController {
       }),
     )
     id: number,
-    @Ctx() context: RmqContext,
   ) {
-    this.logger.log(
-      `Message of fields: ${JSON.stringify(context.getMessage().fields)} and properties: ${JSON.stringify(context.getMessage().properties)} received with Pattern: ${context.getPattern()}`,
-    );
-
     return await this.authService.getUser(id);
   }
 
@@ -130,12 +84,7 @@ export class AuthController {
       }),
     )
     doctorUserId: number,
-    @Ctx() context: RmqContext,
   ) {
-    this.logger.log(
-      `Message of fields: ${JSON.stringify(context.getMessage().fields)} and properties: ${JSON.stringify(context.getMessage().properties)} received with Pattern: ${context.getPattern()}`,
-    );
-
     return await this.authService.getDoctorByUserId(doctorUserId);
   }
 
@@ -148,12 +97,7 @@ export class AuthController {
       }),
     )
     patientGlobalId: string,
-    @Ctx() context: RmqContext,
   ) {
-    this.logger.log(
-      `Message of fields: ${JSON.stringify(context.getMessage().fields)} and properties: ${JSON.stringify(context.getMessage().properties)} received with Pattern: ${context.getPattern()}`,
-    );
-
     return await this.authService.getPatientByGlobalId(patientGlobalId);
   }
 
@@ -166,12 +110,7 @@ export class AuthController {
       }),
     )
     adminUserId: number,
-    @Ctx() context: RmqContext,
   ) {
-    this.logger.log(
-      `Message of fields: ${JSON.stringify(context.getMessage().fields)} and properties: ${JSON.stringify(context.getMessage().properties)} received with Pattern: ${context.getPattern()}`,
-    );
-
     return await this.authService.getAdminByUserId(adminUserId);
   }
 }

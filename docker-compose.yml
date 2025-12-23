@@ -17,6 +17,8 @@ services:
     command: node auth/main
     networks:
       - services-network
+    volumes:
+      - logs:/app/logs
 
   api-gateway:
     build:
@@ -33,6 +35,8 @@ services:
     command: node api-gateway/main
     networks:
       - services-network
+    volumes:
+      - logs:/app/logs
 
   doctor:
     build:
@@ -45,7 +49,12 @@ services:
     command: node doctor/main
     networks:
       - services-network
+    volumes:
+      - logs:/app/logs
 
 networks:
   services-network:
     driver: bridge
+
+volumes:
+  logs: {}

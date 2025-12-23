@@ -21,9 +21,9 @@ export enum Gender {
   FEMALE,
 }
 
-export enum Services {
-  AUTH = 'AUTH_SERVICE',
-  DOCTOR = 'DOCTOR_SERVICE',
+export enum Microservices {
+  AUTH = 'AUTH_MICROSERVICE',
+  DOCTOR = 'DOCTOR_MICROSERVICE',
 }
 
 export enum AuthPatterns {
@@ -49,4 +49,8 @@ export enum DoctorPatterns {
   GET_PATIENT_LABS = 'doctor.patient.labs',
   GET_PATIENT_SCANS = 'doctor.patient.scans',
   GET_PATIENT_HISTORY = 'doctor.patient.history',
+}
+
+export enum CommonServices {
+  LOGGING = 'WINSTON_LOGGER',
 }

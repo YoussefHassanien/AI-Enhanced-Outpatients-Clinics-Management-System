@@ -1,4 +1,4 @@
-import { Services } from '@app/common';
+import { Microservices } from '@app/common';
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ClientsModule, Transport } from '@nestjs/microservices';
@@ -9,7 +9,7 @@ import { DoctorService } from './doctor.service';
   imports: [
     ClientsModule.registerAsync([
       {
-        name: Services.DOCTOR,
+        name: Microservices.DOCTOR,
         imports: [ConfigModule],
         useFactory: (configService: ConfigService) => ({
           transport: Transport.RMQ,

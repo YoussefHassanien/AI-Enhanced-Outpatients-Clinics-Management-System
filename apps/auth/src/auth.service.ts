@@ -1,5 +1,12 @@
-import { ErrorResponse, Gender, Language, Role } from '@app/common';
-import { Injectable, Logger } from '@nestjs/common';
+import {
+  CommonServices,
+  ErrorResponse,
+  Gender,
+  Language,
+  LoggingService,
+  Role,
+} from '@app/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { RpcException } from '@nestjs/microservices';
@@ -26,7 +33,7 @@ export class AuthService {
   private readonly accessTokenExpirationTime: number;
   private readonly issuer: string;
   private readonly audience: string;
-  private readonly logger: Logger;
+  private readonly logger: LoggingService;
   constructor(
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
@@ -38,6 +45,7 @@ export class AuthService {
     private readonly doctorRepository: Repository<Doctor>,
     @InjectRepository(Admin)
     private readonly adminRepository: Repository<Admin>,
+    @Inject(CommonServices.LOGGING) logger: LoggingService,
   ) {
     this.hashingAlgorithm =
       this.configService.getOrThrow<Algorithm>('HASHING_ALGORITHM');
@@ -50,7 +58,7 @@ export class AuthService {
     );
     this.issuer = this.configService.getOrThrow<string>('ISSUER');
     this.audience = this.configService.getOrThrow<string>('AUDIENCE');
-    this.logger = new Logger(AuthService.name);
+    this.logger = logger;
   }
 
   private async validateUser(

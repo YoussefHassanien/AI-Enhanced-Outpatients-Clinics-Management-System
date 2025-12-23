@@ -1,4 +1,4 @@
-import { DoctorPatterns, Services } from '@app/common';
+import { DoctorPatterns, Microservices } from '@app/common';
 import { Inject, Injectable } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { lastValueFrom } from 'rxjs';
@@ -12,7 +12,7 @@ import {
 @Injectable()
 export class DoctorService {
   constructor(
-    @Inject(Services.DOCTOR) private readonly doctorClient: ClientProxy,
+    @Inject(Microservices.DOCTOR) private readonly doctorClient: ClientProxy,
   ) {}
 
   async isUp(): Promise<string> {

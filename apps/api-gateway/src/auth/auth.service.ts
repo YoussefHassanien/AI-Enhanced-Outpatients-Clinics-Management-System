@@ -1,4 +1,4 @@
-import { AuthPatterns, Language, Role, Services } from '@app/common';
+import { AuthPatterns, Language, Microservices, Role } from '@app/common';
 import { Inject, Injectable } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { Request } from 'express';
@@ -15,7 +15,7 @@ import { User } from '../../../auth/src/entities';
 @Injectable()
 export class AuthService {
   constructor(
-    @Inject(Services.AUTH) private readonly authClient: ClientProxy,
+    @Inject(Microservices.AUTH) private readonly authClient: ClientProxy,
   ) {}
 
   async isUp(): Promise<string> {

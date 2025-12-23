@@ -1,4 +1,9 @@
-import { Environment } from '@app/common';
+import {
+  CommonServices,
+  Environment,
+  LoggingMiddleware,
+  LoggingService,
+} from '@app/common';
 import { Logger, ValidationPipe, VersioningType } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
@@ -9,11 +14,11 @@ import helmet from 'helmet';
 import { ApiGatewayModule } from './api-gateway.module';
 
 async function bootstrap() {
-  const logger = new Logger('API Gateway');
   const app =
     await NestFactory.create<NestExpressApplication>(ApiGatewayModule);
 
   const configService = app.get(ConfigService);
+  const logger = app.get<LoggingService>(CommonServices.LOGGING);
   const port = configService.getOrThrow<number>('PORT');
   const globalPrefix = configService.getOrThrow<string>('GLOBAL_PREFIX');
   const version = configService.getOrThrow<string>('VERSION');
@@ -34,6 +39,8 @@ async function bootstrap() {
       forbidUnknownValues: true,
     }),
   );
+  app.useLogger(logger);
+  app.use(LoggingMiddleware);
 
   if (environment === Environment.PRODUCTION) {
     app.enableCors({
@@ -60,6 +67,7 @@ async function bootstrap() {
   }
 
   await app.listen(port);
+
   const appUrl = await app.getUrl();
   logger.log(
     `API Gateway is running at: ${appUrl}/${globalPrefix}/v${version}`,
@@ -67,7 +75,7 @@ async function bootstrap() {
 }
 
 bootstrap().catch((error) => {
-  const logger = new Logger('API Gateway');
+  const logger = new Logger('Api-Gateway');
   logger.error(
     'API Gateway failed to start',
     error instanceof Error ? error.stack : String(error),

@@ -1,4 +1,5 @@
-import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
+import { CommonServices, LoggingService } from '@app/common';
+import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
 import { Request } from 'express';
@@ -12,17 +13,16 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(
     private readonly authService: AuthService,
     configService: ConfigService,
+    @Inject(CommonServices.LOGGING) private readonly logger: LoggingService,
   ) {
-    const logger = new Logger('Jwt Strategy');
-
     const extractAuthenticationCookie = (req: Request): string | null => {
       if (req.signedCookies && req.signedCookies['accessToken']) {
-        logger.log('Token from signed cookies found');
+        this.logger.log('Token from signed cookies found');
 
         return req.signedCookies['accessToken'] as string;
       }
 
-      logger.log('No token found');
+      this.logger.log('No token found');
       return null;
     };
 
@@ -36,10 +36,6 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate(payload: JwtPayload): Promise<User> {
-    const logger = new Logger('Jwt Strategy');
-
-    logger.log('JWT Payload received');
-
     const user = await this.authService.getUser(payload.sub);
 
     if (!user) {
@@ -48,7 +44,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       });
     }
 
-    logger.log('User fetched');
+    this.logger.log('User fetched');
 
     return user;
   }

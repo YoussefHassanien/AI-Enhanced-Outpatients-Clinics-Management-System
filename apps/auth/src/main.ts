@@ -1,5 +1,10 @@
-import { Environment, ErrorResponse } from '@app/common';
-import { ConsoleLogger, Logger, ValidationPipe } from '@nestjs/common';
+import {
+  CommonServices,
+  ErrorResponse,
+  LoggingInterceptor,
+  LoggingService,
+} from '@app/common';
+import { Logger, ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 import {
@@ -8,9 +13,8 @@ import {
   Transport,
 } from '@nestjs/microservices';
 import { AuthModule } from './auth.module';
-const bootstrap = async () => {
-  const logger = new Logger('Auth microservice');
 
+async function bootstrap() {
   const app = await NestFactory.createMicroservice<AsyncMicroserviceOptions>(
     AuthModule,
     {
@@ -24,19 +28,12 @@ const bootstrap = async () => {
           },
         },
       }),
-      logger: new ConsoleLogger({
-        logLevels:
-          process.env.ENVIRONMENT === Environment.PRODUCTION
-            ? ['error', 'fatal', 'warn']
-            : ['log', 'fatal', 'error', 'warn', 'debug', 'verbose'],
-        timestamp: true,
-      }),
-
       inject: [ConfigService],
     },
   );
 
   const configService = app.get(ConfigService);
+  const logger = app.get<LoggingService>(CommonServices.LOGGING);
 
   app.useGlobalPipes(
     new ValidationPipe({
@@ -46,16 +43,18 @@ const bootstrap = async () => {
         new RpcException(new ErrorResponse('Invalid payload', 400)),
     }),
   );
+  app.useLogger(logger);
+  app.useGlobalInterceptors(LoggingInterceptor(configService, 'auth'));
 
   await app.listen();
 
   logger.log(
     `Auth microservice listening on queue '${configService.getOrThrow<string>('RABBIT_MQ_AUTH_QUEUE')}' via ${configService.getOrThrow<string>('RABBIT_MQ_URL')}`,
   );
-};
+}
 
 bootstrap().catch((error) => {
-  const logger = new Logger('Auth microservice');
+  const logger = new Logger('Auth');
   logger.error(
     'Auth microservice failed to start',
     error instanceof Error ? error.stack : String(error),
