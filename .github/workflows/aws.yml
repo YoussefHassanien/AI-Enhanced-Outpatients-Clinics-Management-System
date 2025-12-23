@@ -68,16 +68,16 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
             # Navigate to project folder
-            cd ~/CodeBlue
-            
+            cd ~/app
+
             # Stop the old containers
             docker compose down
-            
+
             # Pull the new images we just pushed
             docker compose pull
-            
+
             # Start everything up again
             docker compose up -d
-            
+
             # Remove unused images to save disk space
             docker image prune -f
