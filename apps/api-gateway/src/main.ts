@@ -1,9 +1,4 @@
-import {
-  CommonServices,
-  Environment,
-  LoggingMiddleware,
-  LoggingService,
-} from '@app/common';
+import { CommonServices, LoggingMiddleware, LoggingService } from '@app/common';
 import { Logger, ValidationPipe, VersioningType } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
@@ -22,7 +17,6 @@ async function bootstrap() {
   const port = configService.getOrThrow<number>('PORT');
   const globalPrefix = configService.getOrThrow<string>('GLOBAL_PREFIX');
   const version = configService.getOrThrow<string>('VERSION');
-  const environment = configService.getOrThrow<Environment>('ENVIRONMENT');
   const cookiesSecret = configService.getOrThrow<string>('COOKIES_SECRET');
 
   app.setGlobalPrefix(globalPrefix);
@@ -30,7 +24,6 @@ async function bootstrap() {
     type: VersioningType.URI,
     defaultVersion: version,
   });
-
   app.use(helmet());
   app.use(cookieParser(cookiesSecret));
   app.useGlobalPipes(
@@ -41,29 +34,22 @@ async function bootstrap() {
   );
   app.useLogger(logger);
   app.use(LoggingMiddleware(configService, 'api-gateway'));
+  app.enableCors({
+    origin: configService.getOrThrow<string>('AUDIENCE'),
+    methods: configService.getOrThrow<string[]>('METHODS'),
+    credentials: configService.getOrThrow<boolean>('CREDENTIALS'),
+  });
 
-  if (environment === Environment.PRODUCTION) {
-    app.enableCors({
-      origin: configService.getOrThrow<string>('AUDIENCE'),
-      methods: configService.getOrThrow<string[]>('METHODS'),
-      credentials: configService.getOrThrow<boolean>('CREDENTIALS'),
-    });
-  } else {
-    app.enableCors();
-    const config = new DocumentBuilder()
-      .setTitle('CodeBlue Project APIs Documentation')
-      .setDescription(
-        'These APIs are made for CodeBlue project that mainly serve El Kasr El Ainy Outpatients Clinics',
-      )
-      .setVersion('1.0.0')
-      .build();
-    const documentFactory = () => SwaggerModule.createDocument(app, config);
-    SwaggerModule.setup(
-      `${globalPrefix}/v${version}/docs`,
-      app,
-      documentFactory,
-    );
-  }
+  // MUST BE DELETED ON PRODUCTION
+  const config = new DocumentBuilder()
+    .setTitle('CodeBlue Project APIs Documentation')
+    .setDescription(
+      'These APIs are made for CodeBlue project that mainly serve El Kasr El Ainy Outpatients Clinics',
+    )
+    .setVersion('1.0.0')
+    .build();
+  const documentFactory = () => SwaggerModule.createDocument(app, config);
+  SwaggerModule.setup(`${globalPrefix}/v${version}/docs`, app, documentFactory);
 
   await app.listen(port);
 
