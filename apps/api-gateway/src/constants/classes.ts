@@ -70,15 +70,6 @@ export class EnvironmentVariables {
     (environmentVariables: EnvironmentVariables) =>
       environmentVariables.ENVIRONMENT === Environment.PRODUCTION,
   )
-  @IsString()
-  @IsNotEmpty()
-  @Contains(',')
-  ALLOWED_HEADERS: string;
-
-  @ValidateIf(
-    (environmentVariables: EnvironmentVariables) =>
-      environmentVariables.ENVIRONMENT === Environment.PRODUCTION,
-  )
   @IsBooleanString()
   CREDENTIALS: string;
 }

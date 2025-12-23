@@ -46,7 +46,6 @@ async function bootstrap() {
     app.enableCors({
       origin: configService.getOrThrow<string>('AUDIENCE'),
       methods: configService.getOrThrow<string[]>('METHODS'),
-      allowedHeaders: configService.getOrThrow<string[]>('ALLOWED_HEADERS'),
       credentials: configService.getOrThrow<boolean>('CREDENTIALS'),
     });
   } else {
