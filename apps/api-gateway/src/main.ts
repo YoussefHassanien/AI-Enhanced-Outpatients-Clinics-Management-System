@@ -40,7 +40,7 @@ async function bootstrap() {
     }),
   );
   app.useLogger(logger);
-  app.use(LoggingMiddleware);
+  app.use(LoggingMiddleware(configService, 'api-gateway'));
 
   if (environment === Environment.PRODUCTION) {
     app.enableCors({
