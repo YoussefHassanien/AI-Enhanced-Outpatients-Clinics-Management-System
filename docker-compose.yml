@@ -18,7 +18,7 @@ services:
     networks:
       - services-network
     volumes:
-      - logs:/app/logs
+      - ./logs:/app/logs
 
   api-gateway:
     build:
@@ -36,7 +36,7 @@ services:
     networks:
       - services-network
     volumes:
-      - logs:/app/logs
+      - ./logs:/app/logs
 
   doctor:
     build:
@@ -50,11 +50,8 @@ services:
     networks:
       - services-network
     volumes:
-      - logs:/app/logs
+      - ./logs:/app/logs
 
 networks:
   services-network:
     driver: bridge
-
-volumes:
-  logs: {}

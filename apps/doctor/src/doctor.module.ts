@@ -39,8 +39,10 @@ import { Lab, Medication, Scan, Visit } from './entities';
             urls: [configService.getOrThrow<string>('RABBIT_MQ_URL')],
             queue: configService.getOrThrow<string>('RABBIT_MQ_AUTH_QUEUE'),
             queueOptions: {
-              durable: false,
+              durable: true,
             },
+            persistent: true,
+            maxConnectionAttempts: 5,
           },
         }),
         inject: [ConfigService],

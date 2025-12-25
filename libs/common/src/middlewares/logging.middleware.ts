@@ -13,7 +13,20 @@ export function LoggingMiddleware(config: ConfigService, serviceName: string) {
   const logger: Logger = createLogger({
     level: 'info',
     format: format.combine(
-      format.timestamp(),
+      format.timestamp({
+        format: () => {
+          return new Date().toLocaleString('en-US', {
+            timeZone: 'Africa/Cairo',
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: false,
+          });
+        },
+      }),
       format.label({ label: serviceName }),
       format.printf(
         ({

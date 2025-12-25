@@ -8,6 +8,7 @@ import {
   CreatePatientDto,
   LoginDto,
 } from './dtos';
+import { Admin, Doctor, Patient, User } from './entities';
 
 @Controller()
 export class AuthController {
@@ -71,7 +72,7 @@ export class AuthController {
       }),
     )
     id: number,
-  ) {
+  ): Promise<User | null> {
     return await this.authService.getUser(id);
   }
 
@@ -84,7 +85,7 @@ export class AuthController {
       }),
     )
     doctorUserId: number,
-  ) {
+  ): Promise<Doctor | null> {
     return await this.authService.getDoctorByUserId(doctorUserId);
   }
 
@@ -97,7 +98,7 @@ export class AuthController {
       }),
     )
     patientGlobalId: string,
-  ) {
+  ): Promise<Patient | null> {
     return await this.authService.getPatientByGlobalId(patientGlobalId);
   }
 
@@ -110,7 +111,7 @@ export class AuthController {
       }),
     )
     adminUserId: number,
-  ) {
+  ): Promise<Admin | null> {
     return await this.authService.getAdminByUserId(adminUserId);
   }
 }

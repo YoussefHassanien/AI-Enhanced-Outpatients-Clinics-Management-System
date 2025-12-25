@@ -2,7 +2,7 @@ name: Deploy to EC2
 
 on:
   push:
-    branches: [development]
+    branches: [development, main]
     paths:
       [
         'apps/auth/**',
@@ -12,11 +12,47 @@ on:
         'package.json',
         'package-lock.json',
       ]
+
+  pull_request:
+    branches: [development, main]
+    paths:
+      [
+        'apps/auth/**',
+        'apps/doctor/**',
+        'apps/api-gateway/**',
+        '.github/workflows/aws.yml',
+        'package.json',
+        'package-lock.json',
+      ]
+
   workflow_dispatch:
 
 jobs:
-  # JOB 1: BUILD AND PUSH IMAGES
+  # JOB 1: TEST (Runs on PRs AND Pushes)
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v6
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Run Tests
+        run: npm run test
+
+  # JOB 2: BUILD AND PUSH IMAGES (Runs ONLY on Pushes)
   build-and-push:
+    needs: test
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
@@ -55,9 +91,10 @@ jobs:
           push: true
           tags: ${{ secrets.DOCKER_USERNAME }}/doctor-service:latest
 
-  # JOB 2: DEPLOY TO EC2
+  # JOB 3: DEPLOY TO EC2 (Runs ONLY on Pushes)
   deploy:
     needs: build-and-push
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
       - name: Deploy to EC2 via SSH
@@ -67,17 +104,8 @@ jobs:
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            # Navigate to project folder
             cd ~/app
-
-            # Stop the old containers
-            docker compose down
-
-            # Pull the new images we just pushed
+            docker compose down            
             docker compose pull
-
-            # Start everything up again
             docker compose up -d
-
-            # Remove unused images to save disk space
-            docker image prune -f
+            docker image prune -f 
