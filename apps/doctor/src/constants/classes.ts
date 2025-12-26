@@ -1,12 +1,5 @@
 import { Environment } from '@app/common';
-import {
-  IsEnum,
-  IsInt,
-  IsNotEmpty,
-  IsPositive,
-  IsString,
-  IsUrl,
-} from 'class-validator';
+import { IsEnum, IsNotEmpty, IsString, IsUrl } from 'class-validator';
 
 export class EnvironmentVariables {
   @IsEnum(Environment)
@@ -18,10 +11,6 @@ export class EnvironmentVariables {
   @IsString()
   @IsNotEmpty()
   RABBIT_MQ_URL: string;
-
-  @IsInt()
-  @IsPositive()
-  RABBIT_MQ_TIMEOUT: number;
 
   @IsString()
   @IsNotEmpty()
