@@ -24,7 +24,7 @@ RUN pip install --no-cache-dir --upgrade pip && \
 # PRELOAD WHISPER MODEL (BEST PRACTICE)
 RUN python - <<EOF
 import whisper
-whisper.load_model("small")
+whisper.load_model("medium")
 EOF
 
 COPY . .
