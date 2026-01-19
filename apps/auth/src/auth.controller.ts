@@ -164,4 +164,14 @@ export class AuthController {
   > {
     return await this.authService.getAllPatients(paginationRequest);
   }
+
+  @MessagePattern({ cmd: AuthPatterns.GET_DOCTOR_BY_ID })
+  async getDoctorById(id: number): Promise<Doctor | null> {
+    return await this.authService.getDoctorById(id);
+  }
+
+  @MessagePattern({ cmd: AuthPatterns.GET_PATIENT_BY_ID })
+  async getPatientById(id: number): Promise<Patient | null> {
+    return await this.authService.getPatientById(id);
+  }
 }

@@ -97,4 +97,29 @@ export class AdminService {
       ),
     );
   }
+
+  async getAllVisits(paginationRequest: PaginationRequest): Promise<
+    PaginationResponse<{
+      id: string;
+      diagnoses: string;
+      patientId: string;
+      doctorId: string;
+      createdAt: Date;
+    }>
+  > {
+    return await lastValueFrom<
+      PaginationResponse<{
+        id: string;
+        diagnoses: string;
+        patientId: string;
+        doctorId: string;
+        createdAt: Date;
+      }>
+    >(
+      this.adminClient.send(
+        { cmd: AdminPatterns.GET_ALL_VISITS },
+        paginationRequest,
+      ),
+    );
+  }
 }

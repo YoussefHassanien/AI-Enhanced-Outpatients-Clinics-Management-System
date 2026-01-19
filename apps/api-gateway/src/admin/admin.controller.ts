@@ -82,4 +82,26 @@ export class AdminController {
     };
     return await this.adminService.getAllPatients(paginationRequest);
   }
+
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @UseGuards(JwtAuthGuard)
+  @Get('visits')
+  async getAllVisits(
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query('limit', new DefaultValuePipe(30), ParseIntPipe) limit: number,
+  ): Promise<
+    PaginationResponse<{
+      id: string;
+      diagnoses: string;
+      patientId: string;
+      doctorId: string;
+      createdAt: Date;
+    }>
+  > {
+    const paginationRequest: PaginationRequest = {
+      page,
+      limit,
+    };
+    return await this.adminService.getAllVisits(paginationRequest);
+  }
 }

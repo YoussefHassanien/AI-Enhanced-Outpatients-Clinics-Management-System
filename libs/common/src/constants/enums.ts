@@ -39,6 +39,8 @@ export enum AuthPatterns {
   GET_ADMIN_BY_USER_ID = 'auth.getAdminByUserId',
   GET_ALL_DOCTORS = 'auth.admin.doctors',
   GET_ALL_PATIENTS = 'auth.admin.patients',
+  GET_PATIENT_BY_ID = 'auth.getPatientById',
+  GET_DOCTOR_BY_ID = 'auth.getDoctorById',
 }
 
 export enum DoctorPatterns {

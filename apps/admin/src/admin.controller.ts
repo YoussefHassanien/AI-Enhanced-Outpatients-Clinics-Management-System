@@ -21,4 +21,9 @@ export class AdminController {
   async getAllPatients(@Payload() paginationRequest: PaginationRequest) {
     return await this.adminService.getAllPatients(paginationRequest);
   }
+
+  @MessagePattern({ cmd: AdminPatterns.GET_ALL_VISITS })
+  async getAllVisits(@Payload() paginationRequest: PaginationRequest) {
+    return await this.adminService.getAllVisits(paginationRequest);
+  }
 }
