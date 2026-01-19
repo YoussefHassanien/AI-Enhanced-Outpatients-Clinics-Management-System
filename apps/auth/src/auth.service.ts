@@ -697,4 +697,18 @@ export class AuthService {
 
     return response;
   }
+
+  async getPatientById(id: number): Promise<Patient | null> {
+    return await this.patientRepository.findOneBy({
+      id,
+      deletedAt: IsNull(),
+    });
+  }
+
+  async getDoctorById(id: number): Promise<Doctor | null> {
+    return await this.doctorRepository.findOneBy({
+      id,
+      deletedAt: IsNull(),
+    });
+  }
 }
