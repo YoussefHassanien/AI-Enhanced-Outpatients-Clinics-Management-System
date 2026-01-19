@@ -14,11 +14,11 @@ node_modules
 **/*.env
 
 # Misc
-.eslintrc.js
+eslint.config.mjs
 .prettierrc
 README.md
+LICENSE
 
-# Testing directroy
 # Testing directory (ignore at any level)
 test
 **/test

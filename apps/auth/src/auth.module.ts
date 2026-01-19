@@ -1,9 +1,11 @@
 import {
+  CommonServices,
   dataSourceAsyncOptions,
+  LoggingService,
   validateEnviornmentVariables,
 } from '@app/common';
 import { Logger, Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
@@ -28,7 +30,17 @@ import { Admin, Doctor, Patient, User } from './entities';
     JwtModule.register({ global: true }),
   ],
   controllers: [AuthController],
-  providers: [AuthService],
+  providers: [
+    AuthService,
+    {
+      provide: CommonServices.LOGGING,
+      useFactory: (configService: ConfigService) => {
+        return new LoggingService(configService, 'auth');
+      },
+      inject: [ConfigService],
+    },
+  ],
+  exports: [CommonServices.LOGGING],
 })
 export class AuthModule {
   private readonly logger = new Logger(AuthModule.name);

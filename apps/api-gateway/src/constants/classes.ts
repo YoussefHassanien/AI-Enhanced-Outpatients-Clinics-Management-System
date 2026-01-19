@@ -57,14 +57,13 @@ export class EnvironmentVariables {
   @IsNotEmpty()
   RABBIT_MQ_AUTH_QUEUE: string;
 
-  @ValidateIf(
-    (environmentVariables: EnvironmentVariables) =>
-      environmentVariables.ENVIRONMENT === Environment.PRODUCTION,
-  )
   @IsString()
   @IsNotEmpty()
-  @Contains(',')
-  METHODS: string;
+  RABBIT_MQ_DOCTOR_QUEUE: string;
+
+  @IsString()
+  @IsNotEmpty()
+  RABBIT_MQ_ADMIN_QUEUE: string;
 
   @ValidateIf(
     (environmentVariables: EnvironmentVariables) =>
@@ -73,7 +72,7 @@ export class EnvironmentVariables {
   @IsString()
   @IsNotEmpty()
   @Contains(',')
-  ALLOWED_HEADERS: string;
+  METHODS: string;
 
   @ValidateIf(
     (environmentVariables: EnvironmentVariables) =>

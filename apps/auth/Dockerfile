@@ -2,11 +2,14 @@ FROM node:24-alpine AS builder
 
 WORKDIR /app
 
+# update npm
+RUN npm install -g npm@11.7.0
+
 # copy package.json, package-lock.json tsconfig.json, tsconfig.build.json, and nest-cli.json files
 COPY package.json package-lock.json ./
 COPY tsconfig.json tsconfig.build.json nest-cli.json ./
 
-# copy only auth and libs folders
+# copy only needed folders and libs
 COPY ./apps/auth /app/apps/auth
 COPY ./libs /app/libs
 

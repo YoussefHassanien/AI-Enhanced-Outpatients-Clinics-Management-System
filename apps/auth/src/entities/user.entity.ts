@@ -1,6 +1,5 @@
 import { BaseEntity, Gender, Language, Role } from '@app/common';
-import { Column, Entity, OneToOne } from 'typeorm';
-import { Admin, Doctor, Patient } from '.';
+import { Column, Entity } from 'typeorm';
 
 @Entity('Users')
 export class User extends BaseEntity {
@@ -24,13 +23,4 @@ export class User extends BaseEntity {
 
   @Column('bigint', { unique: true })
   socialSecurityNumber: bigint;
-
-  @OneToOne(() => Doctor, (doctor) => doctor.user, { onDelete: 'CASCADE' })
-  doctor: Doctor;
-
-  @OneToOne(() => Patient, (patient) => patient.user, { onDelete: 'CASCADE' })
-  patient: Patient;
-
-  @OneToOne(() => Admin, (admin) => admin.user, { onDelete: 'CASCADE' })
-  admin: Admin;
 }
