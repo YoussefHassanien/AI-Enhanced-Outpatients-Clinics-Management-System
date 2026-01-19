@@ -1,16 +1,11 @@
-import { Column, Entity, JoinColumn, OneToOne } from 'typeorm';
-import { User } from '.';
-import { BaseStaff } from '../constants';
+import { Column, Entity } from 'typeorm';
+import { BaseStaffEntity } from './base-staff.entity';
 
 @Entity('Doctors')
-export class Doctor extends BaseStaff {
+export class Doctor extends BaseStaffEntity {
   @Column('varchar', { length: 512 })
   speciality: string;
 
   @Column('bool', { default: false })
   isApproved: boolean;
-
-  @OneToOne(() => User, (user) => user.doctor, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'userId' })
-  user: User;
 }
