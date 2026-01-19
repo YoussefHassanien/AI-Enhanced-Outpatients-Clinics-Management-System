@@ -1,30 +1,23 @@
 import {
-  AuthPatterns,
-  CommonServices,
-  ErrorResponse,
+  AdminPatterns,
   Gender,
-  LoggingService,
   Microservices,
   PaginationRequest,
   PaginationResponse,
 } from '@app/common';
-import { Inject, Injectable } from '@nestjs/common';
-import { ClientProxy, RpcException } from '@nestjs/microservices';
+import { Inject } from '@nestjs/common';
+import { ClientProxy } from '@nestjs/microservices';
 import { lastValueFrom } from 'rxjs';
 
-@Injectable()
 export class AdminService {
-  private readonly logger: LoggingService;
-
   constructor(
-    @Inject(Microservices.AUTH) private readonly authClient: ClientProxy,
-    @Inject(Microservices.DOCTOR) private readonly doctorClient: ClientProxy,
-    @Inject(CommonServices.LOGGING) logger: LoggingService,
-  ) {
-    this.logger = logger;
-  }
-  isUp(): string {
-    return 'Admin service is up';
+    @Inject(Microservices.ADMIN) private readonly adminClient: ClientProxy,
+  ) {}
+
+  async isUp(): Promise<string> {
+    return await lastValueFrom<string>(
+      this.adminClient.send({ cmd: AdminPatterns.IS_UP }, {}),
+    );
   }
 
   async getAllDoctors(paginationRequest: PaginationRequest): Promise<
@@ -44,12 +37,6 @@ export class AdminService {
       };
     }>
   > {
-    if (paginationRequest.limit <= 0 || paginationRequest.page <= 0) {
-      throw new RpcException(
-        new ErrorResponse('Page and limit must be positive integers', 400),
-      );
-    }
-
     return await lastValueFrom<
       PaginationResponse<{
         id: string;
@@ -67,8 +54,8 @@ export class AdminService {
         };
       }>
     >(
-      this.authClient.send(
-        { cmd: AuthPatterns.GET_ALL_DOCTORS },
+      this.adminClient.send(
+        { cmd: AdminPatterns.GET_ALL_DOCTORS },
         paginationRequest,
       ),
     );
@@ -89,12 +76,6 @@ export class AdminService {
       };
     }>
   > {
-    if (paginationRequest.limit <= 0 || paginationRequest.page <= 0) {
-      throw new RpcException(
-        new ErrorResponse('Page and limit must be positive integers', 400),
-      );
-    }
-
     return await lastValueFrom<
       PaginationResponse<{
         id: string;
@@ -110,8 +91,8 @@ export class AdminService {
         };
       }>
     >(
-      this.authClient.send(
-        { cmd: AuthPatterns.GET_ALL_PATIENTS },
+      this.adminClient.send(
+        { cmd: AdminPatterns.GET_ALL_PATIENTS },
         paginationRequest,
       ),
     );

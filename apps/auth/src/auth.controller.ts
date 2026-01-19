@@ -1,4 +1,12 @@
-import { AuthPatterns, ErrorResponse, Language, Role } from '@app/common';
+import {
+  AuthPatterns,
+  ErrorResponse,
+  Gender,
+  Language,
+  PaginationRequest,
+  PaginationResponse,
+  Role,
+} from '@app/common';
 import { Controller, ParseIntPipe, ParseUUIDPipe } from '@nestjs/common';
 import { MessagePattern, Payload, RpcException } from '@nestjs/microservices';
 import { AuthService } from './auth.service';
@@ -113,5 +121,47 @@ export class AuthController {
     adminUserId: number,
   ): Promise<Admin | null> {
     return await this.authService.getAdminByUserId(adminUserId);
+  }
+
+  @MessagePattern({ cmd: AuthPatterns.GET_ALL_DOCTORS })
+  async getAllDoctors(@Payload() paginationRequest: PaginationRequest): Promise<
+    PaginationResponse<{
+      id: string;
+      phone: string;
+      email: string;
+      speciality: string;
+      isApproved: boolean;
+      user: {
+        id: string;
+        socialSecurityNumber: bigint;
+        gender: Gender;
+        firstName: string;
+        lastName: string;
+        dateOfBirth: Date;
+      };
+    }>
+  > {
+    return await this.authService.getAllDoctors(paginationRequest);
+  }
+
+  @MessagePattern({ cmd: AuthPatterns.GET_ALL_PATIENTS })
+  async getAllPatients(
+    @Payload() paginationRequest: PaginationRequest,
+  ): Promise<
+    PaginationResponse<{
+      id: string;
+      address: string;
+      job: string;
+      user: {
+        id: string;
+        socialSecurityNumber: bigint;
+        gender: Gender;
+        firstName: string;
+        lastName: string;
+        dateOfBirth: Date;
+      };
+    }>
+  > {
+    return await this.authService.getAllPatients(paginationRequest);
   }
 }

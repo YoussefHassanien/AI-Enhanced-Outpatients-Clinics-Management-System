@@ -52,6 +52,20 @@ services:
     volumes:
       - ./logs:/app/logs
 
+  admin:
+    build:
+      context: .
+      dockerfile: ./apps/admin/Dockerfile
+    env_file:
+      - ./apps/admin/.env
+    depends_on:
+      - rabbitMq
+    command: node admin/main
+    networks:
+      - services-network
+    volumes:
+      - ./logs:/app/logs
+
 networks:
   services-network:
     driver: bridge

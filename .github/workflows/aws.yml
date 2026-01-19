@@ -95,6 +95,15 @@ jobs:
           push: true
           tags: ${{ secrets.DOCKER_USERNAME }}/doctor-service:latest
 
+      # Build and Push Admin Service
+      - name: Build and Push Admin
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/admin/Dockerfile
+          push: true
+          tags: ${{ secrets.DOCKER_USERNAME }}/admin-service:latest
+
   # JOB 3: DEPLOY TO EC2 (Runs ONLY on Pushes)
   deploy:
     needs: build-and-push
