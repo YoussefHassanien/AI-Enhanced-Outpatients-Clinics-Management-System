@@ -4,12 +4,14 @@ import {
   ErrorResponse,
   LoggingService,
   Microservices,
+  PaginationRequest,
+  PaginationResponse,
 } from '@app/common';
 import { Inject, Injectable } from '@nestjs/common';
 import { ClientProxy, RpcException } from '@nestjs/microservices';
 import { InjectRepository } from '@nestjs/typeorm';
 import { lastValueFrom } from 'rxjs';
-import { Repository } from 'typeorm';
+import { IsNull, Repository } from 'typeorm';
 import { Doctor, Patient } from '../../auth/src/entities';
 import { CreateMedicationInternalDto, CreateVisitInternalDto } from './dtos';
 import { Lab, Medication, Scan, Visit } from './entities';
@@ -135,5 +137,83 @@ export class DoctorService {
 
     await this.medicationsRepository.insert(medication);
     this.logger.log('Successfully inserted medication');
+  }
+
+  async getAllVisits(paginationRequest: PaginationRequest): Promise<
+    PaginationResponse<{
+      id: string;
+      diagnoses: string;
+      patientId: string;
+      doctorId: string;
+      createdAt: Date;
+    }>
+  > {
+    const count = await this.visitsRepository.count({
+      where: {
+        deletedAt: IsNull(),
+      },
+    });
+    this.logger.log(`Visits count is ${count}`);
+
+    const visits = await this.visitsRepository.find({
+      select: {
+        globalId: true,
+        diagnoses: true,
+        patientId: true,
+        doctorId: true,
+        createdAt: true,
+      },
+      where: {
+        deletedAt: IsNull(),
+      },
+      skip: (paginationRequest.page - 1) * paginationRequest.limit,
+      take: paginationRequest.limit,
+    });
+    this.logger.log(
+      `Successfully retrieved ${paginationRequest.limit} visits from page: ${paginationRequest.page - 1}`,
+    );
+
+    // Fetch patient and doctor global IDs via RPC
+    const items = await Promise.all(
+      visits.map(async (visit) => {
+        const [patient, doctor] = await Promise.all([
+          lastValueFrom<Patient | null>(
+            this.authClient.send(
+              { cmd: AuthPatterns.GET_PATIENT_BY_ID },
+              visit.patientId,
+            ),
+          ),
+          lastValueFrom<Doctor | null>(
+            this.authClient.send(
+              { cmd: AuthPatterns.GET_DOCTOR_BY_ID },
+              visit.doctorId,
+            ),
+          ),
+        ]);
+
+        return {
+          id: visit.globalId,
+          diagnoses: visit.diagnoses,
+          patientId: patient?.globalId ?? 'UNKNOWN',
+          doctorId: doctor?.globalId ?? 'UNKNOWN',
+          createdAt: visit.createdAt,
+        };
+      }),
+    );
+
+    const response: PaginationResponse<{
+      id: string;
+      diagnoses: string;
+      patientId: string;
+      doctorId: string;
+      createdAt: Date;
+    }> = {
+      page: paginationRequest.page,
+      items,
+      totalItems: count,
+      totalPages: Math.ceil(count / paginationRequest.limit),
+    };
+
+    return response;
   }
 }

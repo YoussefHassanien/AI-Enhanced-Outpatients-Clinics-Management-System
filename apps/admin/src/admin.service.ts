@@ -1,6 +1,7 @@
 import {
   AuthPatterns,
   CommonServices,
+  DoctorPatterns,
   ErrorResponse,
   Gender,
   LoggingService,
@@ -112,6 +113,37 @@ export class AdminService {
     >(
       this.authClient.send(
         { cmd: AuthPatterns.GET_ALL_PATIENTS },
+        paginationRequest,
+      ),
+    );
+  }
+
+  async getAllVisits(paginationRequest: PaginationRequest): Promise<
+    PaginationResponse<{
+      id: string;
+      diagnoses: string;
+      patientId: string;
+      doctorId: string;
+      createdAt: Date;
+    }>
+  > {
+    if (paginationRequest.limit <= 0 || paginationRequest.page <= 0) {
+      throw new RpcException(
+        new ErrorResponse('Page and limit must be positive integers', 400),
+      );
+    }
+
+    return await lastValueFrom<
+      PaginationResponse<{
+        id: string;
+        diagnoses: string;
+        patientId: string;
+        doctorId: string;
+        createdAt: Date;
+      }>
+    >(
+      this.doctorClient.send(
+        { cmd: DoctorPatterns.GET_ALL_VISITS },
         paginationRequest,
       ),
     );
