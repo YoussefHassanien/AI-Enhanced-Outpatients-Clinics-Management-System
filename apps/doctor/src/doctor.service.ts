@@ -201,7 +201,7 @@ export class DoctorService {
       }),
     );
 
-    const respone: PaginationResponse<{
+    const response: PaginationResponse<{
       id: string;
       diagnoses: string;
       patientId: string;
@@ -214,6 +214,6 @@ export class DoctorService {
       totalPages: Math.ceil(count / paginationRequest.limit),
     };
 
-    return respone;
+    return response;
   }
 }
