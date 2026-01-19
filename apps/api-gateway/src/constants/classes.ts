@@ -61,6 +61,10 @@ export class EnvironmentVariables {
   @IsNotEmpty()
   RABBIT_MQ_DOCTOR_QUEUE: string;
 
+  @IsString()
+  @IsNotEmpty()
+  RABBIT_MQ_ADMIN_QUEUE: string;
+
   @ValidateIf(
     (environmentVariables: EnvironmentVariables) =>
       environmentVariables.ENVIRONMENT === Environment.PRODUCTION,

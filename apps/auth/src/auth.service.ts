@@ -4,6 +4,8 @@ import {
   Gender,
   Language,
   LoggingService,
+  PaginationRequest,
+  PaginationResponse,
   Role,
 } from '@app/common';
 import { Inject, Injectable } from '@nestjs/common';
@@ -504,5 +506,195 @@ export class AuthService {
         return patient.globalId;
       },
     );
+  }
+
+  async getAllDoctors(paginationRequest: PaginationRequest): Promise<
+    PaginationResponse<{
+      id: string;
+      phone: string;
+      email: string;
+      speciality: string;
+      isApproved: boolean;
+      user: {
+        id: string;
+        socialSecurityNumber: bigint;
+        gender: Gender;
+        firstName: string;
+        lastName: string;
+        dateOfBirth: Date;
+      };
+    }>
+  > {
+    const count = await this.doctorRepository.count({
+      where: {
+        deletedAt: IsNull(),
+        user: {
+          deletedAt: IsNull(),
+        },
+      },
+      relations: { user: true },
+    });
+    this.logger.log(`Doctors count is ${count}`);
+
+    const doctors = await this.doctorRepository.find({
+      relations: {
+        user: true,
+      },
+      select: {
+        user: {
+          firstName: true,
+          lastName: true,
+          dateOfBirth: true,
+          socialSecurityNumber: true,
+          globalId: true,
+          gender: true,
+        },
+        id: true,
+        globalId: true,
+        phone: true,
+        email: true,
+        speciality: true,
+        isApproved: true,
+      },
+      where: {
+        deletedAt: IsNull(),
+        user: {
+          deletedAt: IsNull(),
+        },
+      },
+      skip: (paginationRequest.page - 1) * paginationRequest.limit,
+      take: paginationRequest.limit,
+    });
+    this.logger.log(
+      `Successfully retrieved ${paginationRequest.limit} doctors from page: ${paginationRequest.page - 1}`,
+    );
+
+    const response: PaginationResponse<{
+      id: string;
+      phone: string;
+      email: string;
+      speciality: string;
+      isApproved: boolean;
+      user: {
+        id: string;
+        socialSecurityNumber: bigint;
+        gender: Gender;
+        firstName: string;
+        lastName: string;
+        dateOfBirth: Date;
+      };
+    }> = {
+      items: doctors.map((doctor) => ({
+        id: doctor.globalId,
+        phone: doctor.phone,
+        email: doctor.email,
+        speciality: doctor.speciality,
+        isApproved: doctor.isApproved,
+        user: {
+          id: doctor.user.globalId,
+          firstName: doctor.user.firstName,
+          lastName: doctor.user.lastName,
+          gender: doctor.user.gender,
+          dateOfBirth: doctor.user.dateOfBirth,
+          socialSecurityNumber: doctor.user.socialSecurityNumber,
+        },
+      })),
+      page: paginationRequest.page,
+      totalItems: count,
+      totalPages: Math.ceil(count / paginationRequest.limit),
+    };
+
+    return response;
+  }
+
+  async getAllPatients(paginationRequest: PaginationRequest): Promise<
+    PaginationResponse<{
+      id: string;
+      address: string;
+      job: string;
+      user: {
+        id: string;
+        socialSecurityNumber: bigint;
+        gender: Gender;
+        firstName: string;
+        lastName: string;
+        dateOfBirth: Date;
+      };
+    }>
+  > {
+    const count = await this.patientRepository.count({
+      where: {
+        deletedAt: IsNull(),
+        user: {
+          deletedAt: IsNull(),
+        },
+      },
+      relations: { user: true },
+    });
+    this.logger.log(`Patients count is ${count}`);
+
+    const patients = await this.patientRepository.find({
+      relations: {
+        user: true,
+      },
+      select: {
+        user: {
+          firstName: true,
+          lastName: true,
+          dateOfBirth: true,
+          socialSecurityNumber: true,
+          globalId: true,
+          gender: true,
+        },
+        id: true,
+        globalId: true,
+        address: true,
+        job: true,
+      },
+      where: {
+        deletedAt: IsNull(),
+        user: {
+          deletedAt: IsNull(),
+        },
+      },
+      skip: (paginationRequest.page - 1) * paginationRequest.limit,
+      take: paginationRequest.limit,
+    });
+    this.logger.log(
+      `Successfully retrieved ${paginationRequest.limit} patients from page: ${paginationRequest.page - 1}`,
+    );
+
+    const response: PaginationResponse<{
+      id: string;
+      address: string;
+      job: string;
+      user: {
+        id: string;
+        socialSecurityNumber: bigint;
+        gender: Gender;
+        firstName: string;
+        lastName: string;
+        dateOfBirth: Date;
+      };
+    }> = {
+      items: patients.map((patient) => ({
+        id: patient.globalId,
+        job: patient.job,
+        address: patient.address,
+        user: {
+          id: patient.user.globalId,
+          firstName: patient.user.firstName,
+          lastName: patient.user.lastName,
+          gender: patient.user.gender,
+          dateOfBirth: patient.user.dateOfBirth,
+          socialSecurityNumber: patient.user.socialSecurityNumber,
+        },
+      })),
+      page: paginationRequest.page,
+      totalItems: count,
+      totalPages: Math.ceil(count / paginationRequest.limit),
+    };
+
+    return response;
   }
 }
