@@ -6,13 +6,19 @@ import {
   Roles,
 } from '@app/common';
 import {
+  BadRequestException,
+  Body,
   Controller,
   DefaultValuePipe,
   Get,
+  Param,
   ParseIntPipe,
+  ParseUUIDPipe,
+  Patch,
   Query,
   UseGuards,
 } from '@nestjs/common';
+import { UpdatePatientDto } from '../../../auth/src/dtos';
 import { JwtAuthGuard } from '../auth/guards';
 import { AdminService } from './admin.service';
 
@@ -103,5 +109,21 @@ export class AdminController {
       limit,
     };
     return await this.adminService.getAllVisits(paginationRequest);
+  }
+
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @UseGuards(JwtAuthGuard)
+  @Patch('patient/:id')
+  async updatePatient(
+    @Param(
+      'id',
+      new ParseUUIDPipe({
+        exceptionFactory: () => new BadRequestException('Invalid patient ID'),
+      }),
+    )
+    globalId: string,
+    @Body() updatePatientDto: UpdatePatientDto,
+  ): Promise<{ message: string }> {
+    return await this.adminService.updatePatient(globalId, updatePatientDto);
   }
 }

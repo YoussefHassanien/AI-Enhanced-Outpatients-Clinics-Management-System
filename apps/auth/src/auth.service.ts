@@ -25,6 +25,7 @@ import {
   CredentialsResponseDto,
   LoginDto,
 } from './dtos';
+import { UpdatePatientInternalDto } from './dtos/update-patient-internal.dto';
 import { Admin, Doctor, Patient, User } from './entities';
 
 @Injectable()
@@ -710,5 +711,64 @@ export class AuthService {
       id,
       deletedAt: IsNull(),
     });
+  }
+
+  async updatePatient(
+    updatePatientInternalDto: UpdatePatientInternalDto,
+  ): Promise<{ message: string }> {
+    const patient = await this.patientRepository.findOne({
+      where: {
+        globalId: updatePatientInternalDto.globalId,
+        deletedAt: IsNull(),
+      },
+      relations: {
+        user: true,
+      },
+    });
+
+    if (!patient) {
+      throw new RpcException(new ErrorResponse('Patient not found!', 404));
+    }
+
+    await this.patientRepository.manager.transaction(
+      async (manager: EntityManager) => {
+        // Update User fields if provided
+        if (
+          updatePatientInternalDto.firstName ||
+          updatePatientInternalDto.lastName
+        ) {
+          const userRepository = manager.getRepository(User);
+          const userUpdates: Partial<User> = {};
+
+          if (updatePatientInternalDto.firstName) {
+            userUpdates.firstName = updatePatientInternalDto.firstName;
+          }
+          if (updatePatientInternalDto.lastName) {
+            userUpdates.lastName = updatePatientInternalDto.lastName;
+          }
+
+          await userRepository.update(patient.user.id, userUpdates);
+          this.logger.log('Successfully updated user data');
+        }
+
+        // Update Patient fields if provided
+        if (updatePatientInternalDto.address || updatePatientInternalDto.job) {
+          const patientRepository = manager.getRepository(Patient);
+          const patientUpdates: Partial<Patient> = {};
+
+          if (updatePatientInternalDto.address) {
+            patientUpdates.address = updatePatientInternalDto.address;
+          }
+          if (updatePatientInternalDto.job) {
+            patientUpdates.job = updatePatientInternalDto.job;
+          }
+
+          await patientRepository.update(patient.id, patientUpdates);
+          this.logger.log('Successfully updated patient data');
+        }
+      },
+    );
+
+    return { message: 'Patient data is successfully updated' };
   }
 }
