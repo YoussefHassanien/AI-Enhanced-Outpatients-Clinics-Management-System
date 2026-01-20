@@ -16,6 +16,7 @@ import {
   CreatePatientDto,
   LoginDto,
 } from './dtos';
+import { UpdatePatientInternalDto } from './dtos/update-patient-internal.dto';
 import { Admin, Doctor, Patient, User } from './entities';
 
 @Controller()
@@ -166,12 +167,35 @@ export class AuthController {
   }
 
   @MessagePattern({ cmd: AuthPatterns.GET_DOCTOR_BY_ID })
-  async getDoctorById(id: number): Promise<Doctor | null> {
+  async getDoctorById(
+    @Payload(
+      new ParseIntPipe({
+        exceptionFactory: () =>
+          new RpcException(new ErrorResponse('Invalid id', 400)),
+      }),
+    )
+    id: number,
+  ): Promise<Doctor | null> {
     return await this.authService.getDoctorById(id);
   }
 
   @MessagePattern({ cmd: AuthPatterns.GET_PATIENT_BY_ID })
-  async getPatientById(id: number): Promise<Patient | null> {
+  async getPatientById(
+    @Payload(
+      new ParseIntPipe({
+        exceptionFactory: () =>
+          new RpcException(new ErrorResponse('Invalid id', 400)),
+      }),
+    )
+    id: number,
+  ): Promise<Patient | null> {
     return await this.authService.getPatientById(id);
+  }
+
+  @MessagePattern({ cmd: AuthPatterns.PATIENT_UPDATE })
+  async patientUpdate(
+    @Payload() updatePatientInternalDto: UpdatePatientInternalDto,
+  ): Promise<{ message: string }> {
+    return await this.authService.updatePatient(updatePatientInternalDto);
   }
 }

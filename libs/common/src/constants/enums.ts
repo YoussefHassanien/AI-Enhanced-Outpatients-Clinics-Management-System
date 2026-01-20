@@ -41,6 +41,7 @@ export enum AuthPatterns {
   GET_ALL_PATIENTS = 'auth.admin.patients',
   GET_PATIENT_BY_ID = 'auth.getPatientById',
   GET_DOCTOR_BY_ID = 'auth.getDoctorById',
+  PATIENT_UPDATE = 'auth.patient.update',
 }
 
 export enum DoctorPatterns {
@@ -66,4 +67,5 @@ export enum AdminPatterns {
   GET_ALL_VISITS = 'admin.getAllVisits',
   GET_ALL_PATIENTS = 'admin.getAllPatients',
   GET_ALL_DOCTORS = 'admin.getAllDoctors',
+  UPDATE_PATIENT = 'admin.updatePatient',
 }
