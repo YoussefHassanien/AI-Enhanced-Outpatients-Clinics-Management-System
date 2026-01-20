@@ -1,0 +1,45 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+
+# Environment
+.env
+.venv
+env/
+venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Models (keep openvino, ignore PyTorch backups)
+*.pt
+
+# Temporary files
+temp_uploads/
+runs/
+
+# Logs
+logs/
+*.log
+
+# Documentation (keep only essential)
+OPTIMIZATION_SUMMARY.md
+OPENVINO_GUIDE.md
+EG_ID_openvino.py
+
+# Benchmarking/testing scripts
+benchmark_models.py
+optimize_models.py
+
+# OS
+.DS_Store
+Thumbs.db
