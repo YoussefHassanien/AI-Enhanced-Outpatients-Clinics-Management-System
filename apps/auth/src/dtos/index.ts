@@ -6,3 +6,5 @@ export * from './create-patient.dto';
 export * from './create-user.dto';
 export * from './credentials-response.dto';
 export * from './login.dto';
+export * from './update-patient-internal.dto';
+export * from './update-patient.dto';

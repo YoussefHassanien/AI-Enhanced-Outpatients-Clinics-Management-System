@@ -12,6 +12,8 @@ import {
 import { Inject, Injectable } from '@nestjs/common';
 import { ClientProxy, RpcException } from '@nestjs/microservices';
 import { lastValueFrom } from 'rxjs';
+import { UpdatePatientInternalDto } from '../../auth/src/dtos';
+import { Patient } from '../../auth/src/entities';
 
 @Injectable()
 export class AdminService {
@@ -145,6 +147,28 @@ export class AdminService {
       this.doctorClient.send(
         { cmd: DoctorPatterns.GET_ALL_VISITS },
         paginationRequest,
+      ),
+    );
+  }
+
+  async updatePatient(
+    updatePatientInternalDto: UpdatePatientInternalDto,
+  ): Promise<{ message: string }> {
+    const patient = await lastValueFrom<Patient | null>(
+      this.authClient.send(
+        { cmd: AuthPatterns.GET_PATIENT_BY_GLOBAL_ID },
+        updatePatientInternalDto.globalId,
+      ),
+    );
+
+    if (!patient) {
+      throw new RpcException(new ErrorResponse('Patient not found!', 404));
+    }
+
+    return await lastValueFrom<{ message: string }>(
+      this.authClient.send(
+        { cmd: AuthPatterns.PATIENT_UPDATE },
+        updatePatientInternalDto,
       ),
     );
   }

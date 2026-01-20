@@ -8,6 +8,10 @@ import {
 import { Inject } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { lastValueFrom } from 'rxjs';
+import {
+  UpdatePatientDto,
+  UpdatePatientInternalDto,
+} from '../../../auth/src/dtos';
 
 export class AdminService {
   constructor(
@@ -119,6 +123,23 @@ export class AdminService {
       this.adminClient.send(
         { cmd: AdminPatterns.GET_ALL_VISITS },
         paginationRequest,
+      ),
+    );
+  }
+
+  async updatePatient(
+    globalId: string,
+    updatePatientDto: UpdatePatientDto,
+  ): Promise<{ message: string }> {
+    const updatePatientInternalDto = new UpdatePatientInternalDto(
+      updatePatientDto,
+      globalId,
+    );
+
+    return await lastValueFrom<{ message: string }>(
+      this.adminClient.send(
+        { cmd: AdminPatterns.UPDATE_PATIENT },
+        updatePatientInternalDto,
       ),
     );
   }
