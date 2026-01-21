@@ -1,9 +1,11 @@
 import {
+  AdminPatterns,
   CommonServices,
   ErrorResponse,
   Gender,
   Language,
   LoggingService,
+  Microservices,
   PaginationRequest,
   PaginationResponse,
   Role,
@@ -11,11 +13,13 @@ import {
 import { Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-import { RpcException } from '@nestjs/microservices';
+import { ClientProxy, RpcException } from '@nestjs/microservices';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcrypt';
 import { Algorithm } from 'jsonwebtoken';
+import { lastValueFrom } from 'rxjs';
 import { EntityManager, IsNull, Not, Repository } from 'typeorm';
+import { Clinic } from '../../admin/src/entities';
 import { JwtPayload } from './constants';
 import {
   CreateAdminDto,
@@ -49,6 +53,7 @@ export class AuthService {
     @InjectRepository(Admin)
     private readonly adminRepository: Repository<Admin>,
     @Inject(CommonServices.LOGGING) logger: LoggingService,
+    @Inject(Microservices.ADMIN) private readonly adminClient: ClientProxy,
   ) {
     this.hashingAlgorithm =
       this.configService.getOrThrow<Algorithm>('HASHING_ALGORITHM');
@@ -371,6 +376,17 @@ export class AuthService {
 
     if (existingDoctor) {
       throw new RpcException(new ErrorResponse('Doctor already exists!', 400));
+    }
+
+    const clinic = await lastValueFrom<Clinic | null>(
+      this.adminClient.send(
+        { cmd: AdminPatterns.GET_CLINIC_BY_GLOBAL_ID },
+        doctorDto.clinicId,
+      ),
+    );
+
+    if (!clinic) {
+      throw new RpcException(new ErrorResponse('Clinic not found!', 404));
     }
 
     return await this.userRepository.manager.transaction(

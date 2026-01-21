@@ -47,4 +47,8 @@ export class EnvironmentVariables {
   @IsString()
   @IsNotEmpty()
   RABBIT_MQ_AUTH_QUEUE: string;
+
+  @IsString()
+  @IsNotEmpty()
+  RABBIT_MQ_ADMIN_QUEUE: string;
 }

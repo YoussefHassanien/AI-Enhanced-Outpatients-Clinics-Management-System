@@ -1,4 +1,4 @@
-import { Column, Entity } from 'typeorm';
+import { Column, Entity, Index } from 'typeorm';
 import { BaseStaffEntity } from './base-staff.entity';
 
 @Entity('Doctors')
@@ -8,4 +8,8 @@ export class Doctor extends BaseStaffEntity {
 
   @Column('bool', { default: false })
   isApproved: boolean;
+
+  @Column('integer', { nullable: false })
+  @Index()
+  clinicId: number;
 }

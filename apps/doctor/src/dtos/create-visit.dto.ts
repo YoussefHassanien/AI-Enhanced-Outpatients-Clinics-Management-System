@@ -17,4 +17,11 @@ export class CreateVisitDto {
   })
   @IsUUID()
   patientId: string;
+
+  @ApiProperty({
+    description: 'The clinic id that visit belongs to (same as doctor clinic)',
+    example: '718d3eed-43a9-44b9-a01b-5676dd781f25',
+  })
+  @IsUUID()
+  clinicId: string;
 }

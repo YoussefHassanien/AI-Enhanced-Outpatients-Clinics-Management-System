@@ -13,6 +13,7 @@ import { DataSource } from 'typeorm';
 import { AdminController } from './admin.controller';
 import { AdminService } from './admin.service';
 import { EnvironmentVariables } from './constants';
+import { Clinic } from './entities';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { EnvironmentVariables } from './constants';
       envFilePath: './apps/admin/.env',
     }),
     TypeOrmModule.forRootAsync(dataSourceAsyncOptions),
+    TypeOrmModule.forFeature([Clinic]),
     ClientsModule.registerAsync([
       {
         name: Microservices.AUTH,

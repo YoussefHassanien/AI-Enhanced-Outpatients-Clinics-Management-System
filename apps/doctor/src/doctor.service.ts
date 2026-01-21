@@ -1,4 +1,5 @@
 import {
+  AdminPatterns,
   AuthPatterns,
   CommonServices,
   ErrorResponse,
@@ -12,6 +13,7 @@ import { ClientProxy, RpcException } from '@nestjs/microservices';
 import { InjectRepository } from '@nestjs/typeorm';
 import { lastValueFrom } from 'rxjs';
 import { IsNull, Repository } from 'typeorm';
+import { Clinic } from '../../admin/src/entities';
 import { Doctor, Patient } from '../../auth/src/entities';
 import { CreateMedicationInternalDto, CreateVisitInternalDto } from './dtos';
 import { Lab, Medication, Scan, Visit } from './entities';
@@ -29,6 +31,7 @@ export class DoctorService {
     @InjectRepository(Scan)
     private readonly scansRepository: Repository<Scan>,
     @Inject(Microservices.AUTH) private readonly authClient: ClientProxy,
+    @Inject(Microservices.ADMIN) private readonly adminClient: ClientProxy,
     @Inject(CommonServices.LOGGING) logger: LoggingService,
   ) {
     this.logger = logger;
@@ -93,6 +96,23 @@ export class DoctorService {
 
     if (!patient) {
       throw new RpcException(new ErrorResponse('Patient not found!', 404));
+    }
+
+    const clinic = await lastValueFrom<Clinic | null>(
+      this.adminClient.send(
+        { cmd: AdminPatterns.GET_CLINIC_BY_GLOBAL_ID },
+        createVisitInternalDto.clinicId,
+      ),
+    );
+
+    if (!clinic) {
+      throw new RpcException(new ErrorResponse('Clinic not found!', 404));
+    }
+
+    if (clinic.id !== doctor.clinicId) {
+      throw new RpcException(
+        new ErrorResponse('Clinic does not match doctor clinic', 400),
+      );
     }
 
     const visit = this.visitsRepository.create({

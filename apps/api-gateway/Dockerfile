@@ -17,6 +17,7 @@ COPY ./apps/auth/src/entities /app/apps/auth/src/entities
 COPY ./apps/doctor/src/dtos /app/apps/doctor/src/dtos
 COPY ./apps/doctor/src/constants /app/apps/doctor/src/constants
 COPY ./apps/doctor/src/entities /app/apps/doctor/src/entities
+COPY ./apps/admin/src/dtos /app/apps/admin/src/dtos
 COPY ./libs /app/libs
 
 # install all deps including dev and build
