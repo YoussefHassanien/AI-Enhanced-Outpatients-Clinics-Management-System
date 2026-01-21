@@ -8,11 +8,11 @@ __pycache__/
 dist/
 build/
 
-# Environment
-.env
-.venv
-env/
-venv/
+# # Environment
+# .env
+# .venv
+# env/
+# venv/
 
 # IDE
 .vscode/
@@ -30,15 +30,6 @@ runs/
 # Logs
 logs/
 *.log
-
-# Documentation (keep only essential)
-OPTIMIZATION_SUMMARY.md
-OPENVINO_GUIDE.md
-EG_ID_openvino.py
-
-# Benchmarking/testing scripts
-benchmark_models.py
-optimize_models.py
 
 # OS
 .DS_Store

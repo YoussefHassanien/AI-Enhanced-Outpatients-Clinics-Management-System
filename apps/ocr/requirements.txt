@@ -1,12 +1,12 @@
 fastapi>=0.104.1
 uvicorn[standard]>=0.24.0
 python-multipart>=0.0.6
-opencv-python>=4.8.1.78
+opencv-python-headless>=4.8.1.78
 numpy>=1.24.3
 paddleocr>=2.7.0
-paddlepaddle>=2.5.1
+paddlepaddle==3.2.2
 ultralytics>=8.0.196
-pillow>=10.1.0
 arabic-reshaper>=3.0.0
 python-bidi>=0.4.2
 python-dotenv>=1.0.0
+openvino>=2024.0.0
