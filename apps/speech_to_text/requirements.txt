@@ -1,8 +1,0 @@
-fastapi
-aiofiles #Working with Files Asynchronously in Python
-python-multipart #Used to handle multipart/form-data, which is primarily used for uploading files via web forms.
-uvicorn #ASGI server for serving FastAPI applications
-#uvicorn => acts as the bridge between the internet and Python asynchronous frameworks like FastAPI
-#        => Usually runs behind a general web server (like Apache or Nginx)
-#        => Built for Python asynchronous frameworks
-#ASGI => Asynchronous Server Gateway Interface
