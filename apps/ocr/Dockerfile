@@ -22,7 +22,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
 COPY src ./src
-COPY run.py .
+COPY run_consumer.py .
 COPY .env .
 
 # Copy model files
@@ -39,4 +39,4 @@ EXPOSE 8000
 ENV PYTHONUNBUFFERED=1
 
 # Run the application
-CMD ["python", "run.py"]
+CMD ["python", "run_consumer.py"]

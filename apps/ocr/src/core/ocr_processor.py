@@ -1,7 +1,8 @@
 import cv2
+import os
+os.environ["DISABLE_MODEL_SOURCE_CHECK"] = "True"
 from paddleocr import PaddleOCR
 from ultralytics import YOLO
-import os
 import logging
 from dotenv import load_dotenv
 
@@ -60,6 +61,7 @@ def get_class_model():
     if _CLASS_MODEL is None:
         logger.info(f"Loading classification model: {os.path.basename(CLASS_MODEL_PATH)}")
         _CLASS_MODEL = YOLO(CLASS_MODEL_PATH)
+        logger.info("Classification model loaded successfully")
     return _CLASS_MODEL
 
 
@@ -69,6 +71,7 @@ def get_id_model():
     if _ID_MODEL is None:
         logger.info(f"Loading ID digit model: {os.path.basename(ID_MODEL_PATH)}")
         _ID_MODEL = YOLO(ID_MODEL_PATH)
+        logger.info("ID digit model loaded successfully")
     return _ID_MODEL
 
 
@@ -81,15 +84,16 @@ def get_ocr_model():
                                use_doc_orientation_classify=False,
                                use_doc_unwarping=False,
                                use_textline_orientation=False)
+        logger.info("PaddleOCR model loaded successfully")
     return _OCR_MODEL
 
 
 def preload_models():
     """Preload all models at startup (for FastAPI lifespan)"""
     logger.info("Preloading all models...")
+    get_ocr_model()
     get_class_model()
     get_id_model()
-    get_ocr_model()
     logger.info("All models loaded successfully")
 
 

@@ -6,6 +6,12 @@ services:
       - 5672
     networks:
       - services-network
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
   auth:
     build:
       context: .
@@ -51,6 +57,29 @@ services:
       - services-network
     volumes:
       - logs:/app/logs
+
+  ocr-consumer:
+    build:
+      context: ./apps/ocr
+      dockerfile: Dockerfile
+    container_name: ocr-consumer
+    env_file:
+      - ./apps/ocr/.env
+    depends_on:
+      rabbitMq:
+        condition: service_healthy
+    command: ["python", "run_consumer.py"]
+    networks:
+      - services-network
+    volumes:
+      - logs:/app/logs
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import sys; sys.exit(0)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 300s
 
 networks:
   services-network:
