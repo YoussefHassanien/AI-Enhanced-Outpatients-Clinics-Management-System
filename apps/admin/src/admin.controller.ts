@@ -57,4 +57,9 @@ export class AdminController {
   ): Promise<Clinic | null> {
     return await this.adminService.getClinicByGlobalId(globalId);
   }
+
+  @MessagePattern({ cmd: AdminPatterns.GET_CLINIC_BY_ID })
+  async getClinicById(@Payload() id: number): Promise<Clinic | null> {
+    return await this.adminService.getClinicById(id);
+  }
 }

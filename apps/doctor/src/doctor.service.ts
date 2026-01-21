@@ -100,8 +100,8 @@ export class DoctorService {
 
     const clinic = await lastValueFrom<Clinic | null>(
       this.adminClient.send(
-        { cmd: AdminPatterns.GET_CLINIC_BY_GLOBAL_ID },
-        createVisitInternalDto.clinicId,
+        { cmd: AdminPatterns.GET_CLINIC_BY_ID },
+        doctor.clinicId,
       ),
     );
 
@@ -109,16 +109,11 @@ export class DoctorService {
       throw new RpcException(new ErrorResponse('Clinic not found!', 404));
     }
 
-    if (clinic.id !== doctor.clinicId) {
-      throw new RpcException(
-        new ErrorResponse('Clinic does not match doctor clinic', 400),
-      );
-    }
-
     const visit = this.visitsRepository.create({
       diagnoses: createVisitInternalDto.diagnoses,
       patientId: patient.id,
       doctorId: doctor.id,
+      clinicId: doctor.clinicId,
     });
     this.logger.log('Successfully created visit');
 
@@ -235,5 +230,18 @@ export class DoctorService {
     };
 
     return response;
+  }
+
+  async getPatientHistory(socialSecurityNumber: number) {
+    const patient = await lastValueFrom<Patient | null>(
+      this.authClient.send(
+        { cmd: AuthPatterns.GET_PATIENT_BY_SOCIAL_SECURITY_NUMBER },
+        socialSecurityNumber,
+      ),
+    );
+
+    if (!patient) {
+      throw new RpcException(new ErrorResponse('Patient not found!', 404));
+    }
   }
 }

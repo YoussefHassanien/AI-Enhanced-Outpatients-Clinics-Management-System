@@ -244,4 +244,11 @@ export class AdminService {
       deletedAt: IsNull(),
     });
   }
+
+  async getClinicById(id: number): Promise<Clinic | null> {
+    return await this.clinicRepository.findOneBy({
+      id,
+      deletedAt: IsNull(),
+    });
+  }
 }
