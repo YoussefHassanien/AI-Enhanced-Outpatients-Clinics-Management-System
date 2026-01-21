@@ -5,6 +5,7 @@ import {
   CommonServices,
   Gender,
   Language,
+  Microservices,
   Role,
 } from '@app/common';
 import { ConfigService } from '@nestjs/config';
@@ -49,6 +50,11 @@ describe('AuthController', () => {
     warn: jest.fn(),
   };
 
+  const mockAdminClient = {
+    send: jest.fn(),
+    emit: jest.fn(),
+  };
+
   beforeEach(async () => {
     const moduleRef = await Test.createTestingModule({
       controllers: [AuthController],
@@ -81,6 +87,10 @@ describe('AuthController', () => {
         {
           provide: CommonServices.LOGGING,
           useValue: mockLoggingService,
+        },
+        {
+          provide: Microservices.ADMIN,
+          useValue: mockAdminClient,
         },
       ],
     }).compile();
