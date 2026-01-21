@@ -15,10 +15,15 @@ import {
   ParseIntPipe,
   ParseUUIDPipe,
   Patch,
+  Post,
   Query,
+  Req,
   UseGuards,
 } from '@nestjs/common';
+import { Request } from 'express';
+import { CreateClinicDto } from '../../../admin/src/dtos';
 import { UpdatePatientDto } from '../../../auth/src/dtos';
+import { User } from '../../../auth/src/entities';
 import { JwtAuthGuard } from '../auth/guards';
 import { AdminService } from './admin.service';
 
@@ -125,5 +130,23 @@ export class AdminController {
     @Body() updatePatientDto: UpdatePatientDto,
   ): Promise<{ message: string }> {
     return await this.adminService.updatePatient(globalId, updatePatientDto);
+  }
+
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @UseGuards(JwtAuthGuard)
+  @Post('clinic')
+  async createClinc(
+    @Req() req: Request,
+    @Body() createClinicDto: CreateClinicDto,
+  ) {
+    const user = req.user as User;
+    return await this.adminService.createClinic(user.id, createClinicDto);
+  }
+
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @UseGuards(JwtAuthGuard)
+  @Get('clinics')
+  async getAllClincs() {
+    return await this.adminService.getAllClinics();
   }
 }

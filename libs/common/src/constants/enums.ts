@@ -68,4 +68,7 @@ export enum AdminPatterns {
   GET_ALL_PATIENTS = 'admin.getAllPatients',
   GET_ALL_DOCTORS = 'admin.getAllDoctors',
   UPDATE_PATIENT = 'admin.updatePatient',
+  CREATE_CLINIC = 'admin.clinic.create',
+  GET_ALL_CLINICS = 'admin.getAllClinics',
+  GET_CLINIC_BY_GLOBAL_ID = 'admin.getClinicByGlobalId',
 }
