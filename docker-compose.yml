@@ -37,6 +37,7 @@ services:
       - services-network
     volumes:
       - ./logs:/app/logs
+      - ./tmp/asr_uploads:/app/tmp/asr_uploads
 
   doctor:
     build:
@@ -66,6 +67,22 @@ services:
     volumes:
       - ./logs:/app/logs
 
+  asr:
+    build:
+      context: .
+      dockerfile: ./apps/asr/Dockerfile
+    env_file:
+      - ./apps/asr/.env
+    depends_on:
+      - rabbitMq
+    command: node asr/main
+    networks:
+      - services-network
+    volumes:
+      - ./logs:/app/logs
+      - ./tmp/asr_uploads:/app/tmp/asr_uploads
+
 networks:
   services-network:
     driver: bridge
+

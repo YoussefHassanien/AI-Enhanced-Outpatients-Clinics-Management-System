@@ -25,6 +25,7 @@ export enum Microservices {
   AUTH = 'AUTH_MICROSERVICE',
   DOCTOR = 'DOCTOR_MICROSERVICE',
   ADMIN = 'ADMIN_MICROSERVICE',
+  ASR = 'ASR_MICROSERVICE',
 }
 
 export enum AuthPatterns {
@@ -66,4 +67,10 @@ export enum AdminPatterns {
   GET_ALL_VISITS = 'admin.getAllVisits',
   GET_ALL_PATIENTS = 'admin.getAllPatients',
   GET_ALL_DOCTORS = 'admin.getAllDoctors',
+}
+
+export enum AsrPatterns {
+  TRANSCRIBE_AUDIO = 'transcribe-audio',
+  IS_UP = 'asr.isUp',
+  IS_READY = 'asr.isReady',
 }
