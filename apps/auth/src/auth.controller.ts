@@ -1,17 +1,14 @@
-import { AuthPatterns, ErrorResponse, Language, Role } from '@app/common';
 import {
-  Controller,
-  Logger,
-  ParseIntPipe,
-  ParseUUIDPipe,
-} from '@nestjs/common';
-import {
-  Ctx,
-  MessagePattern,
-  Payload,
-  RmqContext,
-  RpcException,
-} from '@nestjs/microservices';
+  AuthPatterns,
+  ErrorResponse,
+  Gender,
+  Language,
+  PaginationRequest,
+  PaginationResponse,
+  Role,
+} from '@app/common';
+import { Controller, ParseIntPipe, ParseUUIDPipe } from '@nestjs/common';
+import { MessagePattern, Payload, RpcException } from '@nestjs/microservices';
 import { AuthService } from './auth.service';
 import {
   CreateAdminDto,
@@ -19,57 +16,32 @@ import {
   CreatePatientDto,
   LoginDto,
 } from './dtos';
+import { UpdatePatientInternalDto } from './dtos/update-patient-internal.dto';
+import { Admin, Doctor, Patient, User } from './entities';
 
 @Controller()
 export class AuthController {
-  private readonly logger: Logger;
-
-  constructor(private readonly authService: AuthService) {
-    this.logger = new Logger(AuthController.name);
-  }
+  constructor(private readonly authService: AuthService) {}
 
   @MessagePattern({ cmd: AuthPatterns.IS_UP })
-  isUp(@Ctx() context: RmqContext): string {
-    this.logger.log(
-      `Message of fields: ${JSON.stringify(context.getMessage().fields)} and properties: ${JSON.stringify(context.getMessage().properties)} received with Pattern: ${context.getPattern()}`,
-    );
-
+  isUp(): string {
     return this.authService.isUp();
   }
 
   @MessagePattern({ cmd: AuthPatterns.LOGIN })
-  async login(
-    @Payload() loginDto: LoginDto,
-    @Ctx() context: RmqContext,
-  ): Promise<{
+  async login(@Payload() loginDto: LoginDto): Promise<{
     role: Role;
     name: string;
     language: Language;
     token: string;
   }> {
-    this.logger.log(
-      `Message of fields: ${JSON.stringify(context.getMessage().fields)} and properties: ${JSON.stringify(context.getMessage().properties)} received with Pattern: ${context.getPattern()}`,
-    );
-
-    const credentials = await this.authService.login(loginDto);
-
-    if (credentials instanceof RpcException) {
-      this.logger.error(credentials.getError());
-      throw credentials;
-    }
-
-    return credentials;
+    return await this.authService.login(loginDto);
   }
 
   @MessagePattern({ cmd: AuthPatterns.ADMIN_CREATE })
   async adminCreate(
     @Payload() createAdminDto: CreateAdminDto,
-    @Ctx() context: RmqContext,
   ): Promise<{ message: string; id: string }> {
-    this.logger.log(
-      `Message of fields: ${JSON.stringify(context.getMessage().fields)} and properties: ${JSON.stringify(context.getMessage().properties)} received with Pattern: ${context.getPattern()}`,
-    );
-
     const adminGlobalId = await this.authService.createAdmin(createAdminDto);
 
     return { message: 'Admin is successfully created', id: adminGlobalId };
@@ -78,12 +50,7 @@ export class AuthController {
   @MessagePattern({ cmd: AuthPatterns.DOCTOR_CREATE })
   async doctorCreate(
     @Payload() createDoctorDto: CreateDoctorInternalDto,
-    @Ctx() context: RmqContext,
   ): Promise<{ message: string; id: string }> {
-    this.logger.log(
-      `Message of fields: ${JSON.stringify(context.getMessage().fields)} and properties: ${JSON.stringify(context.getMessage().properties)} received with Pattern: ${context.getPattern()}`,
-    );
-
     const { isApproved, globalId } =
       await this.authService.createDoctor(createDoctorDto);
 
@@ -98,12 +65,7 @@ export class AuthController {
   @MessagePattern({ cmd: AuthPatterns.PATIENT_CREATE })
   async patientCreate(
     @Payload() createPatientDto: CreatePatientDto,
-    @Ctx() context: RmqContext,
   ): Promise<{ message: string; id: string }> {
-    this.logger.log(
-      `Message of fields: ${JSON.stringify(context.getMessage().fields)} and properties: ${JSON.stringify(context.getMessage().properties)} received with Pattern: ${context.getPattern()}`,
-    );
-
     const patientGlobalId =
       await this.authService.createPatient(createPatientDto);
 
@@ -119,12 +81,7 @@ export class AuthController {
       }),
     )
     id: number,
-    @Ctx() context: RmqContext,
-  ) {
-    this.logger.log(
-      `Message of fields: ${JSON.stringify(context.getMessage().fields)} and properties: ${JSON.stringify(context.getMessage().properties)} received with Pattern: ${context.getPattern()}`,
-    );
-
+  ): Promise<User | null> {
     return await this.authService.getUser(id);
   }
 
@@ -137,12 +94,7 @@ export class AuthController {
       }),
     )
     doctorUserId: number,
-    @Ctx() context: RmqContext,
-  ) {
-    this.logger.log(
-      `Message of fields: ${JSON.stringify(context.getMessage().fields)} and properties: ${JSON.stringify(context.getMessage().properties)} received with Pattern: ${context.getPattern()}`,
-    );
-
+  ): Promise<Doctor | null> {
     return await this.authService.getDoctorByUserId(doctorUserId);
   }
 
@@ -155,12 +107,7 @@ export class AuthController {
       }),
     )
     patientGlobalId: string,
-    @Ctx() context: RmqContext,
-  ) {
-    this.logger.log(
-      `Message of fields: ${JSON.stringify(context.getMessage().fields)} and properties: ${JSON.stringify(context.getMessage().properties)} received with Pattern: ${context.getPattern()}`,
-    );
-
+  ): Promise<Patient | null> {
     return await this.authService.getPatientByGlobalId(patientGlobalId);
   }
 
@@ -173,12 +120,82 @@ export class AuthController {
       }),
     )
     adminUserId: number,
-    @Ctx() context: RmqContext,
-  ) {
-    this.logger.log(
-      `Message of fields: ${JSON.stringify(context.getMessage().fields)} and properties: ${JSON.stringify(context.getMessage().properties)} received with Pattern: ${context.getPattern()}`,
-    );
-
+  ): Promise<Admin | null> {
     return await this.authService.getAdminByUserId(adminUserId);
+  }
+
+  @MessagePattern({ cmd: AuthPatterns.GET_ALL_DOCTORS })
+  async getAllDoctors(@Payload() paginationRequest: PaginationRequest): Promise<
+    PaginationResponse<{
+      id: string;
+      phone: string;
+      email: string;
+      speciality: string;
+      isApproved: boolean;
+      user: {
+        id: string;
+        socialSecurityNumber: bigint;
+        gender: Gender;
+        firstName: string;
+        lastName: string;
+        dateOfBirth: Date;
+      };
+    }>
+  > {
+    return await this.authService.getAllDoctors(paginationRequest);
+  }
+
+  @MessagePattern({ cmd: AuthPatterns.GET_ALL_PATIENTS })
+  async getAllPatients(
+    @Payload() paginationRequest: PaginationRequest,
+  ): Promise<
+    PaginationResponse<{
+      id: string;
+      address: string;
+      job: string;
+      user: {
+        id: string;
+        socialSecurityNumber: bigint;
+        gender: Gender;
+        firstName: string;
+        lastName: string;
+        dateOfBirth: Date;
+      };
+    }>
+  > {
+    return await this.authService.getAllPatients(paginationRequest);
+  }
+
+  @MessagePattern({ cmd: AuthPatterns.GET_DOCTOR_BY_ID })
+  async getDoctorById(
+    @Payload(
+      new ParseIntPipe({
+        exceptionFactory: () =>
+          new RpcException(new ErrorResponse('Invalid id', 400)),
+      }),
+    )
+    id: number,
+  ): Promise<Doctor | null> {
+    return await this.authService.getDoctorById(id);
+  }
+
+  @MessagePattern({ cmd: AuthPatterns.GET_PATIENT_BY_ID })
+  async getPatientById(
+    @Payload(
+      new ParseIntPipe({
+        exceptionFactory: () =>
+          new RpcException(new ErrorResponse('Invalid id', 400)),
+      }),
+    )
+    id: number,
+  ): Promise<Patient | null> {
+    return await this.authService.getPatientById(id);
+  }
+
+  @MessagePattern({ cmd: AuthPatterns.PATIENT_UPDATE })
+  async patientUpdate(
+    @Payload() updatePatientInternalDto: UpdatePatientInternalDto,
+  ): Promise<{ message: string }> {
+    return await this.authService.updatePatient(updatePatientInternalDto);
   }
 }

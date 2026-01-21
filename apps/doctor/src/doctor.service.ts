@@ -1,16 +1,26 @@
-import { AuthPatterns, ErrorResponse, Services } from '@app/common';
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import {
+  AdminPatterns,
+  AuthPatterns,
+  CommonServices,
+  ErrorResponse,
+  LoggingService,
+  Microservices,
+  PaginationRequest,
+  PaginationResponse,
+} from '@app/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { ClientProxy, RpcException } from '@nestjs/microservices';
 import { InjectRepository } from '@nestjs/typeorm';
 import { lastValueFrom } from 'rxjs';
-import { Repository } from 'typeorm';
+import { IsNull, Repository } from 'typeorm';
+import { Clinic } from '../../admin/src/entities';
 import { Doctor, Patient } from '../../auth/src/entities';
 import { CreateMedicationInternalDto, CreateVisitInternalDto } from './dtos';
 import { Lab, Medication, Scan, Visit } from './entities';
 
 @Injectable()
 export class DoctorService {
-  private readonly logger: Logger;
+  private readonly logger: LoggingService;
   constructor(
     @InjectRepository(Lab)
     private readonly labsRepository: Repository<Lab>,
@@ -20,15 +30,17 @@ export class DoctorService {
     private readonly medicationsRepository: Repository<Medication>,
     @InjectRepository(Scan)
     private readonly scansRepository: Repository<Scan>,
-    @Inject(Services.AUTH) private readonly authClient: ClientProxy,
+    @Inject(Microservices.AUTH) private readonly authClient: ClientProxy,
+    @Inject(Microservices.ADMIN) private readonly adminClient: ClientProxy,
+    @Inject(CommonServices.LOGGING) logger: LoggingService,
   ) {
-    this.logger = new Logger(DoctorService.name);
+    this.logger = logger;
   }
 
   private async getDoctorByUserId(
     doctorUserId: number,
   ): Promise<Doctor | null> {
-    const doctor = await lastValueFrom<Promise<Doctor | null>>(
+    const doctor = await lastValueFrom<Doctor | null>(
       this.authClient.send(
         { cmd: AuthPatterns.GET_DOCTOR_BY_USER_ID },
         doctorUserId,
@@ -47,7 +59,7 @@ export class DoctorService {
   private async getPatientByGlobalId(
     patientGlobalId: string,
   ): Promise<Patient | null> {
-    const patient = await lastValueFrom<Promise<Patient | null>>(
+    const patient = await lastValueFrom<Patient | null>(
       this.authClient.send(
         { cmd: AuthPatterns.GET_PATIENT_BY_GLOBAL_ID },
         patientGlobalId,
@@ -84,6 +96,23 @@ export class DoctorService {
 
     if (!patient) {
       throw new RpcException(new ErrorResponse('Patient not found!', 404));
+    }
+
+    const clinic = await lastValueFrom<Clinic | null>(
+      this.adminClient.send(
+        { cmd: AdminPatterns.GET_CLINIC_BY_GLOBAL_ID },
+        createVisitInternalDto.clinicId,
+      ),
+    );
+
+    if (!clinic) {
+      throw new RpcException(new ErrorResponse('Clinic not found!', 404));
+    }
+
+    if (clinic.id !== doctor.clinicId) {
+      throw new RpcException(
+        new ErrorResponse('Clinic does not match doctor clinic', 400),
+      );
     }
 
     const visit = this.visitsRepository.create({
@@ -128,5 +157,83 @@ export class DoctorService {
 
     await this.medicationsRepository.insert(medication);
     this.logger.log('Successfully inserted medication');
+  }
+
+  async getAllVisits(paginationRequest: PaginationRequest): Promise<
+    PaginationResponse<{
+      id: string;
+      diagnoses: string;
+      patientId: string;
+      doctorId: string;
+      createdAt: Date;
+    }>
+  > {
+    const count = await this.visitsRepository.count({
+      where: {
+        deletedAt: IsNull(),
+      },
+    });
+    this.logger.log(`Visits count is ${count}`);
+
+    const visits = await this.visitsRepository.find({
+      select: {
+        globalId: true,
+        diagnoses: true,
+        patientId: true,
+        doctorId: true,
+        createdAt: true,
+      },
+      where: {
+        deletedAt: IsNull(),
+      },
+      skip: (paginationRequest.page - 1) * paginationRequest.limit,
+      take: paginationRequest.limit,
+    });
+    this.logger.log(
+      `Successfully retrieved ${paginationRequest.limit} visits from page: ${paginationRequest.page - 1}`,
+    );
+
+    // Fetch patient and doctor global IDs via RPC
+    const items = await Promise.all(
+      visits.map(async (visit) => {
+        const [patient, doctor] = await Promise.all([
+          lastValueFrom<Patient | null>(
+            this.authClient.send(
+              { cmd: AuthPatterns.GET_PATIENT_BY_ID },
+              visit.patientId,
+            ),
+          ),
+          lastValueFrom<Doctor | null>(
+            this.authClient.send(
+              { cmd: AuthPatterns.GET_DOCTOR_BY_ID },
+              visit.doctorId,
+            ),
+          ),
+        ]);
+
+        return {
+          id: visit.globalId,
+          diagnoses: visit.diagnoses,
+          patientId: patient?.globalId ?? 'UNKNOWN',
+          doctorId: doctor?.globalId ?? 'UNKNOWN',
+          createdAt: visit.createdAt,
+        };
+      }),
+    );
+
+    const response: PaginationResponse<{
+      id: string;
+      diagnoses: string;
+      patientId: string;
+      doctorId: string;
+      createdAt: Date;
+    }> = {
+      page: paginationRequest.page,
+      items,
+      totalItems: count,
+      totalPages: Math.ceil(count / paginationRequest.limit),
+    };
+
+    return response;
   }
 }

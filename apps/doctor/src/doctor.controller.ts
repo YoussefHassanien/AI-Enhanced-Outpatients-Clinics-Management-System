@@ -1,39 +1,26 @@
-import { DoctorPatterns } from '@app/common';
-import { Controller, Logger } from '@nestjs/common';
 import {
-  Ctx,
-  MessagePattern,
-  Payload,
-  RmqContext,
-} from '@nestjs/microservices';
+  DoctorPatterns,
+  PaginationRequest,
+  PaginationResponse,
+} from '@app/common';
+import { Controller } from '@nestjs/common';
+import { MessagePattern, Payload } from '@nestjs/microservices';
 import { DoctorService } from './doctor.service';
 import { CreateMedicationInternalDto, CreateVisitInternalDto } from './dtos';
 
 @Controller()
 export class DoctorController {
-  private readonly logger: Logger;
-  constructor(private readonly doctorService: DoctorService) {
-    this.logger = new Logger(DoctorController.name);
-  }
+  constructor(private readonly doctorService: DoctorService) {}
 
   @MessagePattern({ cmd: DoctorPatterns.IS_UP })
-  isUp(@Ctx() context: RmqContext): string {
-    this.logger.log(
-      `Message of fields: ${JSON.stringify(context.getMessage().fields)} and properties: ${JSON.stringify(context.getMessage().properties)} received with Pattern: ${context.getPattern()}`,
-    );
-
+  isUp(): string {
     return this.doctorService.isUp();
   }
 
   @MessagePattern({ cmd: DoctorPatterns.VISIT_CREATE })
   async visitCreate(
     @Payload() createVisitInternalDto: CreateVisitInternalDto,
-    @Ctx() context: RmqContext,
-  ) {
-    this.logger.log(
-      `Message of fields: ${JSON.stringify(context.getMessage().fields)} and properties: ${JSON.stringify(context.getMessage().properties)} received with Pattern: ${context.getPattern()}`,
-    );
-
+  ): Promise<{ message: string }> {
     await this.doctorService.createVisit(createVisitInternalDto);
 
     return { message: 'Visit is successfully created' };
@@ -42,14 +29,22 @@ export class DoctorController {
   @MessagePattern({ cmd: DoctorPatterns.MEDICATION_CREATE })
   async medicationCreate(
     @Payload() createMedicationInternalDto: CreateMedicationInternalDto,
-    @Ctx() context: RmqContext,
-  ) {
-    this.logger.log(
-      `Message of fields: ${JSON.stringify(context.getMessage().fields)} and properties: ${JSON.stringify(context.getMessage().properties)} received with Pattern: ${context.getPattern()}`,
-    );
-
+  ): Promise<{ message: string }> {
     await this.doctorService.createMedication(createMedicationInternalDto);
 
     return { message: 'Medication is successfully created' };
+  }
+
+  @MessagePattern({ cmd: DoctorPatterns.GET_ALL_VISITS })
+  async getAllVisits(@Payload() paginationRequest: PaginationRequest): Promise<
+    PaginationResponse<{
+      id: string;
+      diagnoses: string;
+      patientId: string;
+      doctorId: string;
+      createdAt: Date;
+    }>
+  > {
+    return await this.doctorService.getAllVisits(paginationRequest);
   }
 }

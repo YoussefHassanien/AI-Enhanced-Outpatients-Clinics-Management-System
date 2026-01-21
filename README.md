@@ -1,15 +1,17 @@
 # AI‑Enhanced Outpatients Clinics Management System
 
-NestJS monorepo for an outpatient clinics management platform. It uses a public API Gateway, internal microservices (Auth, Doctor, Admin), RabbitMQ for messaging, PostgreSQL with TypeORM, JWT authentication (signed cookies), and shared utilities in a common library. Docker Compose is provided for local development; Azure Container Apps is the recommended target for deployment.
+NestJS monorepo for an outpatient clinics management platform. It uses a public API Gateway, internal microservices (Auth, Doctor), RabbitMQ for messaging, PostgreSQL with TypeORM, JWT authentication via signed cookies, and shared utilities in a common library. Docker Compose is provided for local development; CI/CD deploys to AWS EC2 using Docker Compose.
 
-- Tech: Node.js 24 (LTS), NestJS 11, TypeORM 0.3, RabbitMQ, PostgreSQL, JWT, Class‑Validator, Throttler.
+- Tech: Node.js 24 (LTS), NestJS 11, TypeORM 0.3, RabbitMQ, PostgreSQL, JWT, Class‑Validator, Throttler, Swagger (dev‑only), Winston logging.
 - Repo structure:
-  - `apps/api-gateway` – Public HTTP API, JWT verification, rate limiting, exception handling
-  - `apps/auth` – Users, Admins, Doctors, Patients, credentials issuing (JWT), migrations
-  - `apps/doctor` and `apps/admin` – Service placeholders
-  - `libs/common` – Shared configs, entities base, decorators, filters, middleware
+  - `apps/api-gateway` – Public HTTP API, JWT verification, rate limiting, exception handling, Swagger (dev‑only)
+  - `apps/auth` – Users/Admins/Doctors/Patients, credentials issuing (JWT), migrations
+  - `apps/doctor` – Visits/Medications/Labs/Scans microservice (RMQ), migrations
+  - `apps/admin` – Minimal app (not included in Docker Compose yet)
+  - `libs/common` – Shared configs, base entity, decorators, filters, middleware, logging
 
 ## Contents
+
 - Quick start
 - Project layout
 - Configuration (.env)
@@ -28,198 +30,185 @@ NestJS monorepo for an outpatient clinics management platform. It uses a public 
 - Prereqs: Node 24+ (LTS), Docker, Docker Compose, PostgreSQL 17+.
 - Install deps:
   - `npm ci`
-- Copy env templates and update values:
+- Configure environments:
   - `apps/api-gateway/.env`
   - `apps/auth/.env`
-  - `libs/common/.env` (if you centralize DB config here)
+  - `apps/doctor/.env`
+  - `libs/common/.env` (used by TypeORM CLI)
 - Start with Docker Compose:
-  - `docker compose up --build`
-  - API Gateway: http://localhost:PORT/GLOBAL_PREFIX/VERSION
+  - `npm run docker-compose:run`
+  - API Gateway: http://localhost:4000/api/v1
 
 ## Project layout
 
 - `apps/api-gateway`
-  - Global config, versioning (`/GLOBAL_PREFIX/VERSION/`), CORS, helmet, cookie signing, validation pipe
-  - Passport JWT strategy (reads token from signed cookie)
-  - Throttling
-  - Global exception filter (maps HTTP + RPC errors to HTTP responses)
-  - Routes (examples):
-    - `GET /GLOBAL_PREFIX/VERSION/auth` (health)
-    - `POST /GLOBAL_PREFIX/VERSION/auth/login`
-    - `POST /GLOBAL_PREFIX/VERSION/auth/admin/create`
-    - `POST /GLOBAL_PREFIX/VERSION/auth/doctor/create`
-    - `POST /GLOBAL_PREFIX/VERSION/auth/patient/create`
+  - Versioned routes at `/api/v<version>/...` (env‑driven)
+  - CORS (origin from `AUDIENCE`), helmet, signed cookies, validation pipe
+  - Passport JWT strategy reading token from signed cookie `accessToken`
+  - Throttling via `@nestjs/throttler`
+  - Global exception filter mapping HTTP + RMQ RPC errors
+  - Example routes (prefix omitted here; see versioning above):
+    - `GET /auth` (health)
+    - `POST /auth/login`
+    - `POST /auth/admin/create`
+    - `POST /auth/doctor/create`
+    - `POST /auth/patient/create`
 - `apps/auth`
   - TypeORM entities: `User`, `Admin`, `Doctor`, `Patient`
-  - Migrations in `apps/auth/src/migration`
-  - Business logic for create/login/credential issuance
-  - Emits structured RPC errors consumed by the gateway
+  - Migrations under `apps/auth/src/migration`
+  - JWT issuing with audience/issuer and expiration from env
+  - RMQ microservice (queue from env) emitting structured RPC errors
+- `apps/doctor`
+  - TypeORM entities for visits/medications/labs/scans
+  - RMQ microservice (queue from env), migrations under `apps/doctor/src/migration`
 - `libs/common`
-  - `configurations/orm.ts` – TypeORM data source config
+  - `configurations/orm.ts` – TypeORM DataSource + `TypeOrmModuleAsyncOptions`
   - `filters/catch-everything.filter.ts` – Global HTTP/RPC error mapping
-  - `middlewares/logger.middleware.ts`
-  - `constants` – error response class, enums, types
-  - `database/base.entity.ts`
+  - `middlewares/logging.middleware.ts` and `interceptors/logging.interceptor.ts`
+  - `constants`, `database/base.entity.ts`
 
 ## Configuration (.env)
 
-Keep values identical where required (especially JWT issuer/audience and secrets) across API Gateway and Auth.
+Keep values aligned where required (JWT `ISSUER`/`AUDIENCE` and secrets) across API Gateway and Auth.
 
-Example `apps/api-gateway/.env`:
+API Gateway (`apps/api-gateway/.env`):
+
 ```
-PORT=***
-GLOBAL_PREFIX=***
-VERSION=***
-ENVIRONMENT=***
+ENVIRONMENT='dev'|'prod'
+PORT=4000
+VERSION=1
+GLOBAL_PREFIX=api
+
+ACCESS_TOKEN_SECRET=***
+ISSUER=https://your-issuer
+AUDIENCE=https://your-client-origin
+
 COOKIES_SECRET=***
-ACCESS_TOKEN_SECRET=***
-AUDIENCE=***
-ISSUER=***
-
-# CORS (optional fine-grained config)
-METHODS=***
-ALLOWED_HEADERS=***
-CREDENTIALS=***
+COOKIES_EXPIRATION_TIME=120000  # ms
 
 # RabbitMQ
-RABBITMQ_URL=***
-RABBIT_MQ_AUTH_CHANNEL=***
+RABBIT_MQ_URL=amqp://user:pass@host:5672
+RABBIT_MQ_TIMEOUT=30000
+RABBIT_MQ_AUTH_QUEUE=auth-queue
+RABBIT_MQ_DOCTOR_QUEUE=doctor-queue
+
+# CORS (required in production only)
+METHODS=GET,POST,PUT,PATCH,DELETE
+CREDENTIALS=true
 ```
 
-Example `apps/auth/.env`:
+Auth (`apps/auth/.env`):
+
 ```
-# JWT
+ENVIRONMENT='dev'|'prod'
+
+# PostgreSQL URL for TypeORM
+DATABASE_URL=postgresql://user:pass@host:5432/dbname
+
+# Password hashing and JWT
+ROUNDS=12
 ACCESS_TOKEN_SECRET=***
-ACCESS_TOKEN_EXPIRATION_TIME=***
-AUDIENCE=***
-ISSUER=***
-
-# DB
-DATABASE_URL=***
+ACCESS_TOKEN_EXPIRATION_TIME=120000  # ms
+HASHING_ALGORITHM=HS256
+ISSUER=https://your-issuer
+AUDIENCE=https://your-client-origin
 
 # RabbitMQ
-RABBITMQ_URL=***
-RABBIT_MQ_AUTH_CHANNEL=***
+RABBIT_MQ_URL=amqp://user:pass@host:5672
+RABBIT_MQ_TIMEOUT=30000
+RABBIT_MQ_AUTH_QUEUE=auth-queue
+```
+
+Doctor (`apps/doctor/.env`):
+
+```
+ENVIRONMENT=development|production
+DATABASE_URL=postgresql://user:pass@host:5432/dbname
+RABBIT_MQ_URL=amqp://user:pass@host:5672
+RABBIT_MQ_TIMEOUT=30000
+RABBIT_MQ_DOCTOR_QUEUE=doctor-queue
+RABBIT_MQ_AUTH_QUEUE=auth-queue
+```
+
+TypeORM CLI (`libs/common/.env`):
+
+```
+DATABASE_URL=postgresql://user:pass@host:5432/dbname
 ```
 
 Notes:
-- Make `AUDIENCE` and `ISSUER` match exactly between Auth (signing) and Gateway (verification). Avoid trailing slashes and IPv6 vs IPv4 mismatches.
+
+- `GLOBAL_PREFIX` must be `api` (validated).
+- `AUDIENCE` and `ISSUER` must match exactly between Auth (signing) and Gateway (verification).
 - Rotate `ACCESS_TOKEN_SECRET` in both apps together.
 
 ## Running locally
 
-Install and run with Node:
-- `npm ci`
-- Dev API Gateway: `npm run start:dev --workspace apps/api-gateway` (or root `npm run start:dev` and select project)
-- Dev Auth: `npm run start:dev --workspace apps/auth`
+Node (per app):
 
-Run with Docker Compose:
+- Build: `npm run build api-gateway` | `npm run build auth` | `npm run build doctor`
+- Dev: `npm run start:dev` (defaults to gateway) or `npm run start -- api-gateway` / `npm run start -- auth` / `npm run start -- doctor`
+
+Docker Compose:
+
 ```
-docker compose up --build
-# API at http://localhost:PORT/GLOBAL_PREFIX/VERSION
+npm run docker-compose:run
+# Gateway at http://localhost:4000/api/v1
 ```
 
-Compose file exposes:
-- RabbitMQ (PORT)
-- API Gateway (PORT)
+Compose highlights (see [docker-compose.yml](docker-compose.yml)):
 
-You can customize container and image names (example):
-```yaml
-services:
-  rabbitmq:
-    image: rabbitmq:4.1.6-alpine
-    container_name: message-queue
-    ports: 5672
-    networks: services-network
-
-  auth:
-    build:
-      context: .
-      dockerfile: ./apps/auth/Dockerfile
-    image: "your docker hub image"
-    container_name: auth-service
-    env_file: [./apps/auth/.env]
-    depends_on: [rabbitmq]
-    command: node auth/main
-    networks: services-network
-
-  api-gateway:
-    build:
-      context: .
-      dockerfile: ./apps/api-gateway/Dockerfile
-    image: "your docker hub image"
-    container_name: api-gateway
-    env_file: [./apps/api-gateway/.env]
-    ports: ["4000:4000"]
-    depends_on: [rabbitmq, auth]
-    command: node api-gateway/main
-    networks: services-network
-
-network:
-  services-network:
-    driver: bridge        
-```
+- RabbitMQ service `message-queue` (port 5672 exposed)
+- API Gateway on `4000:4000`
+- Auth and Doctor microservices running as RMQ consumers
+- Logs mounted to [logs/](logs)
 
 ## Database and migrations
 
-- DataSource: `libs/common/src/configurations/orm.ts`
+- DataSource: [libs/common/src/configurations/orm.ts](libs/common/src/configurations/orm.ts)
 - Scripts:
   - Generate: `npm run migration:generate -- -n <MigrationName>`
   - Run: `npm run migration:run`
   - Revert: `npm run migration:revert`
 
-Ensure DB variables in `.env` are set. Run migrations before starting services that depend on the schema (Auth).
+Ensure DB variables in `.env` are set. Run migrations before starting microservices that depend on the schema (Auth, Doctor).
 
 ## Authentication flow
 
-- API Gateway reads JWT from a signed cookie (`accessToken`) using `cookie-parser`.
-- JWT verification uses:
+- API Gateway reads JWT from signed cookie `accessToken`.
+- JWT verification:
   - `secretOrKey = ACCESS_TOKEN_SECRET`
   - `audience = AUDIENCE`
   - `issuer = ISSUER`
-- Auth service issues tokens with the same `aud`/`iss` options (not just in payload).
-- After login, the gateway (or client) should set the signed cookie. Ensure `COOKIES_SECRET` matches the signer.
+- Auth service issues tokens with matching `aud`/`iss` options.
+- Cookie is set with `COOKIES_SECRET` and `COOKIES_EXPIRATION_TIME`.
+- Swagger docs (dev): `/api/v<version>/docs`.
 
-Tip: If audience/issuer checks fail even when “identical”, trim both env values and regenerate a fresh token.
+Tip: If audience/issuer checks fail even when “identical”, trim values and reissue a fresh token.
 
 ## Error handling
 
-- Global filter: `libs/common/src/filters/catch-everything.filter.ts`
-  - Detects:
-    - HTTP exceptions (`HttpException`)
-    - Plain RPC error objects from microservices (shape `{ message: string; status: number }`)
-  - Returns normalized HTTP responses.
-- Register globally (already wired in `ApiGatewayModule` via `APP_FILTER`).
+- Global filter: [libs/common/src/filters/catch-everything.filter.ts](libs/common/src/filters/catch-everything.filter.ts)
+  - Detects HTTP exceptions and plain RMQ RPC error objects
+  - Returns normalized HTTP responses
+- Registered globally in the API Gateway via `APP_FILTER`.
 
-Known pitfall: Microservice errors arriving over RabbitMQ are plain objects, not `instanceof RpcException`. The filter uses a type‑guard to detect them by shape.
+Known pitfall: RMQ errors often arrive as plain objects (not `RpcException`). The filter uses a shape‑based guard.
 
 ## Testing
 
-- Root Jest config supports `apps/**` and `libs/**`.
-- Run all tests: `npm test`
-- E2E templates exist under `apps/**/test`.
+- Unit tests present (e.g., under [apps/auth/src](apps/auth/src)).
+- Run tests: `npm test`
+- Lint: `npm run lint`
+- Format: `npm run format`
 
-### GitHub Actions (CI/CD)
+## Deployment (GitHub Actions)
 
-Workflows under `.github/workflows/` can build and deploy to Azure. For monorepo Dockerfiles that copy from repo root, ensure:
-- `appSourcePath: ${{ github.workspace }}`
-- `dockerfilePath: apps/auth/Dockerfile` (or the gateway’s Dockerfile)
-- Provide registry credentials and Container App identifiers.
+Workflow [\.github/workflows/aws.yml](.github/workflows/aws.yml) builds images and deploys to AWS EC2 via SSH:
 
-Example snippet (Auth):
-```yaml
-- name: Build and push image
-  uses: azure/container-apps-deploy-action@v2
-  with:
-    appSourcePath: ${{ github.workspace }}
-    dockerfilePath: apps/auth/Dockerfile
-    registryUrl: docker.io
-    registryUsername: ${{ secrets.AUTHSERVICE_REGISTRY_USERNAME }}
-    registryPassword: ${{ secrets.AUTHSERVICE_REGISTRY_PASSWORD }}
-    resourceGroup: <your-resource-group-name>
-    containerAppName: auth-service
-    imageToBuild: <dockerhub-namespace>/auth-service:${{ github.sha }}
-```
+- Builds and pushes Docker images for Auth, Gateway, Doctor to Docker Hub
+- SSHs into EC2 and runs `docker compose down && docker compose pull && docker compose up -d`
+- Requires secrets: `DOCKER_USERNAME`, `DOCKER_PASSWORD`, `EC2_HOST`, `EC2_USER`, `EC2_SSH_KEY`
 
 ## License
 

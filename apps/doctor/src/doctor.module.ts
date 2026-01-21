@@ -1,6 +1,8 @@
 import {
+  CommonServices,
   dataSourceAsyncOptions,
-  Services,
+  LoggingService,
+  Microservices,
   validateEnviornmentVariables,
 } from '@app/common';
 import { Logger, Module } from '@nestjs/common';
@@ -29,7 +31,7 @@ import { Lab, Medication, Scan, Visit } from './entities';
     TypeOrmModule.forFeature([Scan, Lab, Medication, Visit]),
     ClientsModule.registerAsync([
       {
-        name: Services.AUTH,
+        name: Microservices.AUTH,
         imports: [ConfigModule],
         useFactory: (configService: ConfigService) => ({
           transport: Transport.RMQ,
@@ -37,8 +39,27 @@ import { Lab, Medication, Scan, Visit } from './entities';
             urls: [configService.getOrThrow<string>('RABBIT_MQ_URL')],
             queue: configService.getOrThrow<string>('RABBIT_MQ_AUTH_QUEUE'),
             queueOptions: {
-              durable: false,
+              durable: true,
             },
+            persistent: true,
+            maxConnectionAttempts: 5,
+          },
+        }),
+        inject: [ConfigService],
+      },
+      {
+        name: Microservices.ADMIN,
+        imports: [ConfigModule],
+        useFactory: (configService: ConfigService) => ({
+          transport: Transport.RMQ,
+          options: {
+            urls: [configService.getOrThrow<string>('RABBIT_MQ_URL')],
+            queue: configService.getOrThrow<string>('RABBIT_MQ_ADMIN_QUEUE'),
+            queueOptions: {
+              durable: true,
+            },
+            persistent: true,
+            maxConnectionAttempts: 5,
           },
         }),
         inject: [ConfigService],
@@ -46,7 +67,17 @@ import { Lab, Medication, Scan, Visit } from './entities';
     ]),
   ],
   controllers: [DoctorController],
-  providers: [DoctorService],
+  providers: [
+    DoctorService,
+    {
+      provide: CommonServices.LOGGING,
+      useFactory: (configService: ConfigService) => {
+        return new LoggingService(configService, 'doctor');
+      },
+      inject: [ConfigService],
+    },
+  ],
+  exports: [CommonServices.LOGGING],
 })
 export class DoctorModule {
   private readonly logger = new Logger(DoctorModule.name);

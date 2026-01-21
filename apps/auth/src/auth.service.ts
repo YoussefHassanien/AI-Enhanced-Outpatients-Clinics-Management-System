@@ -1,12 +1,25 @@
-import { ErrorResponse, Gender, Language, Role } from '@app/common';
-import { Injectable, Logger } from '@nestjs/common';
+import {
+  AdminPatterns,
+  CommonServices,
+  ErrorResponse,
+  Gender,
+  Language,
+  LoggingService,
+  Microservices,
+  PaginationRequest,
+  PaginationResponse,
+  Role,
+} from '@app/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-import { RpcException } from '@nestjs/microservices';
+import { ClientProxy, RpcException } from '@nestjs/microservices';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcrypt';
 import { Algorithm } from 'jsonwebtoken';
+import { lastValueFrom } from 'rxjs';
 import { EntityManager, IsNull, Not, Repository } from 'typeorm';
+import { Clinic } from '../../admin/src/entities';
 import { JwtPayload } from './constants';
 import {
   CreateAdminDto,
@@ -16,6 +29,7 @@ import {
   CredentialsResponseDto,
   LoginDto,
 } from './dtos';
+import { UpdatePatientInternalDto } from './dtos/update-patient-internal.dto';
 import { Admin, Doctor, Patient, User } from './entities';
 
 @Injectable()
@@ -26,7 +40,7 @@ export class AuthService {
   private readonly accessTokenExpirationTime: number;
   private readonly issuer: string;
   private readonly audience: string;
-  private readonly logger: Logger;
+  private readonly logger: LoggingService;
   constructor(
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
@@ -38,6 +52,8 @@ export class AuthService {
     private readonly doctorRepository: Repository<Doctor>,
     @InjectRepository(Admin)
     private readonly adminRepository: Repository<Admin>,
+    @Inject(CommonServices.LOGGING) logger: LoggingService,
+    @Inject(Microservices.ADMIN) private readonly adminClient: ClientProxy,
   ) {
     this.hashingAlgorithm =
       this.configService.getOrThrow<Algorithm>('HASHING_ALGORITHM');
@@ -50,7 +66,7 @@ export class AuthService {
     );
     this.issuer = this.configService.getOrThrow<string>('ISSUER');
     this.audience = this.configService.getOrThrow<string>('AUDIENCE');
-    this.logger = new Logger(AuthService.name);
+    this.logger = logger;
   }
 
   private async validateUser(
@@ -362,6 +378,17 @@ export class AuthService {
       throw new RpcException(new ErrorResponse('Doctor already exists!', 400));
     }
 
+    const clinic = await lastValueFrom<Clinic | null>(
+      this.adminClient.send(
+        { cmd: AdminPatterns.GET_CLINIC_BY_GLOBAL_ID },
+        doctorDto.clinicId,
+      ),
+    );
+
+    if (!clinic) {
+      throw new RpcException(new ErrorResponse('Clinic not found!', 404));
+    }
+
     return await this.userRepository.manager.transaction(
       async (manager: EntityManager) => {
         const createdUser = await this.createUser(
@@ -496,5 +523,268 @@ export class AuthService {
         return patient.globalId;
       },
     );
+  }
+
+  async getAllDoctors(paginationRequest: PaginationRequest): Promise<
+    PaginationResponse<{
+      id: string;
+      phone: string;
+      email: string;
+      speciality: string;
+      isApproved: boolean;
+      user: {
+        id: string;
+        socialSecurityNumber: bigint;
+        gender: Gender;
+        firstName: string;
+        lastName: string;
+        dateOfBirth: Date;
+      };
+    }>
+  > {
+    const count = await this.doctorRepository.count({
+      where: {
+        deletedAt: IsNull(),
+        user: {
+          deletedAt: IsNull(),
+        },
+      },
+      relations: { user: true },
+    });
+    this.logger.log(`Doctors count is ${count}`);
+
+    const doctors = await this.doctorRepository.find({
+      relations: {
+        user: true,
+      },
+      select: {
+        user: {
+          firstName: true,
+          lastName: true,
+          dateOfBirth: true,
+          socialSecurityNumber: true,
+          globalId: true,
+          gender: true,
+        },
+        id: true,
+        globalId: true,
+        phone: true,
+        email: true,
+        speciality: true,
+        isApproved: true,
+      },
+      where: {
+        deletedAt: IsNull(),
+        user: {
+          deletedAt: IsNull(),
+        },
+      },
+      skip: (paginationRequest.page - 1) * paginationRequest.limit,
+      take: paginationRequest.limit,
+    });
+    this.logger.log(
+      `Successfully retrieved ${paginationRequest.limit} doctors from page: ${paginationRequest.page - 1}`,
+    );
+
+    const response: PaginationResponse<{
+      id: string;
+      phone: string;
+      email: string;
+      speciality: string;
+      isApproved: boolean;
+      user: {
+        id: string;
+        socialSecurityNumber: bigint;
+        gender: Gender;
+        firstName: string;
+        lastName: string;
+        dateOfBirth: Date;
+      };
+    }> = {
+      items: doctors.map((doctor) => ({
+        id: doctor.globalId,
+        phone: doctor.phone,
+        email: doctor.email,
+        speciality: doctor.speciality,
+        isApproved: doctor.isApproved,
+        user: {
+          id: doctor.user.globalId,
+          firstName: doctor.user.firstName,
+          lastName: doctor.user.lastName,
+          gender: doctor.user.gender,
+          dateOfBirth: doctor.user.dateOfBirth,
+          socialSecurityNumber: doctor.user.socialSecurityNumber,
+        },
+      })),
+      page: paginationRequest.page,
+      totalItems: count,
+      totalPages: Math.ceil(count / paginationRequest.limit),
+    };
+
+    return response;
+  }
+
+  async getAllPatients(paginationRequest: PaginationRequest): Promise<
+    PaginationResponse<{
+      id: string;
+      address: string;
+      job: string;
+      user: {
+        id: string;
+        socialSecurityNumber: bigint;
+        gender: Gender;
+        firstName: string;
+        lastName: string;
+        dateOfBirth: Date;
+      };
+    }>
+  > {
+    const count = await this.patientRepository.count({
+      where: {
+        deletedAt: IsNull(),
+        user: {
+          deletedAt: IsNull(),
+        },
+      },
+      relations: { user: true },
+    });
+    this.logger.log(`Patients count is ${count}`);
+
+    const patients = await this.patientRepository.find({
+      relations: {
+        user: true,
+      },
+      select: {
+        user: {
+          firstName: true,
+          lastName: true,
+          dateOfBirth: true,
+          socialSecurityNumber: true,
+          globalId: true,
+          gender: true,
+        },
+        id: true,
+        globalId: true,
+        address: true,
+        job: true,
+      },
+      where: {
+        deletedAt: IsNull(),
+        user: {
+          deletedAt: IsNull(),
+        },
+      },
+      skip: (paginationRequest.page - 1) * paginationRequest.limit,
+      take: paginationRequest.limit,
+    });
+    this.logger.log(
+      `Successfully retrieved ${paginationRequest.limit} patients from page: ${paginationRequest.page - 1}`,
+    );
+
+    const response: PaginationResponse<{
+      id: string;
+      address: string;
+      job: string;
+      user: {
+        id: string;
+        socialSecurityNumber: bigint;
+        gender: Gender;
+        firstName: string;
+        lastName: string;
+        dateOfBirth: Date;
+      };
+    }> = {
+      items: patients.map((patient) => ({
+        id: patient.globalId,
+        job: patient.job,
+        address: patient.address,
+        user: {
+          id: patient.user.globalId,
+          firstName: patient.user.firstName,
+          lastName: patient.user.lastName,
+          gender: patient.user.gender,
+          dateOfBirth: patient.user.dateOfBirth,
+          socialSecurityNumber: patient.user.socialSecurityNumber,
+        },
+      })),
+      page: paginationRequest.page,
+      totalItems: count,
+      totalPages: Math.ceil(count / paginationRequest.limit),
+    };
+
+    return response;
+  }
+
+  async getPatientById(id: number): Promise<Patient | null> {
+    return await this.patientRepository.findOneBy({
+      id,
+      deletedAt: IsNull(),
+    });
+  }
+
+  async getDoctorById(id: number): Promise<Doctor | null> {
+    return await this.doctorRepository.findOneBy({
+      id,
+      deletedAt: IsNull(),
+    });
+  }
+
+  async updatePatient(
+    updatePatientInternalDto: UpdatePatientInternalDto,
+  ): Promise<{ message: string }> {
+    const patient = await this.patientRepository.findOne({
+      where: {
+        globalId: updatePatientInternalDto.globalId,
+        deletedAt: IsNull(),
+      },
+      relations: {
+        user: true,
+      },
+    });
+
+    if (!patient) {
+      throw new RpcException(new ErrorResponse('Patient not found!', 404));
+    }
+
+    await this.patientRepository.manager.transaction(
+      async (manager: EntityManager) => {
+        // Update User fields if provided
+        if (
+          updatePatientInternalDto.firstName ||
+          updatePatientInternalDto.lastName
+        ) {
+          const userRepository = manager.getRepository(User);
+          const userUpdates: Partial<User> = {};
+
+          if (updatePatientInternalDto.firstName) {
+            userUpdates.firstName = updatePatientInternalDto.firstName;
+          }
+          if (updatePatientInternalDto.lastName) {
+            userUpdates.lastName = updatePatientInternalDto.lastName;
+          }
+
+          await userRepository.update(patient.user.id, userUpdates);
+          this.logger.log('Successfully updated user data');
+        }
+
+        // Update Patient fields if provided
+        if (updatePatientInternalDto.address || updatePatientInternalDto.job) {
+          const patientRepository = manager.getRepository(Patient);
+          const patientUpdates: Partial<Patient> = {};
+
+          if (updatePatientInternalDto.address) {
+            patientUpdates.address = updatePatientInternalDto.address;
+          }
+          if (updatePatientInternalDto.job) {
+            patientUpdates.job = updatePatientInternalDto.job;
+          }
+
+          await patientRepository.update(patient.id, patientUpdates);
+          this.logger.log('Successfully updated patient data');
+        }
+      },
+    );
+
+    return { message: 'Patient data is successfully updated' };
   }
 }

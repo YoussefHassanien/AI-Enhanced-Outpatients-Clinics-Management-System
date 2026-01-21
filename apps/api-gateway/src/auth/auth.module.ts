@@ -1,4 +1,4 @@
-import { Services } from '@app/common';
+import { CommonServices, LoggingService, Microservices } from '@app/common';
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ClientsModule, Transport } from '@nestjs/microservices';
@@ -10,7 +10,7 @@ import { JwtStrategy } from './strategies';
   imports: [
     ClientsModule.registerAsync([
       {
-        name: Services.AUTH,
+        name: Microservices.AUTH,
         imports: [ConfigModule],
         useFactory: (configService: ConfigService) => ({
           transport: Transport.RMQ,
@@ -18,8 +18,10 @@ import { JwtStrategy } from './strategies';
             urls: [configService.getOrThrow<string>('RABBIT_MQ_URL')],
             queue: configService.getOrThrow<string>('RABBIT_MQ_AUTH_QUEUE'),
             queueOptions: {
-              durable: false,
+              durable: true,
             },
+            persistent: true,
+            maxConnectionAttempts: 5,
           },
         }),
         inject: [ConfigService],
@@ -27,7 +29,17 @@ import { JwtStrategy } from './strategies';
     ]),
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy],
+  providers: [
+    AuthService,
+    JwtStrategy,
+    {
+      provide: CommonServices.LOGGING,
+      useFactory: (configService: ConfigService) => {
+        return new LoggingService(configService, 'api-gateway');
+      },
+      inject: [ConfigService],
+    },
+  ],
   exports: [JwtStrategy],
 })
 export class AuthModule {}
