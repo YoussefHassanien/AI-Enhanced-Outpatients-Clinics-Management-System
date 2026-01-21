@@ -198,4 +198,12 @@ export class AuthController {
   ): Promise<{ message: string }> {
     return await this.authService.updatePatient(updatePatientInternalDto);
   }
+
+  @MessagePattern({ cmd: AuthPatterns.GET_PATIENT_BY_SOCIAL_SECURITY_NUMBER })
+  async getPatientBySocialSecurityNumber(
+    @Payload()
+    socialSecurityNumber: number,
+  ): Promise<Patient | null> {
+    return await this.authService.getPatientById(socialSecurityNumber);
+  }
 }

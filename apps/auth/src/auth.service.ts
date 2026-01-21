@@ -418,6 +418,7 @@ export class AuthService {
           speciality: doctorDto.speciality,
           phone: doctorDto.phone,
           isApproved: doctorDto.role === Role.SUPER_ADMIN,
+          clinicId: clinic.id,
         });
         this.logger.log('Successfully created a doctor');
 
@@ -786,5 +787,37 @@ export class AuthService {
     );
 
     return { message: 'Patient data is successfully updated' };
+  }
+
+  async getPatientBySocialSecurityNumber(
+    socialSecurityNumber: number,
+  ): Promise<Patient | null> {
+    return await this.patientRepository.findOne({
+      relations: {
+        user: true,
+      },
+      where: {
+        user: {
+          socialSecurityNumber: BigInt(socialSecurityNumber),
+          deletedAt: IsNull(),
+        },
+        deletedAt: IsNull(),
+      },
+      select: {
+        user: {
+          id: true,
+          globalId: true,
+          firstName: true,
+          lastName: true,
+          gender: true,
+          dateOfBirth: true,
+          socialSecurityNumber: true,
+        },
+        address: true,
+        job: true,
+        id: true,
+        globalId: true,
+      },
+    });
   }
 }
