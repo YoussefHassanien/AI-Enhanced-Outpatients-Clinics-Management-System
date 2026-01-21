@@ -2,7 +2,7 @@ name: Deploy to EC2
 
 on:
   push:
-    branches: [development, main]
+    branches: [main]
     paths:
       [
         'apps/auth/**',
@@ -13,10 +13,13 @@ on:
         '.github/workflows/aws.yml',
         'package.json',
         'package-lock.json',
+        'docker-compose.yml',
+        'nginx.conf',
+        'rabbitmq.conf',
       ]
 
   pull_request:
-    branches: [development, main]
+    branches: [main]
     paths:
       [
         'apps/auth/**',
@@ -27,6 +30,9 @@ on:
         '.github/workflows/aws.yml',
         'package.json',
         'package-lock.json',
+        'docker-compose.yml',
+        'nginx.conf',
+        'rabbitmq.conf',
       ]
 
   workflow_dispatch:
@@ -110,8 +116,21 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout Code
+        uses: actions/checkout@v6
+
+      - name: Copy config files to EC2
+        uses: appleboy/scp-action@v1
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          source: 'docker-compose.yml,rabbitmq.conf,nginx.conf'
+          target: '~/app'
+          overwrite: true
+
       - name: Deploy to EC2 via SSH
-        uses: appleboy/ssh-action@v1.0.3
+        uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
