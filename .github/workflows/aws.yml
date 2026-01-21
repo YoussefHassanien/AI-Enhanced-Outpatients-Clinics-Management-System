@@ -62,7 +62,7 @@ jobs:
   # JOB 2: BUILD AND PUSH IMAGES (Runs ONLY on Pushes)
   build-and-push:
     needs: test
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
@@ -113,7 +113,7 @@ jobs:
   # JOB 3: DEPLOY TO EC2 (Runs ONLY on Pushes)
   deploy:
     needs: build-and-push
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
