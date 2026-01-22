@@ -1,7 +1,6 @@
 services:
   rabbitMq:
     image: rabbitmq:4.1.6-alpine
-    container_name: message-queue
     ports:
       - 5672
     networks:

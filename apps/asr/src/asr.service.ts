@@ -1,13 +1,12 @@
+import { CommonServices, LoggingService } from '@app/common';
 import { HttpService } from '@nestjs/axios';
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { RpcException } from '@nestjs/microservices';
+import FormData from 'form-data';
+import * as fs from 'fs';
 import { firstValueFrom } from 'rxjs';
 import { TranscribeAudioDto } from './dtos';
-import * as fs from 'fs';
-import FormData from 'form-data';
-import { CommonServices, LoggingService } from '@app/common';
-import { Inject } from '@nestjs/common';
 
 @Injectable()
 export class AsrService {
@@ -16,7 +15,7 @@ export class AsrService {
     private readonly configService: ConfigService,
     @Inject(CommonServices.LOGGING)
     private readonly logger: LoggingService,
-  ) { }
+  ) {}
 
   isUp(): string {
     return 'ASR service is up';
@@ -30,7 +29,10 @@ export class AsrService {
       );
       return response.data;
     } catch (error) {
-      this.logger.error('HuggingFace Whisper API is not reachable', error.stack);
+      this.logger.error(
+        'HuggingFace Whisper API is not reachable',
+        error.stack,
+      );
       return {
         service: 'Whisper-FastAPI',
         status: 'DOWN',
@@ -80,7 +82,7 @@ export class AsrService {
     } catch (error) {
       throw new RpcException(
         `Error transcribing file: ${error.response?.status} - ${error.response?.data || error.message}`,
-      )
+      );
     }
   }
 

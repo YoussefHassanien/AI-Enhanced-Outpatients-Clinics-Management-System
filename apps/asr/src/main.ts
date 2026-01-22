@@ -64,4 +64,3 @@ bootstrap().catch((error) => {
     error instanceof Error ? error.stack : String(error),
   );
 });
-
