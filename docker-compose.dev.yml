@@ -32,12 +32,13 @@ services:
       - auth
       - doctor
       - ocr
+      - asr
+      - admin
     command: node api-gateway/main
     networks:
       - services-network
     volumes:
       - ./logs:/app/logs
-      - ./tmp/asr_uploads:/app/tmp/asr_uploads
 
   doctor:
     build:
