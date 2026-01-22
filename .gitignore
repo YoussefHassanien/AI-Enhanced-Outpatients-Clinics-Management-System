@@ -54,3 +54,14 @@ pids
 
 # Diagnostic reports (https://nodejs.org/api/report.html)
 report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
+
+# OCR
+apps/ocr/runs
+apps/ocr/__pycache__
+apps/ocr/*.pyc
+apps/ocr/*.pyo
+apps/ocr/*.pyd
+apps/ocr/.pytest_cache/
+apps/ocr/temp_uploads/
+apps/ocr/preprocess.py
+apps/ocr/.venv

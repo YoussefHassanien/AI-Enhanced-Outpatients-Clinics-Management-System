@@ -32,6 +32,7 @@ services:
       - rabbitMq
       - auth
       - doctor
+      - ocr
     command: node api-gateway/main
     networks:
       - services-network
@@ -65,6 +66,25 @@ services:
       - services-network
     volumes:
       - ./logs:/app/logs
+
+  ocr:
+    build:
+      context: ./apps/ocr
+      dockerfile: Dockerfile
+    env_file:
+      - ./apps/ocr/.env
+    depends_on:
+      - rabbitMq
+    command: ['python', 'run_consumer.py']
+    networks:
+      - services-network
+    volumes:
+      - ./logs/ocr:/app/logs
+      - paddleocr-cache:/root/.paddlex
+
+volumes:
+  paddleocr-cache:
+    driver: local
 
 networks:
   services-network:
