@@ -1,7 +1,9 @@
 import {
+  AdminPatterns,
   AuthPatterns,
   CommonServices,
   ErrorResponse,
+  Gender,
   LoggingService,
   Microservices,
   PaginationRequest,
@@ -12,7 +14,9 @@ import { ClientProxy, RpcException } from '@nestjs/microservices';
 import { InjectRepository } from '@nestjs/typeorm';
 import { lastValueFrom } from 'rxjs';
 import { IsNull, Repository } from 'typeorm';
+import { Clinic } from '../../admin/src/entities';
 import { Doctor, Patient } from '../../auth/src/entities';
+import { MedicationDosage, MedicationPeriod, ScanTypes } from './constants';
 import { CreateMedicationInternalDto, CreateVisitInternalDto } from './dtos';
 import { Lab, Medication, Scan, Visit } from './entities';
 
@@ -29,6 +33,7 @@ export class DoctorService {
     @InjectRepository(Scan)
     private readonly scansRepository: Repository<Scan>,
     @Inject(Microservices.AUTH) private readonly authClient: ClientProxy,
+    @Inject(Microservices.ADMIN) private readonly adminClient: ClientProxy,
     @Inject(CommonServices.LOGGING) logger: LoggingService,
   ) {
     this.logger = logger;
@@ -72,6 +77,15 @@ export class DoctorService {
     return patient;
   }
 
+  private validateSocialSecurityNumber(socialSecurityNumber: string): void {
+    const regex = /^[23]\d{2}(0[1-9]|1[0-2])(0[1-9]|[12]\d|3[01])\d{7}$/;
+    if (!regex.test(socialSecurityNumber)) {
+      throw new RpcException(
+        new ErrorResponse('Invalid social security number format', 400),
+      );
+    }
+  }
+
   isUp(): string {
     return 'Doctor service is up';
   }
@@ -95,10 +109,22 @@ export class DoctorService {
       throw new RpcException(new ErrorResponse('Patient not found!', 404));
     }
 
+    const clinic = await lastValueFrom<Clinic | null>(
+      this.adminClient.send(
+        { cmd: AdminPatterns.GET_CLINIC_BY_ID },
+        doctor.clinicId,
+      ),
+    );
+
+    if (!clinic) {
+      throw new RpcException(new ErrorResponse('Clinic not found!', 404));
+    }
+
     const visit = this.visitsRepository.create({
       diagnoses: createVisitInternalDto.diagnoses,
       patientId: patient.id,
       doctorId: doctor.id,
+      clinicId: doctor.clinicId,
     });
     this.logger.log('Successfully created visit');
 
@@ -215,5 +241,471 @@ export class DoctorService {
     };
 
     return response;
+  }
+
+  async getPatientVisits(socialSecurityNumber: string): Promise<{
+    patient: {
+      id: string;
+      name: string;
+      gender: Gender;
+      dateOfBirth: Date;
+      socialSecurityNumber: string;
+      address: string;
+      job: string;
+    };
+    clinics: {
+      id: string;
+      name: string;
+      visits: {
+        doctor: {
+          name: string;
+          speciality: string;
+        };
+        diagnoses: string;
+        createdAt: Date;
+      }[];
+    }[];
+  }> {
+    this.validateSocialSecurityNumber(socialSecurityNumber);
+
+    const patient = await lastValueFrom<Patient | null>(
+      this.authClient.send(
+        { cmd: AuthPatterns.GET_PATIENT_BY_SOCIAL_SECURITY_NUMBER },
+        socialSecurityNumber,
+      ),
+    );
+
+    if (!patient) {
+      throw new RpcException(new ErrorResponse('Patient not found!', 404));
+    }
+
+    // Fetch clinics and visits in parallel
+    const [clinics, patientVisits] = await Promise.all([
+      lastValueFrom<Clinic[]>(
+        this.adminClient.send(
+          { cmd: AdminPatterns.GET_ALL_CLINICS_WITH_ID },
+          {},
+        ),
+      ),
+      this.visitsRepository.find({
+        where: {
+          patientId: patient.id,
+          deletedAt: IsNull(),
+        },
+        order: {
+          createdAt: 'DESC',
+        },
+      }),
+    ]);
+
+    // Extract unique doctor IDs
+    const doctorsIds = [...new Set(patientVisits.map((v) => v.doctorId))];
+
+    // Fetch all doctors in parallel (batch request)
+    const doctors = await Promise.all(
+      doctorsIds.map((id) =>
+        lastValueFrom<Doctor | null>(
+          this.authClient.send({ cmd: AuthPatterns.GET_DOCTOR_BY_ID }, id),
+        ),
+      ),
+    );
+
+    // Create lookup maps
+    const doctorsMap = new Map(
+      doctors.map((doctor, index) => [
+        doctorsIds[index],
+        doctor
+          ? {
+              name: `${doctor.user.firstName} ${doctor.user.lastName}`,
+              speciality: doctor.speciality,
+            }
+          : { name: 'UNKNOWN', speciality: 'UNKNOWN' },
+      ]),
+    );
+
+    const clinicsMap = new Map(
+      clinics.map((clinic) => [
+        clinic.id,
+        {
+          id: clinic.globalId,
+          name: clinic.name,
+        },
+      ]),
+    );
+
+    // Build patient object
+    const patientInfo = {
+      id: patient.globalId,
+      name: `${patient.user.firstName} ${patient.user.lastName}`,
+      gender: patient.user.gender,
+      dateOfBirth: patient.user.dateOfBirth,
+      socialSecurityNumber: patient.user.socialSecurityNumber.toString(),
+      address: patient.address,
+      job: patient.job,
+    };
+
+    // Group visits by clinic
+    const visitsByClinic = patientVisits.reduce<
+      Record<
+        number,
+        {
+          id: string;
+          name: string;
+          visits: {
+            doctor: {
+              name: string;
+              speciality: string;
+            };
+            diagnoses: string;
+            createdAt: Date;
+          }[];
+        }
+      >
+    >((acc, visit) => {
+      const clinic = clinicsMap.get(visit.clinicId);
+      if (!clinic) return acc;
+
+      const doctor = doctorsMap.get(visit.doctorId);
+
+      if (!acc[visit.clinicId]) {
+        acc[visit.clinicId] = {
+          id: clinic.id,
+          name: clinic.name,
+          visits: [],
+        };
+      }
+
+      acc[visit.clinicId].visits.push({
+        doctor: {
+          name: doctor?.name ?? 'UNKNOWN',
+          speciality: doctor?.speciality ?? 'UNKNOWN',
+        },
+        diagnoses: visit.diagnoses,
+        createdAt: visit.createdAt,
+      });
+
+      return acc;
+    }, {});
+
+    return { patient: patientInfo, clinics: Object.values(visitsByClinic) };
+  }
+
+  async getPatientMedications(socialSecurityNumber: string): Promise<{
+    patient: {
+      id: string;
+      name: string;
+      gender: Gender;
+      dateOfBirth: Date;
+      socialSecurityNumber: string;
+      address: string;
+      job: string;
+    };
+    medications: {
+      name: string;
+      dosage: MedicationDosage;
+      period: MedicationPeriod;
+      comments: string;
+      doctor: {
+        name: string;
+        speciality: string;
+      };
+      createdAt: Date;
+    }[];
+  }> {
+    this.validateSocialSecurityNumber(socialSecurityNumber);
+
+    const patient = await lastValueFrom<Patient | null>(
+      this.authClient.send(
+        { cmd: AuthPatterns.GET_PATIENT_BY_SOCIAL_SECURITY_NUMBER },
+        socialSecurityNumber,
+      ),
+    );
+
+    if (!patient) {
+      throw new RpcException(new ErrorResponse('Patient not found!', 404));
+    }
+
+    const patientMedications = await this.medicationsRepository.find({
+      where: {
+        patientId: patient.id,
+        deletedAt: IsNull(),
+      },
+      order: {
+        createdAt: 'DESC',
+      },
+    });
+
+    // Extract unique doctor IDs
+    const doctorsIds = [...new Set(patientMedications.map((m) => m.doctorId))];
+
+    // Fetch all doctors in parallel
+    const doctors = await Promise.all(
+      doctorsIds.map((id) =>
+        lastValueFrom<Doctor | null>(
+          this.authClient.send({ cmd: AuthPatterns.GET_DOCTOR_BY_ID }, id),
+        ),
+      ),
+    );
+
+    // Create doctors lookup map
+    const doctorsMap = new Map(
+      doctors.map((doctor, index) => [
+        doctorsIds[index],
+        doctor
+          ? {
+              name: `${doctor.user.firstName} ${doctor.user.lastName}`,
+              speciality: doctor.speciality,
+            }
+          : { name: 'UNKNOWN', speciality: 'UNKNOWN' },
+      ]),
+    );
+
+    // Build patient object
+    const patientInfo = {
+      id: patient.globalId,
+      name: `${patient.user.firstName} ${patient.user.lastName}`,
+      gender: patient.user.gender,
+      dateOfBirth: patient.user.dateOfBirth,
+      socialSecurityNumber: patient.user.socialSecurityNumber.toString(),
+      address: patient.address,
+      job: patient.job,
+    };
+
+    // Map medications
+    const medications = patientMedications.map((medication) => {
+      const doctor = doctorsMap.get(medication.doctorId) ?? {
+        name: 'UNKNOWN',
+        speciality: 'UNKNOWN',
+      };
+
+      return {
+        name: medication.name,
+        dosage: medication.dosage,
+        period: medication.period,
+        comments: medication.comments,
+        doctor: {
+          name: doctor.name,
+          speciality: doctor.speciality,
+        },
+        createdAt: medication.createdAt,
+      };
+    });
+
+    return {
+      patient: patientInfo,
+      medications,
+    };
+  }
+
+  async getPatientScans(socialSecurityNumber: string): Promise<{
+    patient: {
+      id: string;
+      name: string;
+      gender: Gender;
+      dateOfBirth: Date;
+      socialSecurityNumber: string;
+      address: string;
+      job: string;
+    };
+    scans: {
+      name: string;
+      type: ScanTypes;
+      photoUrl: string;
+      comments: string;
+      doctor: {
+        name: string;
+        speciality: string;
+      };
+      createdAt: Date;
+    }[];
+  }> {
+    this.validateSocialSecurityNumber(socialSecurityNumber);
+
+    const patient = await lastValueFrom<Patient | null>(
+      this.authClient.send(
+        { cmd: AuthPatterns.GET_PATIENT_BY_SOCIAL_SECURITY_NUMBER },
+        socialSecurityNumber,
+      ),
+    );
+
+    if (!patient) {
+      throw new RpcException(new ErrorResponse('Patient not found!', 404));
+    }
+
+    const patientScans = await this.scansRepository.find({
+      where: {
+        patientId: patient.id,
+        deletedAt: IsNull(),
+      },
+      order: {
+        createdAt: 'DESC',
+      },
+    });
+
+    // Extract unique doctor IDs
+    const doctorsIds = [...new Set(patientScans.map((s) => s.doctorId))];
+
+    // Fetch all doctors in parallel
+    const doctors = await Promise.all(
+      doctorsIds.map((id) =>
+        lastValueFrom<Doctor | null>(
+          this.authClient.send({ cmd: AuthPatterns.GET_DOCTOR_BY_ID }, id),
+        ),
+      ),
+    );
+
+    // Create doctors lookup map
+    const doctorsMap = new Map(
+      doctors.map((doctor, index) => [
+        doctorsIds[index],
+        doctor
+          ? {
+              name: `${doctor.user.firstName} ${doctor.user.lastName}`,
+              speciality: doctor.speciality,
+            }
+          : { name: 'UNKNOWN', speciality: 'UNKNOWN' },
+      ]),
+    );
+
+    // Build patient object
+    const patientInfo = {
+      id: patient.globalId,
+      name: `${patient.user.firstName} ${patient.user.lastName}`,
+      gender: patient.user.gender,
+      dateOfBirth: patient.user.dateOfBirth,
+      socialSecurityNumber: patient.user.socialSecurityNumber.toString(),
+      address: patient.address,
+      job: patient.job,
+    };
+
+    // Map scans
+    const scans = patientScans.map((scan) => {
+      const doctor = doctorsMap.get(scan.doctorId) ?? {
+        name: 'UNKNOWN',
+        speciality: 'UNKNOWN',
+      };
+
+      return {
+        name: scan.name,
+        type: scan.type,
+        photoUrl: scan.photoUrl,
+        comments: scan.comments,
+        doctor: {
+          name: doctor.name,
+          speciality: doctor.speciality,
+        },
+        createdAt: scan.createdAt,
+      };
+    });
+
+    return {
+      patient: patientInfo,
+      scans,
+    };
+  }
+
+  async getPatientLabs(socialSecurityNumber: string): Promise<{
+    patient: {
+      id: string;
+      name: string;
+      gender: Gender;
+      dateOfBirth: Date;
+      socialSecurityNumber: string;
+      address: string;
+      job: string;
+    };
+    labs: {
+      name: string;
+      photoUrl: string;
+      comments: string;
+      doctor: {
+        name: string;
+        speciality: string;
+      };
+      createdAt: Date;
+    }[];
+  }> {
+    this.validateSocialSecurityNumber(socialSecurityNumber);
+
+    const patient = await lastValueFrom<Patient | null>(
+      this.authClient.send(
+        { cmd: AuthPatterns.GET_PATIENT_BY_SOCIAL_SECURITY_NUMBER },
+        socialSecurityNumber,
+      ),
+    );
+
+    if (!patient) {
+      throw new RpcException(new ErrorResponse('Patient not found!', 404));
+    }
+
+    const patientLabs = await this.labsRepository.find({
+      where: {
+        patientId: patient.id,
+        deletedAt: IsNull(),
+      },
+      order: {
+        createdAt: 'DESC',
+      },
+    });
+
+    // Extract unique doctor IDs
+    const doctorsIds = [...new Set(patientLabs.map((l) => l.doctorId))];
+
+    // Fetch all doctors in parallel
+    const doctors = await Promise.all(
+      doctorsIds.map((id) =>
+        lastValueFrom<Doctor | null>(
+          this.authClient.send({ cmd: AuthPatterns.GET_DOCTOR_BY_ID }, id),
+        ),
+      ),
+    );
+
+    // Create doctors lookup map
+    const doctorsMap = new Map(
+      doctors.map((doctor, index) => [
+        doctorsIds[index],
+        doctor
+          ? {
+              name: `${doctor.user.firstName} ${doctor.user.lastName}`,
+              speciality: doctor.speciality,
+            }
+          : { name: 'UNKNOWN', speciality: 'UNKNOWN' },
+      ]),
+    );
+
+    // Build patient object
+    const patientInfo = {
+      id: patient.globalId,
+      name: `${patient.user.firstName} ${patient.user.lastName}`,
+      gender: patient.user.gender,
+      dateOfBirth: patient.user.dateOfBirth,
+      socialSecurityNumber: patient.user.socialSecurityNumber.toString(),
+      address: patient.address,
+      job: patient.job,
+    };
+
+    // Map labs
+    const labs = patientLabs.map((lab) => {
+      const doctor = doctorsMap.get(lab.doctorId) ?? {
+        name: 'UNKNOWN',
+        speciality: 'UNKNOWN',
+      };
+
+      return {
+        name: lab.name,
+        photoUrl: lab.photoUrl,
+        comments: lab.comments,
+        doctor: {
+          name: doctor.name,
+          speciality: doctor.speciality,
+        },
+        createdAt: lab.createdAt,
+      };
+    });
+
+    return {
+      patient: patientInfo,
+      labs,
+    };
   }
 }

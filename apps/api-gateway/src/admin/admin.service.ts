@@ -8,6 +8,14 @@ import {
 import { Inject } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { lastValueFrom } from 'rxjs';
+import {
+  CreateClinicDto,
+  CreateClinicInternalDto,
+} from '../../../admin/src/dtos';
+import {
+  UpdatePatientDto,
+  UpdatePatientInternalDto,
+} from '../../../auth/src/dtos';
 
 export class AdminService {
   constructor(
@@ -119,6 +127,61 @@ export class AdminService {
       this.adminClient.send(
         { cmd: AdminPatterns.GET_ALL_VISITS },
         paginationRequest,
+      ),
+    );
+  }
+
+  async updatePatient(
+    globalId: string,
+    updatePatientDto: UpdatePatientDto,
+  ): Promise<{ message: string }> {
+    const updatePatientInternalDto = new UpdatePatientInternalDto(
+      updatePatientDto,
+      globalId,
+    );
+
+    return await lastValueFrom<{ message: string }>(
+      this.adminClient.send(
+        { cmd: AdminPatterns.UPDATE_PATIENT },
+        updatePatientInternalDto,
+      ),
+    );
+  }
+
+  async createClinic(
+    adminUserId: number,
+    createClinicDto: CreateClinicDto,
+  ): Promise<{
+    id: string;
+    name: string;
+    speciality: string;
+  }> {
+    const createClinicInternalDto = new CreateClinicInternalDto(
+      createClinicDto,
+      adminUserId,
+    );
+
+    return await lastValueFrom<{
+      id: string;
+      name: string;
+      speciality: string;
+    }>(
+      this.adminClient.send(
+        { cmd: AdminPatterns.CREATE_CLINIC },
+        createClinicInternalDto,
+      ),
+    );
+  }
+
+  async getAllClinics(): Promise<
+    { id: string; name: string; speciality: string; createdAt: Date }[]
+  > {
+    return await lastValueFrom<
+      { id: string; name: string; speciality: string; createdAt: Date }[]
+    >(
+      this.adminClient.send(
+        { cmd: AdminPatterns.GET_ALL_CLINICS_WITH_GLOBAL_ID },
+        {},
       ),
     );
   }

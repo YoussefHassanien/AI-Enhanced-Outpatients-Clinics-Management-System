@@ -1,9 +1,11 @@
 import {
+  AdminPatterns,
   CommonServices,
   ErrorResponse,
   Gender,
   Language,
   LoggingService,
+  Microservices,
   PaginationRequest,
   PaginationResponse,
   Role,
@@ -11,11 +13,13 @@ import {
 import { Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-import { RpcException } from '@nestjs/microservices';
+import { ClientProxy, RpcException } from '@nestjs/microservices';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcrypt';
 import { Algorithm } from 'jsonwebtoken';
+import { lastValueFrom } from 'rxjs';
 import { EntityManager, IsNull, Not, Repository } from 'typeorm';
+import { Clinic } from '../../admin/src/entities';
 import { JwtPayload } from './constants';
 import {
   CreateAdminDto,
@@ -25,6 +29,7 @@ import {
   CredentialsResponseDto,
   LoginDto,
 } from './dtos';
+import { UpdatePatientInternalDto } from './dtos/update-patient-internal.dto';
 import { Admin, Doctor, Patient, User } from './entities';
 
 @Injectable()
@@ -48,6 +53,7 @@ export class AuthService {
     @InjectRepository(Admin)
     private readonly adminRepository: Repository<Admin>,
     @Inject(CommonServices.LOGGING) logger: LoggingService,
+    @Inject(Microservices.ADMIN) private readonly adminClient: ClientProxy,
   ) {
     this.hashingAlgorithm =
       this.configService.getOrThrow<Algorithm>('HASHING_ALGORITHM');
@@ -268,6 +274,15 @@ export class AuthService {
     return admin;
   }
 
+  private validateSocialSecurityNumber(socialSecurityNumber: string): void {
+    const regex = /^[23]\d{2}(0[1-9]|1[0-2])(0[1-9]|[12]\d|3[01])\d{7}$/;
+    if (!regex.test(socialSecurityNumber)) {
+      throw new RpcException(
+        new ErrorResponse('Invalid social security number format', 400),
+      );
+    }
+  }
+
   isUp(): string {
     return 'Auth service is up';
   }
@@ -372,6 +387,17 @@ export class AuthService {
       throw new RpcException(new ErrorResponse('Doctor already exists!', 400));
     }
 
+    const clinic = await lastValueFrom<Clinic | null>(
+      this.adminClient.send(
+        { cmd: AdminPatterns.GET_CLINIC_BY_GLOBAL_ID },
+        doctorDto.clinicId,
+      ),
+    );
+
+    if (!clinic) {
+      throw new RpcException(new ErrorResponse('Clinic not found!', 404));
+    }
+
     return await this.userRepository.manager.transaction(
       async (manager: EntityManager) => {
         const createdUser = await this.createUser(
@@ -401,6 +427,7 @@ export class AuthService {
           speciality: doctorDto.speciality,
           phone: doctorDto.phone,
           isApproved: doctorDto.role === Role.SUPER_ADMIN,
+          clinicId: clinic.id,
         });
         this.logger.log('Successfully created a doctor');
 
@@ -706,9 +733,104 @@ export class AuthService {
   }
 
   async getDoctorById(id: number): Promise<Doctor | null> {
-    return await this.doctorRepository.findOneBy({
-      id,
-      deletedAt: IsNull(),
+    return await this.doctorRepository.findOne({
+      where: { id, deletedAt: IsNull(), isApproved: true },
+      relations: { user: true },
+      select: {
+        user: { firstName: true, lastName: true, id: true, globalId: true },
+      },
+    });
+  }
+
+  async updatePatient(
+    updatePatientInternalDto: UpdatePatientInternalDto,
+  ): Promise<{ message: string }> {
+    const patient = await this.patientRepository.findOne({
+      where: {
+        globalId: updatePatientInternalDto.globalId,
+        deletedAt: IsNull(),
+      },
+      relations: {
+        user: true,
+      },
+    });
+
+    if (!patient) {
+      throw new RpcException(new ErrorResponse('Patient not found!', 404));
+    }
+
+    await this.patientRepository.manager.transaction(
+      async (manager: EntityManager) => {
+        // Update User fields if provided
+        if (
+          updatePatientInternalDto.firstName ||
+          updatePatientInternalDto.lastName
+        ) {
+          const userRepository = manager.getRepository(User);
+          const userUpdates: Partial<User> = {};
+
+          if (updatePatientInternalDto.firstName) {
+            userUpdates.firstName = updatePatientInternalDto.firstName;
+          }
+          if (updatePatientInternalDto.lastName) {
+            userUpdates.lastName = updatePatientInternalDto.lastName;
+          }
+
+          await userRepository.update(patient.user.id, userUpdates);
+          this.logger.log('Successfully updated user data');
+        }
+
+        // Update Patient fields if provided
+        if (updatePatientInternalDto.address || updatePatientInternalDto.job) {
+          const patientRepository = manager.getRepository(Patient);
+          const patientUpdates: Partial<Patient> = {};
+
+          if (updatePatientInternalDto.address) {
+            patientUpdates.address = updatePatientInternalDto.address;
+          }
+          if (updatePatientInternalDto.job) {
+            patientUpdates.job = updatePatientInternalDto.job;
+          }
+
+          await patientRepository.update(patient.id, patientUpdates);
+          this.logger.log('Successfully updated patient data');
+        }
+      },
+    );
+
+    return { message: 'Patient data is successfully updated' };
+  }
+
+  async getPatientBySocialSecurityNumber(
+    socialSecurityNumber: string,
+  ): Promise<Patient | null> {
+    this.validateSocialSecurityNumber(socialSecurityNumber);
+    return await this.patientRepository.findOne({
+      relations: {
+        user: true,
+      },
+      where: {
+        user: {
+          socialSecurityNumber: BigInt(socialSecurityNumber),
+          deletedAt: IsNull(),
+        },
+        deletedAt: IsNull(),
+      },
+      select: {
+        user: {
+          id: true,
+          globalId: true,
+          firstName: true,
+          lastName: true,
+          gender: true,
+          dateOfBirth: true,
+          socialSecurityNumber: true,
+        },
+        address: true,
+        job: true,
+        id: true,
+        globalId: true,
+      },
     });
   }
 }

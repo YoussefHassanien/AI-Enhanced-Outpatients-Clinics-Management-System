@@ -42,6 +42,8 @@ export enum AuthPatterns {
   GET_ALL_PATIENTS = 'auth.admin.patients',
   GET_PATIENT_BY_ID = 'auth.getPatientById',
   GET_DOCTOR_BY_ID = 'auth.getDoctorById',
+  PATIENT_UPDATE = 'auth.patient.update',
+  GET_PATIENT_BY_SOCIAL_SECURITY_NUMBER = 'auth.getPatientBySocialSecurityNumber',
 }
 
 export enum DoctorPatterns {
@@ -54,7 +56,6 @@ export enum DoctorPatterns {
   GET_PATIENT_VISITS = 'doctor.patient.visits',
   GET_PATIENT_LABS = 'doctor.patient.labs',
   GET_PATIENT_SCANS = 'doctor.patient.scans',
-  GET_PATIENT_HISTORY = 'doctor.patient.history',
   GET_ALL_VISITS = 'doctor.admin.visits',
 }
 
@@ -67,6 +68,12 @@ export enum AdminPatterns {
   GET_ALL_VISITS = 'admin.getAllVisits',
   GET_ALL_PATIENTS = 'admin.getAllPatients',
   GET_ALL_DOCTORS = 'admin.getAllDoctors',
+  UPDATE_PATIENT = 'admin.updatePatient',
+  CREATE_CLINIC = 'admin.clinic.create',
+  GET_ALL_CLINICS_WITH_GLOBAL_ID = 'admin.getAllClinicsWithGlobalId',
+  GET_ALL_CLINICS_WITH_ID = 'admin.getAllClinicsWithId',
+  GET_CLINIC_BY_GLOBAL_ID = 'admin.getClinicByGlobalId',
+  GET_CLINIC_BY_ID = 'admin.getClinicById',
 }
 
 export enum AsrPatterns {

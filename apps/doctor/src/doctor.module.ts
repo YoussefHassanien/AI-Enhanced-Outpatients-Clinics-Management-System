@@ -47,6 +47,23 @@ import { Lab, Medication, Scan, Visit } from './entities';
         }),
         inject: [ConfigService],
       },
+      {
+        name: Microservices.ADMIN,
+        imports: [ConfigModule],
+        useFactory: (configService: ConfigService) => ({
+          transport: Transport.RMQ,
+          options: {
+            urls: [configService.getOrThrow<string>('RABBIT_MQ_URL')],
+            queue: configService.getOrThrow<string>('RABBIT_MQ_ADMIN_QUEUE'),
+            queueOptions: {
+              durable: true,
+            },
+            persistent: true,
+            maxConnectionAttempts: 5,
+          },
+        }),
+        inject: [ConfigService],
+      },
     ]),
   ],
   controllers: [DoctorController],

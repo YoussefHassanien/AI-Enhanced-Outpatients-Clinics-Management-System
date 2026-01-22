@@ -11,6 +11,7 @@ COPY tsconfig.json tsconfig.build.json nest-cli.json ./
 
 # copy only needed folders and libs
 COPY ./apps/auth /app/apps/auth
+COPY ./apps/admin/src/entities /app/apps/admin/src/entities
 COPY ./libs /app/libs
 
 # install all deps including dev and build

@@ -6,13 +6,24 @@ import {
   Roles,
 } from '@app/common';
 import {
+  BadRequestException,
+  Body,
   Controller,
   DefaultValuePipe,
   Get,
+  Param,
   ParseIntPipe,
+  ParseUUIDPipe,
+  Patch,
+  Post,
   Query,
+  Req,
   UseGuards,
 } from '@nestjs/common';
+import { Request } from 'express';
+import { CreateClinicDto } from '../../../admin/src/dtos';
+import { UpdatePatientDto } from '../../../auth/src/dtos';
+import { User } from '../../../auth/src/entities';
 import { JwtAuthGuard } from '../auth/guards';
 import { AdminService } from './admin.service';
 
@@ -103,5 +114,39 @@ export class AdminController {
       limit,
     };
     return await this.adminService.getAllVisits(paginationRequest);
+  }
+
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @UseGuards(JwtAuthGuard)
+  @Patch('patient/:id')
+  async updatePatient(
+    @Param(
+      'id',
+      new ParseUUIDPipe({
+        exceptionFactory: () => new BadRequestException('Invalid patient ID'),
+      }),
+    )
+    globalId: string,
+    @Body() updatePatientDto: UpdatePatientDto,
+  ): Promise<{ message: string }> {
+    return await this.adminService.updatePatient(globalId, updatePatientDto);
+  }
+
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @UseGuards(JwtAuthGuard)
+  @Post('clinic')
+  async createClinc(
+    @Req() req: Request,
+    @Body() createClinicDto: CreateClinicDto,
+  ) {
+    const user = req.user as User;
+    return await this.adminService.createClinic(user.id, createClinicDto);
+  }
+
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @UseGuards(JwtAuthGuard)
+  @Get('clinics')
+  async getAllClincs() {
+    return await this.adminService.getAllClinics();
   }
 }

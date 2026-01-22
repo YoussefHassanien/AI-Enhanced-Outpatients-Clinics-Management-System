@@ -22,7 +22,7 @@
     "migration:generate": "npm run typeorm -- migration:generate",
     "migration:run": "npm run typeorm -- migration:run",
     "migration:revert": "npm run typeorm -- migration:revert",
-    "docker-compose:run": "docker compose down && docker compose build && docker compose up -d"
+    "docker-compose:run": "docker compose -f docker-compose.dev.yml stop && docker compose -f docker-compose.dev.yml build && docker compose -f docker-compose.dev.yml up -d"
   },
   "dependencies": {
     "@nestjs/axios": "^4.0.1",

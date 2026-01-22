@@ -2,11 +2,13 @@ import {
   CommonServices,
   dataSourceAsyncOptions,
   LoggingService,
+  Microservices,
   validateEnviornmentVariables,
 } from '@app/common';
 import { Logger, Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
+import { ClientsModule, Transport } from '@nestjs/microservices';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 import { AuthController } from './auth.controller';
@@ -28,6 +30,25 @@ import { Admin, Doctor, Patient, User } from './entities';
     TypeOrmModule.forRootAsync(dataSourceAsyncOptions),
     TypeOrmModule.forFeature([User, Patient, Doctor, Admin]),
     JwtModule.register({ global: true }),
+    ClientsModule.registerAsync([
+      {
+        name: Microservices.ADMIN,
+        imports: [ConfigModule],
+        useFactory: (configService: ConfigService) => ({
+          transport: Transport.RMQ,
+          options: {
+            urls: [configService.getOrThrow<string>('RABBIT_MQ_URL')],
+            queue: configService.getOrThrow<string>('RABBIT_MQ_ADMIN_QUEUE'),
+            queueOptions: {
+              durable: true,
+            },
+            persistent: true,
+            maxConnectionAttempts: 5,
+          },
+        }),
+        inject: [ConfigService],
+      },
+    ]),
   ],
   controllers: [AuthController],
   providers: [
