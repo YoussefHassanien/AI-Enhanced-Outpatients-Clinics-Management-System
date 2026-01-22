@@ -14,17 +14,17 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements first for better caching
-COPY requirements.txt .
+COPY ./apps/ocr/requirements.txt .
 
 # Install Python dependencies (no PyTorch needed - using OpenVINO directly)
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
-COPY src ./src
-COPY run_consumer.py .
+COPY ./apps/ocr/src ./src
+COPY ./apps/ocr/run_consumer.py .
 
 # Copy model files
-COPY models ./models
+COPY ./apps/ocr/models ./models
 
 # Create logs directory (will be mounted as volume)
 RUN mkdir -p /app/logs
