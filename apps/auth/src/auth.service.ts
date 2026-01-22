@@ -274,6 +274,15 @@ export class AuthService {
     return admin;
   }
 
+  private validateSocialSecurityNumber(socialSecurityNumber: string): void {
+    const regex = /^[23]\d{2}(0[1-9]|1[0-2])(0[1-9]|[12]\d|3[01])\d{7}$/;
+    if (!regex.test(socialSecurityNumber)) {
+      throw new RpcException(
+        new ErrorResponse('Invalid social security number format', 400),
+      );
+    }
+  }
+
   isUp(): string {
     return 'Auth service is up';
   }
@@ -724,9 +733,12 @@ export class AuthService {
   }
 
   async getDoctorById(id: number): Promise<Doctor | null> {
-    return await this.doctorRepository.findOneBy({
-      id,
-      deletedAt: IsNull(),
+    return await this.doctorRepository.findOne({
+      where: { id, deletedAt: IsNull(), isApproved: true },
+      relations: { user: true },
+      select: {
+        user: { firstName: true, lastName: true, id: true, globalId: true },
+      },
     });
   }
 
@@ -790,8 +802,9 @@ export class AuthService {
   }
 
   async getPatientBySocialSecurityNumber(
-    socialSecurityNumber: number,
+    socialSecurityNumber: string,
   ): Promise<Patient | null> {
+    this.validateSocialSecurityNumber(socialSecurityNumber);
     return await this.patientRepository.findOne({
       relations: {
         user: true,

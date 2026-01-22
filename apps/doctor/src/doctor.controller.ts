@@ -1,10 +1,12 @@
 import {
   DoctorPatterns,
+  Gender,
   PaginationRequest,
   PaginationResponse,
 } from '@app/common';
 import { Controller } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
+import { MedicationDosage, MedicationPeriod, ScanTypes } from './constants';
 import { DoctorService } from './doctor.service';
 import { CreateMedicationInternalDto, CreateVisitInternalDto } from './dtos';
 
@@ -46,5 +48,111 @@ export class DoctorController {
     }>
   > {
     return await this.doctorService.getAllVisits(paginationRequest);
+  }
+
+  @MessagePattern({ cmd: DoctorPatterns.GET_PATIENT_VISITS })
+  async getPatientVisits(@Payload() socialSecurityNumber: string): Promise<{
+    patient: {
+      id: string;
+      name: string;
+      gender: Gender;
+      dateOfBirth: Date;
+      socialSecurityNumber: string;
+      address: string;
+      job: string;
+    };
+    clinics: {
+      id: string;
+      name: string;
+      visits: {
+        doctor: {
+          name: string;
+          speciality: string;
+        };
+        diagnoses: string;
+        createdAt: Date;
+      }[];
+    }[];
+  }> {
+    return await this.doctorService.getPatientVisits(socialSecurityNumber);
+  }
+
+  @MessagePattern({ cmd: DoctorPatterns.GET_PATIENT_MEDICATIONS })
+  async getPatientMedications(
+    @Payload() socialSecurityNumber: string,
+  ): Promise<{
+    patient: {
+      id: string;
+      name: string;
+      gender: Gender;
+      dateOfBirth: Date;
+      socialSecurityNumber: string;
+      address: string;
+      job: string;
+    };
+    medications: {
+      name: string;
+      dosage: MedicationDosage;
+      period: MedicationPeriod;
+      comments: string;
+      doctor: {
+        name: string;
+        speciality: string;
+      };
+      createdAt: Date;
+    }[];
+  }> {
+    return await this.doctorService.getPatientMedications(socialSecurityNumber);
+  }
+
+  @MessagePattern({ cmd: DoctorPatterns.GET_PATIENT_SCANS })
+  async getPatientScans(@Payload() socialSecurityNumber: string): Promise<{
+    patient: {
+      id: string;
+      name: string;
+      gender: Gender;
+      dateOfBirth: Date;
+      socialSecurityNumber: string;
+      address: string;
+      job: string;
+    };
+    scans: {
+      name: string;
+      type: ScanTypes;
+      photoUrl: string;
+      comments: string;
+      doctor: {
+        name: string;
+        speciality: string;
+      };
+      createdAt: Date;
+    }[];
+  }> {
+    return await this.doctorService.getPatientScans(socialSecurityNumber);
+  }
+
+  @MessagePattern({ cmd: DoctorPatterns.GET_PATIENT_LABS })
+  async getPatientLabs(@Payload() socialSecurityNumber: string): Promise<{
+    patient: {
+      id: string;
+      name: string;
+      gender: Gender;
+      dateOfBirth: Date;
+      socialSecurityNumber: string;
+      address: string;
+      job: string;
+    };
+    labs: {
+      name: string;
+      photoUrl: string;
+      comments: string;
+      doctor: {
+        name: string;
+        speciality: string;
+      };
+      createdAt: Date;
+    }[];
+  }> {
+    return await this.doctorService.getPatientLabs(socialSecurityNumber);
   }
 }
