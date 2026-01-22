@@ -1,8 +1,3 @@
-import { Inject, Injectable } from '@nestjs/common';
-import { ClientProxy, RpcException } from '@nestjs/microservices';
-import { InjectRepository } from '@nestjs/typeorm';
-import { lastValueFrom } from 'rxjs';
-import { IsNull, Repository } from 'typeorm';
 import {
   AdminPatterns,
   AuthPatterns,
@@ -13,7 +8,12 @@ import {
   Microservices,
   PaginationRequest,
   PaginationResponse,
-} from '../../../libs/common/src';
+} from '@app/common';
+import { Inject, Injectable } from '@nestjs/common';
+import { ClientProxy, RpcException } from '@nestjs/microservices';
+import { InjectRepository } from '@nestjs/typeorm';
+import { lastValueFrom } from 'rxjs';
+import { IsNull, Repository } from 'typeorm';
 import { Clinic } from '../../admin/src/entities';
 import { Doctor, Patient } from '../../auth/src/entities';
 import { MedicationDosage, MedicationPeriod, ScanTypes } from './constants';
