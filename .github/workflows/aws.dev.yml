@@ -9,8 +9,8 @@ on:
         'apps/doctor/**',
         'apps/api-gateway/**',
         'apps/ocr/**',
-        'apps/speech-to-text/**',
-        '.github/workflows/aws.yml',
+        'apps/asr/**',
+        '.github/workflows/aws.dev.yml',
         'package.json',
         'package-lock.json',
       ]
@@ -23,8 +23,8 @@ on:
         'apps/doctor/**',
         'apps/api-gateway/**',
         'apps/ocr/**',
-        'apps/speech-to-text/**',
-        '.github/workflows/aws.yml',
+        'apps/asr/**',
+        '.github/workflows/aws.dev.yml',
         'package.json',
         'package-lock.json',
       ]

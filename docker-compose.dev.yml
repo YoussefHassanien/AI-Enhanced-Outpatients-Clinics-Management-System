@@ -1,7 +1,6 @@
 services:
   rabbitMq:
     image: rabbitmq:4.1.6-alpine
-    container_name: message-queue
     ports:
       - 5672
     networks:
@@ -32,6 +31,9 @@ services:
       - rabbitMq
       - auth
       - doctor
+      - ocr
+      - asr
+      - admin
     command: node api-gateway/main
     networks:
       - services-network
@@ -66,6 +68,40 @@ services:
     volumes:
       - ./logs:/app/logs
 
+  asr:
+    build:
+      context: .
+      dockerfile: ./apps/asr/Dockerfile
+    env_file:
+      - ./apps/asr/.env
+    depends_on:
+      - rabbitMq
+    command: node asr/main
+    networks:
+      - services-network
+    volumes:
+      - ./logs:/app/logs
+      - ./tmp/asr_uploads:/app/tmp/asr_uploads
+  ocr:
+    build:
+      context: ./apps/ocr
+      dockerfile: Dockerfile
+    env_file:
+      - ./apps/ocr/.env
+    depends_on:
+      - rabbitMq
+    command: ['python', 'run_consumer.py']
+    networks:
+      - services-network
+    volumes:
+      - ./logs/ocr:/app/logs
+      - paddleocr-cache:/root/.paddlex
+
+volumes:
+  paddleocr-cache:
+    driver: local
+
 networks:
   services-network:
     driver: bridge
+
