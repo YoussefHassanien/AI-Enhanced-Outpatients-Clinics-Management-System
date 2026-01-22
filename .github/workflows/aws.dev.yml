@@ -10,7 +10,7 @@ on:
         'apps/api-gateway/**',
         'apps/ocr/**',
         'apps/speech-to-text/**',
-        '.github/workflows/aws.yml',
+        '.github/workflows/aws.dev.yml',
         'package.json',
         'package-lock.json',
       ]
@@ -24,7 +24,7 @@ on:
         'apps/api-gateway/**',
         'apps/ocr/**',
         'apps/speech-to-text/**',
-        '.github/workflows/aws.yml',
+        '.github/workflows/aws.dev.yml',
         'package.json',
         'package-lock.json',
       ]
