@@ -84,8 +84,8 @@ services:
       - ./tmp/asr_uploads:/app/tmp/asr_uploads
   ocr:
     build:
-      context: ./apps/ocr
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./apps/ocr/Dockerfile
     env_file:
       - ./apps/ocr/.env
     depends_on:
@@ -104,4 +104,3 @@ volumes:
 networks:
   services-network:
     driver: bridge
-
