@@ -2,20 +2,20 @@ import { Microservices } from '@app/common';
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ClientsModule, Transport } from '@nestjs/microservices';
-import { DoctorController } from './doctor.controller';
-import { DoctorService } from './doctor.service';
+import { AdminController } from './admin.controller';
+import { AdminService } from './admin.service';
 
 @Module({
   imports: [
     ClientsModule.registerAsync([
       {
-        name: Microservices.DOCTOR,
+        name: Microservices.ADMIN,
         imports: [ConfigModule],
         useFactory: (configService: ConfigService) => ({
           transport: Transport.RMQ,
           options: {
             urls: [configService.getOrThrow<string>('RABBIT_MQ_URL')],
-            queue: configService.getOrThrow<string>('RABBIT_MQ_DOCTOR_QUEUE'),
+            queue: configService.getOrThrow<string>('RABBIT_MQ_ADMIN_QUEUE'),
             queueOptions: {
               durable: true,
             },
@@ -27,7 +27,7 @@ import { DoctorService } from './doctor.service';
       },
     ]),
   ],
-  controllers: [DoctorController],
-  providers: [DoctorService],
+  controllers: [AdminController],
+  providers: [AdminService],
 })
-export class DoctorModule {}
+export class AdminModule {}

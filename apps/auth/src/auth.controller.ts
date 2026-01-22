@@ -1,4 +1,12 @@
-import { AuthPatterns, ErrorResponse, Language, Role } from '@app/common';
+import {
+  AuthPatterns,
+  ErrorResponse,
+  Gender,
+  Language,
+  PaginationRequest,
+  PaginationResponse,
+  Role,
+} from '@app/common';
 import { Controller, ParseIntPipe, ParseUUIDPipe } from '@nestjs/common';
 import { MessagePattern, Payload, RpcException } from '@nestjs/microservices';
 import { AuthService } from './auth.service';
@@ -8,6 +16,8 @@ import {
   CreatePatientDto,
   LoginDto,
 } from './dtos';
+import { UpdatePatientInternalDto } from './dtos/update-patient-internal.dto';
+import { Admin, Doctor, Patient, User } from './entities';
 
 @Controller()
 export class AuthController {
@@ -71,7 +81,7 @@ export class AuthController {
       }),
     )
     id: number,
-  ) {
+  ): Promise<User | null> {
     return await this.authService.getUser(id);
   }
 
@@ -84,7 +94,7 @@ export class AuthController {
       }),
     )
     doctorUserId: number,
-  ) {
+  ): Promise<Doctor | null> {
     return await this.authService.getDoctorByUserId(doctorUserId);
   }
 
@@ -97,7 +107,7 @@ export class AuthController {
       }),
     )
     patientGlobalId: string,
-  ) {
+  ): Promise<Patient | null> {
     return await this.authService.getPatientByGlobalId(patientGlobalId);
   }
 
@@ -110,7 +120,92 @@ export class AuthController {
       }),
     )
     adminUserId: number,
-  ) {
+  ): Promise<Admin | null> {
     return await this.authService.getAdminByUserId(adminUserId);
+  }
+
+  @MessagePattern({ cmd: AuthPatterns.GET_ALL_DOCTORS })
+  async getAllDoctors(@Payload() paginationRequest: PaginationRequest): Promise<
+    PaginationResponse<{
+      id: string;
+      phone: string;
+      email: string;
+      speciality: string;
+      isApproved: boolean;
+      user: {
+        id: string;
+        socialSecurityNumber: bigint;
+        gender: Gender;
+        firstName: string;
+        lastName: string;
+        dateOfBirth: Date;
+      };
+    }>
+  > {
+    return await this.authService.getAllDoctors(paginationRequest);
+  }
+
+  @MessagePattern({ cmd: AuthPatterns.GET_ALL_PATIENTS })
+  async getAllPatients(
+    @Payload() paginationRequest: PaginationRequest,
+  ): Promise<
+    PaginationResponse<{
+      id: string;
+      address: string;
+      job: string;
+      user: {
+        id: string;
+        socialSecurityNumber: bigint;
+        gender: Gender;
+        firstName: string;
+        lastName: string;
+        dateOfBirth: Date;
+      };
+    }>
+  > {
+    return await this.authService.getAllPatients(paginationRequest);
+  }
+
+  @MessagePattern({ cmd: AuthPatterns.GET_DOCTOR_BY_ID })
+  async getDoctorById(
+    @Payload(
+      new ParseIntPipe({
+        exceptionFactory: () =>
+          new RpcException(new ErrorResponse('Invalid id', 400)),
+      }),
+    )
+    id: number,
+  ): Promise<Doctor | null> {
+    return await this.authService.getDoctorById(id);
+  }
+
+  @MessagePattern({ cmd: AuthPatterns.GET_PATIENT_BY_ID })
+  async getPatientById(
+    @Payload(
+      new ParseIntPipe({
+        exceptionFactory: () =>
+          new RpcException(new ErrorResponse('Invalid id', 400)),
+      }),
+    )
+    id: number,
+  ): Promise<Patient | null> {
+    return await this.authService.getPatientById(id);
+  }
+
+  @MessagePattern({ cmd: AuthPatterns.PATIENT_UPDATE })
+  async patientUpdate(
+    @Payload() updatePatientInternalDto: UpdatePatientInternalDto,
+  ): Promise<{ message: string }> {
+    return await this.authService.updatePatient(updatePatientInternalDto);
+  }
+
+  @MessagePattern({ cmd: AuthPatterns.GET_PATIENT_BY_SOCIAL_SECURITY_NUMBER })
+  async getPatientBySocialSecurityNumber(
+    @Payload()
+    socialSecurityNumber: string,
+  ): Promise<Patient | null> {
+    return await this.authService.getPatientBySocialSecurityNumber(
+      socialSecurityNumber,
+    );
   }
 }

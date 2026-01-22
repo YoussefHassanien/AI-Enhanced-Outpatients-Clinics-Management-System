@@ -24,6 +24,7 @@ export enum Gender {
 export enum Microservices {
   AUTH = 'AUTH_MICROSERVICE',
   DOCTOR = 'DOCTOR_MICROSERVICE',
+  ADMIN = 'ADMIN_MICROSERVICE',
 }
 
 export enum AuthPatterns {
@@ -32,10 +33,16 @@ export enum AuthPatterns {
   ADMIN_CREATE = 'auth.admin.create',
   DOCTOR_CREATE = 'auth.doctor.create',
   PATIENT_CREATE = 'auth.patient.create',
-  GET_USER = 'auth.getUser',
+  GET_USER = 'auth.user',
   GET_DOCTOR_BY_USER_ID = 'auth.getDoctorByUserId',
   GET_PATIENT_BY_GLOBAL_ID = 'auth.getPatientByGlobalId',
   GET_ADMIN_BY_USER_ID = 'auth.getAdminByUserId',
+  GET_ALL_DOCTORS = 'auth.admin.doctors',
+  GET_ALL_PATIENTS = 'auth.admin.patients',
+  GET_PATIENT_BY_ID = 'auth.getPatientById',
+  GET_DOCTOR_BY_ID = 'auth.getDoctorById',
+  PATIENT_UPDATE = 'auth.patient.update',
+  GET_PATIENT_BY_SOCIAL_SECURITY_NUMBER = 'auth.getPatientBySocialSecurityNumber',
 }
 
 export enum DoctorPatterns {
@@ -48,9 +55,22 @@ export enum DoctorPatterns {
   GET_PATIENT_VISITS = 'doctor.patient.visits',
   GET_PATIENT_LABS = 'doctor.patient.labs',
   GET_PATIENT_SCANS = 'doctor.patient.scans',
-  GET_PATIENT_HISTORY = 'doctor.patient.history',
+  GET_ALL_VISITS = 'doctor.admin.visits',
 }
 
 export enum CommonServices {
   LOGGING = 'WINSTON_LOGGER',
+}
+
+export enum AdminPatterns {
+  IS_UP = 'admin.isUp',
+  GET_ALL_VISITS = 'admin.getAllVisits',
+  GET_ALL_PATIENTS = 'admin.getAllPatients',
+  GET_ALL_DOCTORS = 'admin.getAllDoctors',
+  UPDATE_PATIENT = 'admin.updatePatient',
+  CREATE_CLINIC = 'admin.clinic.create',
+  GET_ALL_CLINICS_WITH_GLOBAL_ID = 'admin.getAllClinicsWithGlobalId',
+  GET_ALL_CLINICS_WITH_ID = 'admin.getAllClinicsWithId',
+  GET_CLINIC_BY_GLOBAL_ID = 'admin.getClinicByGlobalId',
+  GET_CLINIC_BY_ID = 'admin.getClinicById',
 }

@@ -4,3 +4,8 @@ export type PaginationResponse<T> = {
   totalItems: number;
   totalPages: number;
 };
+
+export type PaginationRequest = {
+  limit: number;
+  page: number;
+};

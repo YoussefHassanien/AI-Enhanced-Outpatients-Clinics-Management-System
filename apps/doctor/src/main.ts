@@ -24,8 +24,10 @@ async function bootstrap() {
           urls: [configService.getOrThrow<string>('RABBIT_MQ_URL')],
           queue: configService.getOrThrow<string>('RABBIT_MQ_DOCTOR_QUEUE'),
           queueOptions: {
-            durable: false,
+            durable: true,
           },
+          persistent: true,
+          maxConnectionAttempts: 5,
         },
       }),
       inject: [ConfigService],

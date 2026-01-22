@@ -1,0 +1,143 @@
+name: Deploy to EC2
+
+on:
+  push:
+    branches: [main]
+    paths:
+      [
+        'apps/auth/**',
+        'apps/doctor/**',
+        'apps/api-gateway/**',
+        'apps/ocr/**',
+        'apps/speech-to-text/**',
+        '.github/workflows/aws.yml',
+        'package.json',
+        'package-lock.json',
+        'docker-compose.prod.yml',
+        'nginx.conf',
+        'rabbitmq.conf',
+      ]
+
+  pull_request:
+    branches: [main]
+    paths:
+      [
+        'apps/auth/**',
+        'apps/doctor/**',
+        'apps/api-gateway/**',
+        'apps/ocr/**',
+        'apps/speech-to-text/**',
+        '.github/workflows/aws.yml',
+        'package.json',
+        'package-lock.json',
+        'docker-compose.prod.yml',
+        'nginx.conf',
+        'rabbitmq.conf',
+      ]
+
+  workflow_dispatch:
+
+jobs:
+  # JOB 1: TEST (Runs on PRs AND Pushes)
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v6
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24.x'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Run Tests
+        run: npm run test
+
+  # JOB 2: BUILD AND PUSH IMAGES (Runs ONLY on Pushes)
+  build-and-push:
+    needs: test
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v6
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      # Build and Push Auth Service
+      - name: Build and Push Auth
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/auth/Dockerfile
+          push: true
+          tags: ${{ secrets.DOCKER_USERNAME }}/auth-service:latest
+
+      # Build and Push API Gateway
+      - name: Build and Push API Gateway
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/api-gateway/Dockerfile
+          push: true
+          tags: ${{ secrets.DOCKER_USERNAME }}/api-gateway:latest
+
+      # Build and Push Doctor Service
+      - name: Build and Push Doctor
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/doctor/Dockerfile
+          push: true
+          tags: ${{ secrets.DOCKER_USERNAME }}/doctor-service:latest
+
+      # Build and Push Admin Service
+      - name: Build and Push Admin
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/admin/Dockerfile
+          push: true
+          tags: ${{ secrets.DOCKER_USERNAME }}/admin-service:latest
+
+  # JOB 3: DEPLOY TO EC2 (Runs ONLY on Pushes)
+  deploy:
+    needs: build-and-push
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v6
+
+      - name: Copy config files to EC2
+        uses: appleboy/scp-action@v1
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          source: 'docker-compose.prod.yml,rabbitmq.conf,nginx.conf'
+          target: '~/app'
+          overwrite: true
+
+      - name: Deploy to EC2 via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            cd ~/app
+            docker compose -f docker-compose.prod.yml down            
+            docker compose -f docker-compose.prod.yml pull
+            docker compose -f docker-compose.prod.yml up -d
+            docker image prune -af
