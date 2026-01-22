@@ -26,6 +26,7 @@ export enum Microservices {
   DOCTOR = 'DOCTOR_MICROSERVICE',
   ADMIN = 'ADMIN_MICROSERVICE',
   ASR = 'ASR_MICROSERVICE',
+  OCR = 'OCR_MICROSERVICE',
 }
 
 export enum AuthPatterns {
@@ -80,4 +81,9 @@ export enum AsrPatterns {
   TRANSCRIBE_AUDIO = 'transcribe-audio',
   IS_UP = 'asr.isUp',
   IS_READY = 'asr.isReady',
+}
+
+export enum OcrPatterns {
+  IS_UP = 'ocr.isUp',
+  PROCESS_ID = 'ocr.processId',
 }

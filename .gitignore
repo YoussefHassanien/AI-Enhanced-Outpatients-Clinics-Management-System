@@ -58,3 +58,13 @@ report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 # Temporary ASR uploads
 /tmp/asr_uploads
 
+# OCR
+apps/ocr/runs
+apps/ocr/__pycache__
+apps/ocr/*.pyc
+apps/ocr/*.pyo
+apps/ocr/*.pyd
+apps/ocr/.pytest_cache/
+apps/ocr/temp_uploads/
+apps/ocr/preprocess.py
+apps/ocr/.venv

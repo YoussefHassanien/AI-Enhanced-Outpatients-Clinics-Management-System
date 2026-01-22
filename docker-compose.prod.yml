@@ -58,6 +58,19 @@ services:
     volumes:
       - ./logs:/app/logs
 
+  ocr:
+    image: youssefhassanien1/ocr-service:latest
+    env_file:
+      - ./ocr.env
+    depends_on:
+      - rabbitMq
+    command: ['python', 'run_consumer.py']
+    networks:
+      - services-network
+    volumes:
+      - ./logs/ocr:/app/logs
+      - paddleocr-cache:/root/.paddlex
+
   nginx:
     image: nginx:latest
     ports:
@@ -71,6 +84,10 @@ services:
       - api-gateway
     networks:
       - services-network
+
+volumes:
+  paddleocr-cache:
+    driver: local
 
 networks:
   services-network:

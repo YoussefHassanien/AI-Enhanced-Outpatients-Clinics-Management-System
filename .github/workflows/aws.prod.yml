@@ -10,7 +10,7 @@ on:
         'apps/api-gateway/**',
         'apps/ocr/**',
         'apps/speech-to-text/**',
-        '.github/workflows/aws.yml',
+        '.github/workflows/aws.prod.yml',
         'package.json',
         'package-lock.json',
         'docker-compose.prod.yml',
@@ -27,7 +27,7 @@ on:
         'apps/api-gateway/**',
         'apps/ocr/**',
         'apps/speech-to-text/**',
-        '.github/workflows/aws.yml',
+        '.github/workflows/aws.prod.yml',
         'package.json',
         'package-lock.json',
         'docker-compose.prod.yml',
@@ -109,6 +109,15 @@ jobs:
           file: apps/admin/Dockerfile
           push: true
           tags: ${{ secrets.DOCKER_USERNAME }}/admin-service:latest
+
+      # Build and Push Ocr Service
+      - name: Build and Push Ocr
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/ocr/Dockerfile
+          push: true
+          tags: ${{ secrets.DOCKER_USERNAME }}/ocr-service:latest
 
   # JOB 3: DEPLOY TO EC2 (Runs ONLY on Pushes)
   deploy:

@@ -14,6 +14,7 @@ import { AuthModule } from './auth/auth.module';
 import { EnvironmentVariables } from './constants';
 import { DoctorModule } from './doctor/doctor.module';
 import { AsrModule } from './asr/asr.module';
+import { OcrModule } from './ocr/ocr.module';
 
 @Module({
   imports: [
@@ -38,6 +39,7 @@ import { AsrModule } from './asr/asr.module';
     DoctorModule,
     AdminModule,
     AsrModule,
+    OcrModule,
   ],
   controllers: [ApiGatewayController],
   providers: [
