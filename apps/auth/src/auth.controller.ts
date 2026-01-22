@@ -202,8 +202,10 @@ export class AuthController {
   @MessagePattern({ cmd: AuthPatterns.GET_PATIENT_BY_SOCIAL_SECURITY_NUMBER })
   async getPatientBySocialSecurityNumber(
     @Payload()
-    socialSecurityNumber: number,
+    socialSecurityNumber: string,
   ): Promise<Patient | null> {
-    return await this.authService.getPatientById(socialSecurityNumber);
+    return await this.authService.getPatientBySocialSecurityNumber(
+      socialSecurityNumber,
+    );
   }
 }

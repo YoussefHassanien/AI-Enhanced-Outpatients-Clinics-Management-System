@@ -55,7 +55,6 @@ export enum DoctorPatterns {
   GET_PATIENT_VISITS = 'doctor.patient.visits',
   GET_PATIENT_LABS = 'doctor.patient.labs',
   GET_PATIENT_SCANS = 'doctor.patient.scans',
-  GET_PATIENT_HISTORY = 'doctor.patient.history',
   GET_ALL_VISITS = 'doctor.admin.visits',
 }
 
@@ -70,7 +69,8 @@ export enum AdminPatterns {
   GET_ALL_DOCTORS = 'admin.getAllDoctors',
   UPDATE_PATIENT = 'admin.updatePatient',
   CREATE_CLINIC = 'admin.clinic.create',
-  GET_ALL_CLINICS = 'admin.getAllClinics',
+  GET_ALL_CLINICS_WITH_GLOBAL_ID = 'admin.getAllClinicsWithGlobalId',
+  GET_ALL_CLINICS_WITH_ID = 'admin.getAllClinicsWithId',
   GET_CLINIC_BY_GLOBAL_ID = 'admin.getClinicByGlobalId',
   GET_CLINIC_BY_ID = 'admin.getClinicById',
 }

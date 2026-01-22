@@ -178,6 +178,11 @@ export class AdminService {
   > {
     return await lastValueFrom<
       { id: string; name: string; speciality: string; createdAt: Date }[]
-    >(this.adminClient.send({ cmd: AdminPatterns.GET_ALL_CLINICS }, {}));
+    >(
+      this.adminClient.send(
+        { cmd: AdminPatterns.GET_ALL_CLINICS_WITH_GLOBAL_ID },
+        {},
+      ),
+    );
   }
 }
