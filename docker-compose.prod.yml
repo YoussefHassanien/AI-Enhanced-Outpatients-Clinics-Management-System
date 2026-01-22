@@ -1,0 +1,77 @@
+services:
+  rabbitMq:
+    image: rabbitmq:4.1.6-alpine
+    ports:
+      - 5672
+    volumes:
+      - ./rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
+      - ./logs:/var/log/rabbitmq
+    networks:
+      - services-network
+
+  auth:
+    image: youssefhassanien1/auth-service:latest
+    env_file: ./auth.env
+    depends_on:
+      - rabbitMq
+    command: node auth/main
+    networks:
+      - services-network
+    volumes:
+      - ./logs:/app/logs
+
+  api-gateway:
+    image: youssefhassanien1/api-gateway:latest
+    env_file: ./api-gateway.env
+    ports:
+      - 4000
+    depends_on:
+      - rabbitMq
+      - auth
+      - doctor
+    command: node api-gateway/main
+    networks:
+      - services-network
+    volumes:
+      - ./logs:/app/logs
+
+  doctor:
+    image: youssefhassanien1/doctor-service:latest
+    env_file: ./doctor.env
+    depends_on:
+      - rabbitMq
+    command: node doctor/main
+    networks:
+      - services-network
+    volumes:
+      - ./logs:/app/logs
+
+  admin:
+    image: youssefhassanien1/admin-service:latest
+    env_file:
+      - ./admin.env
+    depends_on:
+      - rabbitMq
+    command: node admin/main
+    networks:
+      - services-network
+    volumes:
+      - ./logs:/app/logs
+
+  nginx:
+    image: nginx:latest
+    ports:
+      - '80:80'
+      - '443:443'
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+      - /etc/letsencrypt:/etc/letsencrypt
+      - ./logs:/var/log/nginx
+    depends_on:
+      - api-gateway
+    networks:
+      - services-network
+
+networks:
+  services-network:
+    driver: bridge

@@ -13,7 +13,7 @@ on:
         '.github/workflows/aws.yml',
         'package.json',
         'package-lock.json',
-        'docker-compose.yml',
+        'docker-compose.prod.yml',
         'nginx.conf',
         'rabbitmq.conf',
       ]
@@ -30,7 +30,7 @@ on:
         '.github/workflows/aws.yml',
         'package.json',
         'package-lock.json',
-        'docker-compose.yml',
+        'docker-compose.prod.yml',
         'nginx.conf',
         'rabbitmq.conf',
       ]
@@ -125,7 +125,7 @@ jobs:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
-          source: 'docker-compose.yml,rabbitmq.conf,nginx.conf'
+          source: 'docker-compose.prod.yml,rabbitmq.conf,nginx.conf'
           target: '~/app'
           overwrite: true
 
@@ -137,7 +137,7 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
             cd ~/app
-            docker compose down            
-            docker compose pull
-            docker compose up -d
-            docker image prune -f
+            docker compose -f docker-compose.prod.yml down            
+            docker compose -f docker-compose.prod.yml pull
+            docker compose -f docker-compose.prod.yml up -d
+            docker image prune -af
