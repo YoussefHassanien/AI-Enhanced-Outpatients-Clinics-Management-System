@@ -1,12 +1,12 @@
 import { Controller } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import { AsrService } from './asr.service';
-import { TranscribeAudioDto } from './transcribe-audio.dto';
+import { TranscribeAudioDto } from './dtos';
 import { AsrPatterns } from '@app/common';
 
 @Controller()
 export class AsrController {
-  constructor(private readonly asrService: AsrService) {}
+  constructor(private readonly asrService: AsrService) { }
 
   @MessagePattern({ cmd: AsrPatterns.IS_UP })
   isUp(): string {

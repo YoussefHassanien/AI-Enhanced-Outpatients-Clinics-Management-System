@@ -3,7 +3,7 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { RpcException } from '@nestjs/microservices';
 import { firstValueFrom } from 'rxjs';
-import { TranscribeAudioDto } from './transcribe-audio.dto';
+import { TranscribeAudioDto } from './dtos';
 import * as fs from 'fs';
 import FormData from 'form-data';
 import { CommonServices, LoggingService } from '@app/common';
