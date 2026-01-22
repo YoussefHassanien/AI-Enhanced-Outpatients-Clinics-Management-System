@@ -1,7 +1,6 @@
 services:
   rabbitMq:
     image: rabbitmq:4.1.6-alpine
-    container_name: message-queue
     ports:
       - 5672
     networks:
@@ -38,6 +37,7 @@ services:
       - services-network
     volumes:
       - ./logs:/app/logs
+      - ./tmp/asr_uploads:/app/tmp/asr_uploads
 
   doctor:
     build:
@@ -67,6 +67,20 @@ services:
     volumes:
       - ./logs:/app/logs
 
+  asr:
+    build:
+      context: .
+      dockerfile: ./apps/asr/Dockerfile
+    env_file:
+      - ./apps/asr/.env
+    depends_on:
+      - rabbitMq
+    command: node asr/main
+    networks:
+      - services-network
+    volumes:
+      - ./logs:/app/logs
+      - ./tmp/asr_uploads:/app/tmp/asr_uploads
   ocr:
     build:
       context: ./apps/ocr
@@ -89,3 +103,4 @@ volumes:
 networks:
   services-network:
     driver: bridge
+

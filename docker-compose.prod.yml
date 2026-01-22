@@ -71,6 +71,19 @@ services:
       - ./logs/ocr:/app/logs
       - paddleocr-cache:/root/.paddlex
 
+  asr:
+    image: youssefhassanien1/asr-service:latest
+    env_file:
+      - ./apps/asr/.env
+    depends_on:
+      - rabbitMq
+    command: node asr/main
+    networks:
+      - services-network
+    volumes:
+      - ./logs:/app/logs
+      - ./tmp/asr_uploads:/app/tmp/asr_uploads
+
   nginx:
     image: nginx:latest
     ports:

@@ -69,6 +69,10 @@ export class EnvironmentVariables {
   @IsNotEmpty()
   RABBIT_MQ_OCR_QUEUE: string;
 
+  @IsString()
+  @IsNotEmpty()
+  RABBIT_MQ_ASR_QUEUE: string;
+
   @ValidateIf(
     (environmentVariables: EnvironmentVariables) =>
       environmentVariables.ENVIRONMENT === Environment.PRODUCTION,

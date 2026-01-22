@@ -13,6 +13,7 @@ import { ApiGatewayController } from './api-gateway.controller';
 import { AuthModule } from './auth/auth.module';
 import { EnvironmentVariables } from './constants';
 import { DoctorModule } from './doctor/doctor.module';
+import { AsrModule } from './asr/asr.module';
 import { OcrModule } from './ocr/ocr.module';
 
 @Module({
@@ -37,6 +38,7 @@ import { OcrModule } from './ocr/ocr.module';
     AuthModule,
     DoctorModule,
     AdminModule,
+    AsrModule,
     OcrModule,
   ],
   controllers: [ApiGatewayController],
@@ -51,4 +53,4 @@ import { OcrModule } from './ocr/ocr.module';
     },
   ],
 })
-export class ApiGatewayModule {}
+export class ApiGatewayModule { }

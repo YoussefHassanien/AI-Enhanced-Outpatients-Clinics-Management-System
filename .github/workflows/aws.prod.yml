@@ -9,7 +9,7 @@ on:
         'apps/doctor/**',
         'apps/api-gateway/**',
         'apps/ocr/**',
-        'apps/speech-to-text/**',
+        'apps/asr/**',
         '.github/workflows/aws.prod.yml',
         'package.json',
         'package-lock.json',
@@ -26,7 +26,7 @@ on:
         'apps/doctor/**',
         'apps/api-gateway/**',
         'apps/ocr/**',
-        'apps/speech-to-text/**',
+        'apps/asr/**',
         '.github/workflows/aws.prod.yml',
         'package.json',
         'package-lock.json',
@@ -118,6 +118,15 @@ jobs:
           file: apps/ocr/Dockerfile
           push: true
           tags: ${{ secrets.DOCKER_USERNAME }}/ocr-service:latest
+
+      # Build and Push Asr Service
+      - name: Build and Push Asr
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/asr/Dockerfile
+          push: true
+          tags: ${{ secrets.DOCKER_USERNAME }}/asr-service:latest
 
   # JOB 3: DEPLOY TO EC2 (Runs ONLY on Pushes)
   deploy:
