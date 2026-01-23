@@ -44,11 +44,11 @@ export class AdminController {
     return await this.adminService.createClinic(createClinicInternalDto);
   }
 
-  @MessagePattern({ cmd: AdminPatterns.GET_ALL_CLINICS })
+  @MessagePattern({ cmd: AdminPatterns.GET_ALL_CLINICS_WITH_GLOBAL_ID })
   async getAllClinics(): Promise<
     { id: string; name: string; speciality: string; createdAt: Date }[]
   > {
-    return await this.adminService.getAllClinics();
+    return await this.adminService.getAllClinicsWithGlobalId();
   }
 
   @MessagePattern({ cmd: AdminPatterns.GET_CLINIC_BY_GLOBAL_ID })
@@ -56,5 +56,15 @@ export class AdminController {
     @Payload() globalId: string,
   ): Promise<Clinic | null> {
     return await this.adminService.getClinicByGlobalId(globalId);
+  }
+
+  @MessagePattern({ cmd: AdminPatterns.GET_CLINIC_BY_ID })
+  async getClinicById(@Payload() id: number): Promise<Clinic | null> {
+    return await this.adminService.getClinicById(id);
+  }
+
+  @MessagePattern({ cmd: AdminPatterns.GET_ALL_CLINICS_WITH_ID })
+  async getAllClinicsWithId(): Promise<Clinic[]> {
+    return await this.adminService.getAllClinicsWithId();
   }
 }

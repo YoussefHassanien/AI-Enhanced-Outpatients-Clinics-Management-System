@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+
+# Environment
+.env
+
+# Temporary files
+temp_uploads/
+runs/
+
+# Logs
+logs/
+*.log
+
+# Models (optional - comment out if you want to track them)
+# *.pt
+# *_openvino_model/
+
+# OS
+.DS_Store
+Thumbs.db

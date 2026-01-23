@@ -213,7 +213,7 @@ export class AdminService {
     };
   }
 
-  async getAllClinics(): Promise<
+  async getAllClinicsWithGlobalId(): Promise<
     { id: string; name: string; speciality: string; createdAt: Date }[]
   > {
     const clinics = await this.clinicRepository.find({
@@ -242,6 +242,26 @@ export class AdminService {
     return await this.clinicRepository.findOneBy({
       globalId,
       deletedAt: IsNull(),
+    });
+  }
+
+  async getClinicById(id: number): Promise<Clinic | null> {
+    return await this.clinicRepository.findOneBy({
+      id,
+      deletedAt: IsNull(),
+    });
+  }
+
+  async getAllClinicsWithId(): Promise<Clinic[]> {
+    return await this.clinicRepository.find({
+      select: {
+        name: true,
+        speciality: true,
+        id: true,
+      },
+      where: {
+        deletedAt: IsNull(),
+      },
     });
   }
 }

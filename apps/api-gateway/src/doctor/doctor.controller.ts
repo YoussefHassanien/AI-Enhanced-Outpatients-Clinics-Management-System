@@ -1,7 +1,20 @@
-import { Role, Roles } from '@app/common';
-import { Body, Controller, Get, Post, Req, UseGuards } from '@nestjs/common';
+import { Gender, Role, Roles } from '@app/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Post,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 import { Request } from 'express';
 import { User } from '../../../auth/src/entities';
+import {
+  MedicationDosage,
+  MedicationPeriod,
+  ScanTypes,
+} from '../../../doctor/src/constants';
 import { CreateMedicationDto, CreateVisitDto } from '../../../doctor/src/dtos';
 import { JwtAuthGuard } from '../auth/guards';
 import { DoctorService } from './doctor.service';
@@ -38,5 +51,126 @@ export class DoctorController {
       createMedicationDto,
       user.id,
     );
+  }
+
+  @Roles(Role.DOCTOR)
+  @UseGuards(JwtAuthGuard)
+  @Get('patient/:socialSecurityNumber/visits')
+  async getPatientVisits(
+    @Param('socialSecurityNumber') socialSecurityNumber: string,
+  ): Promise<
+    {
+      patient: {
+        id: string;
+        name: string;
+        gender: Gender;
+        dateOfBirth: Date;
+        socialSecurityNumber: string;
+        address: string;
+        job: string;
+      };
+      clinic: {
+        id: string;
+        name: string;
+        visits: {
+          doctor: {
+            name: string;
+            speciality: string;
+          };
+          diagnoses: string;
+        }[];
+      };
+    }[]
+  > {
+    return await this.doctorService.getPatientVisits(socialSecurityNumber);
+  }
+
+  @Roles(Role.DOCTOR)
+  @UseGuards(JwtAuthGuard)
+  @Get('patient/:socialSecurityNumber/medications')
+  async getPatientMedications(
+    @Param('socialSecurityNumber') socialSecurityNumber: string,
+  ): Promise<{
+    patient: {
+      id: string;
+      name: string;
+      gender: Gender;
+      dateOfBirth: Date;
+      socialSecurityNumber: string;
+      address: string;
+      job: string;
+    };
+    medications: {
+      name: string;
+      dosage: MedicationDosage;
+      period: MedicationPeriod;
+      comments: string;
+      doctor: {
+        name: string;
+        speciality: string;
+      };
+      createdAt: Date;
+    }[];
+  }> {
+    return await this.doctorService.getPatientMedications(socialSecurityNumber);
+  }
+
+  @Roles(Role.DOCTOR)
+  @UseGuards(JwtAuthGuard)
+  @Get('patient/:socialSecurityNumber/scans')
+  async getPatientScans(
+    @Param('socialSecurityNumber') socialSecurityNumber: string,
+  ): Promise<{
+    patient: {
+      id: string;
+      name: string;
+      gender: Gender;
+      dateOfBirth: Date;
+      socialSecurityNumber: string;
+      address: string;
+      job: string;
+    };
+    scans: {
+      name: string;
+      type: ScanTypes;
+      photoUrl: string;
+      comments: string;
+      doctor: {
+        name: string;
+        speciality: string;
+      };
+      createdAt: Date;
+    }[];
+  }> {
+    return await this.doctorService.getPatientScans(socialSecurityNumber);
+  }
+
+  @Roles(Role.DOCTOR)
+  @UseGuards(JwtAuthGuard)
+  @Get('patient/:socialSecurityNumber/labs')
+  async getPatientLabs(
+    @Param('socialSecurityNumber') socialSecurityNumber: string,
+  ): Promise<{
+    patient: {
+      id: string;
+      name: string;
+      gender: Gender;
+      dateOfBirth: Date;
+      socialSecurityNumber: string;
+      address: string;
+      job: string;
+    };
+    labs: {
+      name: string;
+      photoUrl: string;
+      comments: string;
+      doctor: {
+        name: string;
+        speciality: string;
+      };
+      createdAt: Date;
+    }[];
+  }> {
+    return await this.doctorService.getPatientLabs(socialSecurityNumber);
   }
 }
