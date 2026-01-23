@@ -1,0 +1,107 @@
+services:
+  rabbitMq:
+    image: rabbitmq:4.1.6-alpine
+    ports:
+      - 5672
+    networks:
+      - services-network
+  auth:
+    build:
+      context: .
+      dockerfile: ./apps/auth/Dockerfile
+    env_file:
+      - ./apps/auth/.env
+    depends_on:
+      - rabbitMq
+    command: node auth/main
+    networks:
+      - services-network
+    volumes:
+      - ./logs:/app/logs
+
+  api-gateway:
+    build:
+      context: .
+      dockerfile: ./apps/api-gateway/Dockerfile
+    env_file:
+      - ./apps/api-gateway/.env
+    ports:
+      - 4000:4000
+    depends_on:
+      - rabbitMq
+      - auth
+      - doctor
+      - ocr
+      - asr
+      - admin
+    command: node api-gateway/main
+    networks:
+      - services-network
+    volumes:
+      - ./logs:/app/logs
+
+  doctor:
+    build:
+      context: .
+      dockerfile: ./apps/doctor/Dockerfile
+    env_file:
+      - ./apps/doctor/.env
+    depends_on:
+      - rabbitMq
+    command: node doctor/main
+    networks:
+      - services-network
+    volumes:
+      - ./logs:/app/logs
+
+  admin:
+    build:
+      context: .
+      dockerfile: ./apps/admin/Dockerfile
+    env_file:
+      - ./apps/admin/.env
+    depends_on:
+      - rabbitMq
+    command: node admin/main
+    networks:
+      - services-network
+    volumes:
+      - ./logs:/app/logs
+
+  asr:
+    build:
+      context: .
+      dockerfile: ./apps/asr/Dockerfile
+    env_file:
+      - ./apps/asr/.env
+    depends_on:
+      - rabbitMq
+    command: node asr/main
+    networks:
+      - services-network
+    volumes:
+      - ./logs:/app/logs
+      - ./tmp/asr_uploads:/app/tmp/asr_uploads
+  ocr:
+    build:
+      context: .
+      dockerfile: ./apps/ocr/Dockerfile
+    env_file:
+      - ./apps/ocr/.env
+    depends_on:
+      - rabbitMq
+    command: ['python', 'run_consumer.py']
+    networks:
+      - services-network
+    volumes:
+      - ./logs/ocr:/app/logs
+      - paddleocr-cache:/root/.paddlex
+
+volumes:
+  paddleocr-cache:
+    driver: local
+
+networks:
+  services-network:
+    driver: bridge
+

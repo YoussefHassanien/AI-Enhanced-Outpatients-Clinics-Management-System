@@ -28,6 +28,15 @@
         "tsConfigPath": "apps/api-gateway/tsconfig.app.json"
       }
     },
+    "asr": {
+      "type": "application",
+      "root": "apps/asr",
+      "entryFile": "main",
+      "sourceRoot": "apps/asr/src",
+      "compilerOptions": {
+        "tsConfigPath": "apps/asr/tsconfig.app.json"
+      }
+    },
     "auth": {
       "type": "application",
       "root": "apps/auth",
