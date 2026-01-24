@@ -726,9 +726,18 @@ export class AuthService {
   }
 
   async getPatientById(id: number): Promise<Patient | null> {
-    return await this.patientRepository.findOneBy({
-      id,
-      deletedAt: IsNull(),
+    return await this.patientRepository.findOne({
+      where: { id, deletedAt: IsNull() },
+      relations: { user: true },
+      select: {
+        user: {
+          firstName: true,
+          lastName: true,
+          gender: true,
+          dateOfBirth: true,
+          socialSecurityNumber: true,
+        },
+      },
     });
   }
 

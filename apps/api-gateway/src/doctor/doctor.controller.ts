@@ -5,6 +5,7 @@ import {
   Get,
   Param,
   Post,
+  Query,
   Req,
   UseGuards,
 } from '@nestjs/common';
@@ -21,7 +22,7 @@ import { DoctorService } from './doctor.service';
 
 @Controller('doctor')
 export class DoctorController {
-  constructor(private readonly doctorService: DoctorService) {}
+  constructor(private readonly doctorService: DoctorService) { }
 
   @Get()
   async isUp(): Promise<string> {
@@ -172,5 +173,53 @@ export class DoctorController {
     }[];
   }> {
     return await this.doctorService.getPatientLabs(socialSecurityNumber);
+  }
+
+  @Roles(Role.DOCTOR)
+  @UseGuards(JwtAuthGuard)
+  @Get('patients')
+  async getDoctorPatients(
+    @Req() req: Request,
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+  ): Promise<{
+    patient: {
+      id: string;
+      name: string;
+      gender: Gender;
+      dateOfBirth: Date;
+      socialSecurityNumber: string;
+      address: string;
+      job: string;
+    }[];
+    total: number;
+    page: number;
+    limit: number;
+  }> {
+    const user = req.user as User;
+    return await this.doctorService.getDoctorPatients(user.id, page, limit);
+  }
+
+  @Roles(Role.DOCTOR)
+  @UseGuards(JwtAuthGuard)
+  @Get('visits')
+  async getDoctorVisits(
+    @Req() req: Request,
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+  ): Promise<{
+    visits: {
+      id: string;
+      diagnoses: string;
+      patientName: string;
+      patientSocialSecurityNumber: string;
+      createdAt: Date;
+    }[];
+    total: number;
+    page: number;
+    limit: number;
+  }> {
+    const user = req.user as User;
+    return await this.doctorService.getDoctorVisits(user.id, page, limit);
   }
 }

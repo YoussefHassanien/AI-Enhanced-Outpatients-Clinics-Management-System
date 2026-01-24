@@ -18,7 +18,7 @@ import {
 export class DoctorService {
   constructor(
     @Inject(Microservices.DOCTOR) private readonly doctorClient: ClientProxy,
-  ) {}
+  ) { }
 
   private validateSocialSecurityNumber(socialSecurityNumber: string): void {
     const regex = /^[23]\d{2}(0[1-9]|1[0-2])(0[1-9]|[12]\d|3[01])\d{7}$/;
@@ -269,6 +269,80 @@ export class DoctorService {
       this.doctorClient.send(
         { cmd: DoctorPatterns.GET_PATIENT_LABS },
         socialSecurityNumber,
+      ),
+    );
+  }
+
+  async getDoctorPatients(
+    doctorUserId: number,
+    page?: number,
+    limit?: number,
+  ): Promise<{
+    patient: {
+      id: string;
+      name: string;
+      gender: Gender;
+      dateOfBirth: Date;
+      socialSecurityNumber: string;
+      address: string;
+      job: string;
+    }[];
+    total: number;
+    page: number;
+    limit: number;
+  }> {
+    return await lastValueFrom<{
+      patient: {
+        id: string;
+        name: string;
+        gender: Gender;
+        dateOfBirth: Date;
+        socialSecurityNumber: string;
+        address: string;
+        job: string;
+      }[];
+      total: number;
+      page: number;
+      limit: number;
+    }>(
+      this.doctorClient.send(
+        { cmd: DoctorPatterns.GET_DOCTOR_PATIENTS },
+        { doctorUserId, page, limit },
+      ),
+    );
+  }
+
+  async getDoctorVisits(
+    doctorUserId: number,
+    page?: number,
+    limit?: number,
+  ): Promise<{
+    visits: {
+      id: string;
+      diagnoses: string;
+      patientName: string;
+      patientSocialSecurityNumber: string;
+      createdAt: Date;
+    }[];
+    total: number;
+    page: number;
+    limit: number;
+  }> {
+    return await lastValueFrom<{
+      visits: {
+        id: string;
+        diagnoses: string;
+        patientName: string;
+        patientSocialSecurityNumber: string;
+        createdAt: Date;
+      }[];
+      total: number;
+      page: number;
+      limit: number;
+    }>(
+      this.doctorClient.send(
+        { cmd: DoctorPatterns.GET_DOCTOR_VISITS },
+        { doctorUserId, page, limit },
       ),
     );
   }

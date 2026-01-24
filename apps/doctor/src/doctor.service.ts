@@ -14,21 +14,10 @@ import { ClientProxy, RpcException } from '@nestjs/microservices';
 import { InjectRepository } from '@nestjs/typeorm';
 import { lastValueFrom } from 'rxjs';
 import { IsNull, Repository } from 'typeorm';
-import {
-  AdminPatterns,
-  AuthPatterns,
-  CommonServices,
-  ErrorResponse,
-  Gender,
-  LoggingService,
-  Microservices,
-  PaginationRequest,
-  PaginationResponse,
-} from '../../../libs/common/src';
 import { Clinic } from '../../admin/src/entities';
 import { Doctor, Patient } from '../../auth/src/entities';
 import { MedicationDosage, MedicationPeriod, ScanTypes } from './constants';
-import { CreateMedicationInternalDto, CreateVisitInternalDto } from './dtos';
+import { CreateMedicationInternalDto, CreateVisitInternalDto, GetDoctorPatientsDto, GetDoctorVisitsDto } from './dtos';
 import { Lab, Medication, Scan, Visit } from './entities';
 
 @Injectable()
@@ -254,6 +243,153 @@ export class DoctorService {
     return response;
   }
 
+  async getDoctorPatients(getDoctorPatientsDto: GetDoctorPatientsDto): Promise<{
+    patient: {
+      id: string;
+      name: string;
+      gender: Gender;
+      dateOfBirth: Date;
+      socialSecurityNumber: string;
+      address: string;
+      job: string;
+    }[];
+    total: number;
+    page: number;
+    limit: number;
+  }> {
+    const doctor = await this.getDoctorByUserId(getDoctorPatientsDto.doctorUserId);
+
+    if (!doctor) {
+      throw new RpcException(new ErrorResponse('Doctor not found!', 404));
+    }
+
+    const page = getDoctorPatientsDto.page || 1;
+    const limit = getDoctorPatientsDto.limit || 10;
+
+    const visits = await this.visitsRepository.find({
+      where: {
+        doctorId: doctor.id,
+        deletedAt: IsNull(),
+      },
+      select: {
+        patientId: true,
+      },
+    });
+    const patientIds = [...new Set(visits.map(visit => visit.patientId))];
+    const total = patientIds.length;
+    this.logger.log(`Found ${total} unique patients for the doctor`);
+
+    const skip = (page - 1) * limit;
+    const paginatedPatientIds = patientIds.slice(skip, skip + limit);
+
+    const patients = await Promise.all(
+      paginatedPatientIds.map(async (patientId) => {
+        const patient = await lastValueFrom<Patient | null>(
+          this.authClient.send(
+            { cmd: AuthPatterns.GET_PATIENT_BY_ID },
+            patientId,
+          ),
+        );
+
+        if (!patient) {
+          this.logger.log(`Patient with ID ${patientId} not found`);
+          return null;
+        }
+
+        return {
+          id: patient.globalId,
+          name: `${patient.user.firstName} ${patient.user.lastName}`,
+          gender: patient.user.gender,
+          dateOfBirth: patient.user.dateOfBirth,
+          socialSecurityNumber: patient.user.socialSecurityNumber.toString(),
+          address: patient.address,
+          job: patient.job,
+        };
+      }),
+    );
+
+    const filteredPatients = patients.filter(p => p !== null);
+    this.logger.log(`Successfully retrieved ${filteredPatients.length} patients for page ${page}`);
+
+    return {
+      patient: filteredPatients,
+      total,
+      page,
+      limit,
+    };
+  }
+
+  async getDoctorVisits(getDoctorVisitsDto: GetDoctorVisitsDto): Promise<{
+    visits: {
+      id: string;
+      diagnoses: string;
+      patientName: string;
+      patientSocialSecurityNumber: string;
+      createdAt: Date;
+    }[];
+    total: number;
+    page: number;
+    limit: number;
+  }> {
+    const doctor = await this.getDoctorByUserId(getDoctorVisitsDto.doctorUserId);
+
+    if (!doctor) {
+      throw new RpcException(new ErrorResponse('Doctor not found!', 404));
+    }
+
+    const page = getDoctorVisitsDto.page || 1;
+    const limit = getDoctorVisitsDto.limit || 10;
+    const skip = (page - 1) * limit;
+
+    const [visits, total] = await this.visitsRepository.findAndCount({
+      where: {
+        doctorId: doctor.id,
+        deletedAt: IsNull(),
+      },
+      order: {
+        createdAt: 'DESC',
+      },
+      skip,
+      take: limit,
+    });
+
+    this.logger.log(`Found ${visits.length} visits for doctor ${doctor.globalId}`);
+
+    const visitsWithPatientInfo = await Promise.all(
+      visits.map(async (visit) => {
+        const patient = await lastValueFrom<Patient | null>(
+          this.authClient.send(
+            { cmd: AuthPatterns.GET_PATIENT_BY_ID },
+            visit.patientId,
+          ),
+        );
+
+        if (!patient) {
+          this.logger.log(`Patient with ID ${visit.patientId} not found`);
+          return null;
+        }
+
+        return {
+          id: visit.globalId,
+          diagnoses: visit.diagnoses,
+          patientName: `${patient.user.firstName} ${patient.user.lastName}`,
+          patientSocialSecurityNumber: patient.user.socialSecurityNumber.toString(),
+          createdAt: visit.createdAt,
+        };
+      }),
+    );
+
+    const filteredVisits = visitsWithPatientInfo.filter(v => v !== null);
+    this.logger.log(`Successfully retrieved ${filteredVisits.length} visits with patient info`);
+
+    return {
+      visits: filteredVisits,
+      total,
+      page,
+      limit,
+    };
+  }
+
   async getPatientVisits(socialSecurityNumber: string): Promise<{
     patient: {
       id: string;
@@ -327,9 +463,9 @@ export class DoctorService {
         doctorsIds[index],
         doctor
           ? {
-              name: `${doctor.user.firstName} ${doctor.user.lastName}`,
-              speciality: doctor.speciality,
-            }
+            name: `${doctor.user.firstName} ${doctor.user.lastName}`,
+            speciality: doctor.speciality,
+          }
           : { name: 'UNKNOWN', speciality: 'UNKNOWN' },
       ]),
     );
@@ -464,9 +600,9 @@ export class DoctorService {
         doctorsIds[index],
         doctor
           ? {
-              name: `${doctor.user.firstName} ${doctor.user.lastName}`,
-              speciality: doctor.speciality,
-            }
+            name: `${doctor.user.firstName} ${doctor.user.lastName}`,
+            speciality: doctor.speciality,
+          }
           : { name: 'UNKNOWN', speciality: 'UNKNOWN' },
       ]),
     );
@@ -571,9 +707,9 @@ export class DoctorService {
         doctorsIds[index],
         doctor
           ? {
-              name: `${doctor.user.firstName} ${doctor.user.lastName}`,
-              speciality: doctor.speciality,
-            }
+            name: `${doctor.user.firstName} ${doctor.user.lastName}`,
+            speciality: doctor.speciality,
+          }
           : { name: 'UNKNOWN', speciality: 'UNKNOWN' },
       ]),
     );
@@ -677,9 +813,9 @@ export class DoctorService {
         doctorsIds[index],
         doctor
           ? {
-              name: `${doctor.user.firstName} ${doctor.user.lastName}`,
-              speciality: doctor.speciality,
-            }
+            name: `${doctor.user.firstName} ${doctor.user.lastName}`,
+            speciality: doctor.speciality,
+          }
           : { name: 'UNKNOWN', speciality: 'UNKNOWN' },
       ]),
     );
