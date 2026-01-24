@@ -337,17 +337,34 @@ export class AuthService {
   }
 
   async getPatientByGlobalId(globalId: string): Promise<Patient | null> {
-    return await this.patientRepository.findOne({
+    const patient = await this.patientRepository.findOne({
+      relations: {
+        user: true,
+      },
       select: {
-        createdAt: false,
-        updatedAt: false,
-        deletedAt: false,
+        id: true,
+        globalId: true,
+        address: true,
+        job: true,
+        user: {
+          globalId: true,
+          socialSecurityNumber: true,
+          gender: true,
+          firstName: true,
+          lastName: true,
+          dateOfBirth: true,
+        },
       },
       where: {
         globalId,
         deletedAt: IsNull(),
+        user: {
+          deletedAt: IsNull(),
+        },
       },
     });
+
+    return patient;
   }
 
   async getAdminByUserId(userId: number): Promise<Admin | null> {
@@ -830,6 +847,30 @@ export class AuthService {
         job: true,
         id: true,
         globalId: true,
+      },
+    });
+  }
+
+  async getDoctorByGlobalId(globalId: string): Promise<Doctor | null> {
+    return await this.doctorRepository.findOne({
+      where: { globalId, deletedAt: IsNull() },
+      relations: { user: true },
+      select: {
+        id: true,
+        phone: true,
+        email: true,
+        speciality: true,
+        isApproved: true,
+        globalId: true,
+        user: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          globalId: true,
+          socialSecurityNumber: true,
+          gender: true,
+          dateOfBirth: true,
+        },
       },
     });
   }

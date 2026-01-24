@@ -274,6 +274,15 @@ describe('AuthController', () => {
       globalId,
       address: 'Patient address',
       job: 'Patient job',
+      user: {
+        id: 1,
+        globalId: 'user-uuid',
+        firstName: 'John',
+        lastName: 'Doe',
+        socialSecurityNumber: BigInt(12345678912345),
+        gender: Gender.MALE,
+        dateOfBirth: new Date('1990-01-01'),
+      },
     } as Patient;
 
     it('should return a patient', async () => {
