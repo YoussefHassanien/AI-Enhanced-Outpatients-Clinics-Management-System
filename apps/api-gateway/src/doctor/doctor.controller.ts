@@ -183,7 +183,7 @@ export class DoctorController {
     @Query('page') page?: number,
     @Query('limit') limit?: number,
   ): Promise<{
-    patient: {
+    patients: {
       id: string;
       name: string;
       gender: Gender;

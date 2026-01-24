@@ -244,7 +244,7 @@ export class DoctorService {
   }
 
   async getDoctorPatients(getDoctorPatientsDto: GetDoctorPatientsDto): Promise<{
-    patient: {
+    patients: {
       id: string;
       name: string;
       gender: Gender;
@@ -312,7 +312,7 @@ export class DoctorService {
     this.logger.log(`Successfully retrieved ${filteredPatients.length} patients for page ${page}`);
 
     return {
-      patient: filteredPatients,
+      patients: filteredPatients,
       total,
       page,
       limit,

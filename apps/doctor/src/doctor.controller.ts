@@ -158,7 +158,7 @@ export class DoctorController {
 
   @MessagePattern({ cmd: DoctorPatterns.GET_DOCTOR_PATIENTS })
   async getDoctorPatients(@Payload() getDoctorPatientsDto: GetDoctorPatientsDto): Promise<{
-    patient: {
+    patients: {
       id: string;
       name: string;
       gender: Gender;

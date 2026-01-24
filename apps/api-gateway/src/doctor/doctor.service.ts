@@ -278,7 +278,7 @@ export class DoctorService {
     page?: number,
     limit?: number,
   ): Promise<{
-    patient: {
+    patients: {
       id: string;
       name: string;
       gender: Gender;
@@ -292,7 +292,7 @@ export class DoctorService {
     limit: number;
   }> {
     return await lastValueFrom<{
-      patient: {
+      patients: {
         id: string;
         name: string;
         gender: Gender;
