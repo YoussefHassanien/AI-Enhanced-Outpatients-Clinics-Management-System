@@ -64,7 +64,7 @@ export class OcrService {
             { image_base64: imageBase64 },
           )
           .pipe(
-            timeout(60000), // 60 second timeout for OCR processing
+            timeout(60 * 1000), // 60 second timeout for OCR processing
           ),
       );
 

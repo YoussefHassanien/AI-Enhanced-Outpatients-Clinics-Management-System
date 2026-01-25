@@ -10,7 +10,7 @@ export class Scan extends DoctorPatientRelationEntity {
   @Column('enum', { enum: ScanTypes })
   type: ScanTypes;
 
-  @Column('text')
+  @Column('text', { nullable: true })
   photoUrl: string;
 
   @Column('varchar', { length: 512, nullable: true })
