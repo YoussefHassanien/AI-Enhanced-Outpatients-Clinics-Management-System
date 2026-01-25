@@ -289,6 +289,7 @@ export class AdminService {
       firstName: patient.user.firstName,
       lastName: patient.user.lastName,
       dateOfBirth: patient.user.dateOfBirth,
+      createdAt: patient.createdAt,
     };
   }
 
@@ -315,6 +316,11 @@ export class AdminService {
       firstName: doctor.user.firstName,
       lastName: doctor.user.lastName,
       dateOfBirth: doctor.user.dateOfBirth,
+      createdAt: doctor.createdAt,
+      clinic: {
+        id: doctor.clinic.globalId,
+        name: doctor.clinic.name,
+      }
     };
   }
 }

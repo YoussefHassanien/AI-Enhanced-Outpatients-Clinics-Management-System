@@ -11,4 +11,9 @@ export class DoctorResponseDTO {
   firstName: string;
   lastName: string;
   dateOfBirth: Date;
+  createdAt: Date;
+  clinic: {
+    id: string;
+    name: string;
+  }
 }

@@ -9,4 +9,5 @@ export class PatientResponseDTO {
   firstName: string;
   lastName: string;
   dateOfBirth: Date;
+  createdAt: Date;
 }
