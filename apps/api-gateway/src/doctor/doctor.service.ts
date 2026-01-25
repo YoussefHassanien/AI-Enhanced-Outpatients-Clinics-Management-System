@@ -324,4 +324,82 @@ export class DoctorService {
       ),
     );
   }
+
+  async getDoctorVisits(
+    doctorUserId: number,
+    page?: number,
+    limit?: number,
+  ): Promise<{
+    page: number;
+    items: {
+      id: string;
+      diagnoses: string;
+      patient: {
+        name: string;
+        id: string;
+      };
+      createdAt: Date;
+    }[];
+    totalItems: number;
+    totalPages: number;
+  }> {
+    return await lastValueFrom<{
+      page: number;
+      items: {
+        id: string;
+        diagnoses: string;
+        patient: {
+          name: string;
+          id: string;
+        };
+        createdAt: Date;
+      }[];
+      totalItems: number;
+      totalPages: number;
+    }>(
+      this.doctorClient.send(
+        { cmd: DoctorPatterns.GET_DOCTOR_VISITS },
+        { doctorUserId, page, limit },
+      ),
+    );
+  }
+
+  async getDoctorPatients(
+    doctorUserId: number,
+    page?: number,
+    limit?: number,
+  ): Promise<{
+    page: number;
+    items: {
+      id: string;
+      name: string;
+      gender: Gender;
+      dateOfBirth: Date;
+      socialSecurityNumber: string;
+      address: string;
+      job: string;
+    }[];
+    totalItems: number;
+    totalPages: number;
+  }> {
+    return await lastValueFrom<{
+      page: number;
+      items: {
+        id: string;
+        name: string;
+        gender: Gender;
+        dateOfBirth: Date;
+        socialSecurityNumber: string;
+        address: string;
+        job: string;
+      }[];
+      totalItems: number;
+      totalPages: number;
+    }>(
+      this.doctorClient.send(
+        { cmd: DoctorPatterns.GET_DOCTOR_PATIENTS },
+        { doctorUserId, page, limit },
+      ),
+    );
+  }
 }

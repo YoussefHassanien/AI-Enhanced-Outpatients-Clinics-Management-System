@@ -11,6 +11,8 @@ import { DoctorService } from './doctor.service';
 import {
   CreateMedicationInternalDto,
   CreateVisitInternalDto,
+  GetDoctorPatientsDto,
+  GetDoctorVisitsDto,
   UploadLabInternalDto,
   UploadScanPhotoInternalDto,
 } from './dtos';
@@ -159,6 +161,46 @@ export class DoctorController {
     }[];
   }> {
     return await this.doctorService.getPatientLabs(socialSecurityNumber);
+  }
+
+  @MessagePattern({ cmd: DoctorPatterns.GET_DOCTOR_PATIENTS })
+  async getDoctorPatients(
+    @Payload() getDoctorPatientsDto: GetDoctorPatientsDto,
+  ): Promise<{
+    page: number;
+    items: {
+      id: string;
+      name: string;
+      gender: Gender;
+      dateOfBirth: Date;
+      socialSecurityNumber: string;
+      address: string;
+      job: string;
+    }[];
+    totalItems: number;
+    totalPages: number;
+  }> {
+    return await this.doctorService.getDoctorPatients(getDoctorPatientsDto);
+  }
+
+  @MessagePattern({ cmd: DoctorPatterns.GET_DOCTOR_VISITS })
+  async getDoctorVisits(
+    @Payload() getDoctorVisitsDto: GetDoctorVisitsDto,
+  ): Promise<{
+    page: number;
+    items: {
+      id: string;
+      diagnoses: string;
+      patient: {
+        name: string;
+        id: string;
+      };
+      createdAt: Date;
+    }[];
+    totalItems: number;
+    totalPages: number;
+  }> {
+    return await this.doctorService.getDoctorVisits(getDoctorVisitsDto);
   }
 
   @EventPattern({ cmd: DoctorPatterns.LAB_UPLOAD })

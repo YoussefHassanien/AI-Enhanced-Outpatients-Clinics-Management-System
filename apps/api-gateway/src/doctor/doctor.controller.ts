@@ -6,6 +6,7 @@ import {
   Param,
   ParseFilePipeBuilder,
   Post,
+  Query,
   Req,
   UploadedFile,
   UseGuards,
@@ -239,5 +240,55 @@ export class DoctorController {
       image,
       user.id,
     );
+  }
+
+  @Roles(Role.DOCTOR)
+  @UseGuards(JwtAuthGuard)
+  @Get('patients')
+  async getDoctorPatients(
+    @Req() req: Request,
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+  ): Promise<{
+    page: number;
+    items: {
+      id: string;
+      name: string;
+      gender: Gender;
+      dateOfBirth: Date;
+      socialSecurityNumber: string;
+      address: string;
+      job: string;
+    }[];
+    totalItems: number;
+    totalPages: number;
+  }> {
+    const user = req.user as User;
+    return await this.doctorService.getDoctorPatients(user.id, page, limit);
+  }
+
+  @Roles(Role.DOCTOR)
+  @UseGuards(JwtAuthGuard)
+  @Get('visits')
+  async getDoctorVisits(
+    @Req() req: Request,
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+  ): Promise<{
+    page: number;
+    items: {
+      id: string;
+      diagnoses: string;
+      patient: {
+        name: string;
+        id: string;
+      };
+      createdAt: Date;
+    }[];
+    totalItems: number;
+    totalPages: number;
+  }> {
+    const user = req.user as User;
+    return await this.doctorService.getDoctorVisits(user.id, page, limit);
   }
 }
