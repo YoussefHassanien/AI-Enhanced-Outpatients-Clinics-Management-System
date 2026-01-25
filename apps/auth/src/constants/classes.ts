@@ -1,5 +1,6 @@
 import { Environment } from '@app/common';
 import {
+  Equals,
   IsAlphanumeric,
   IsEnum,
   IsIn,
@@ -40,15 +41,19 @@ export class EnvironmentVariables {
   @IsNotEmpty()
   AUDIENCE: string;
 
-  @IsString()
-  @IsNotEmpty()
+  @IsUrl({
+    protocols: ['amqp'],
+    require_host: true,
+    require_port: true,
+    require_tld: false,
+  })
   RABBIT_MQ_URL: string;
 
   @IsString()
-  @IsNotEmpty()
+  @Equals('auth')
   RABBIT_MQ_AUTH_QUEUE: string;
 
   @IsString()
-  @IsNotEmpty()
+  @Equals('admin')
   RABBIT_MQ_ADMIN_QUEUE: string;
 }

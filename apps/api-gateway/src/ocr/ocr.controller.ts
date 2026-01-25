@@ -1,6 +1,5 @@
 import { Role, Roles } from '@app/common';
 import {
-  BadRequestException,
   Controller,
   Get,
   ParseFilePipeBuilder,
@@ -44,10 +43,6 @@ export class OcrController {
     location: string;
     socialSecurityNumber: string;
   }> {
-    if (!file) {
-      throw new BadRequestException('Image file is required');
-    }
-
     return await this.ocrService.processIdCard(file);
   }
 }

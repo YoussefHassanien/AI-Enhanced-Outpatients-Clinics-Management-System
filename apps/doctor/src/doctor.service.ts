@@ -1,6 +1,7 @@
 import {
   AdminPatterns,
   AuthPatterns,
+  CloudStoragePatterns,
   CommonServices,
   ErrorResponse,
   Gender,
@@ -16,8 +17,17 @@ import { lastValueFrom } from 'rxjs';
 import { IsNull, Repository } from 'typeorm';
 import { Clinic } from '../../admin/src/entities';
 import { Doctor, Patient } from '../../auth/src/entities';
+import {
+  LabPhotoInternalDto,
+  ScanPhotoInternalDto,
+} from '../../cloud-storage/src/dtos';
 import { MedicationDosage, MedicationPeriod, ScanTypes } from './constants';
-import { CreateMedicationInternalDto, CreateVisitInternalDto } from './dtos';
+import {
+  CreateMedicationInternalDto,
+  CreateVisitInternalDto,
+  UploadLabInternalDto,
+  UploadScanPhotoInternalDto,
+} from './dtos';
 import { Lab, Medication, Scan, Visit } from './entities';
 
 @Injectable()
@@ -34,6 +44,8 @@ export class DoctorService {
     private readonly scansRepository: Repository<Scan>,
     @Inject(Microservices.AUTH) private readonly authClient: ClientProxy,
     @Inject(Microservices.ADMIN) private readonly adminClient: ClientProxy,
+    @Inject(Microservices.CLOUD_STORAGE)
+    private readonly cloudStorageClient: ClientProxy,
     @Inject(CommonServices.LOGGING) logger: LoggingService,
   ) {
     this.logger = logger;
@@ -707,5 +719,109 @@ export class DoctorService {
       patient: patientInfo,
       labs,
     };
+  }
+
+  async uploadLab(uploadLabInternalDto: UploadLabInternalDto): Promise<void> {
+    const patient = await lastValueFrom<Patient | null>(
+      this.authClient.send(
+        { cmd: AuthPatterns.GET_PATIENT_BY_SOCIAL_SECURITY_NUMBER },
+        uploadLabInternalDto.patientSocialSecurityNumber,
+      ),
+    );
+
+    if (!patient) {
+      throw new RpcException(new ErrorResponse('Patient not found!', 404));
+    }
+
+    const doctor = await lastValueFrom<Doctor | null>(
+      this.authClient.send(
+        { cmd: AuthPatterns.GET_DOCTOR_BY_USER_ID },
+        uploadLabInternalDto.doctorUserId,
+      ),
+    );
+
+    if (!doctor) {
+      throw new RpcException(new ErrorResponse('Doctor not found!', 404));
+    }
+
+    const lab = await this.labsRepository.save({
+      name: uploadLabInternalDto.name,
+      comments: uploadLabInternalDto.comments,
+      doctorId: doctor.id,
+      patientId: patient.id,
+    });
+    this.logger.log('Lab is saved successfully without photo url');
+
+    const uploadLabPhotoInternalDto = new LabPhotoInternalDto(
+      lab.globalId,
+      patient.globalId,
+      uploadLabInternalDto.imageBase64,
+      uploadLabInternalDto.mimetype,
+    );
+
+    const photoUrl = await lastValueFrom<string>(
+      this.cloudStorageClient.send(
+        { cmd: CloudStoragePatterns.UPLOAD_LAB_PHOTO },
+        uploadLabPhotoInternalDto,
+      ),
+    );
+    this.logger.log('Lab photo url is successfully retrieved');
+
+    await this.labsRepository.update({ id: lab.id }, { photoUrl });
+    this.logger.log('Lab photo url is successfully updated');
+  }
+
+  async uploadScan(
+    uploadScanInternalDto: UploadScanPhotoInternalDto,
+  ): Promise<void> {
+    const patient = await lastValueFrom<Patient | null>(
+      this.authClient.send(
+        { cmd: AuthPatterns.GET_PATIENT_BY_SOCIAL_SECURITY_NUMBER },
+        uploadScanInternalDto.patientSocialSecurityNumber,
+      ),
+    );
+
+    if (!patient) {
+      throw new RpcException(new ErrorResponse('Patient not found!', 404));
+    }
+
+    const doctor = await lastValueFrom<Doctor | null>(
+      this.authClient.send(
+        { cmd: AuthPatterns.GET_DOCTOR_BY_USER_ID },
+        uploadScanInternalDto.doctorUserId,
+      ),
+    );
+
+    if (!doctor) {
+      throw new RpcException(new ErrorResponse('Doctor not found!', 404));
+    }
+
+    const scan = await this.scansRepository.save({
+      name: uploadScanInternalDto.name,
+      comments: uploadScanInternalDto.comments,
+      type: uploadScanInternalDto.type,
+      patientId: patient.id,
+      doctorId: doctor.id,
+    });
+    this.logger.log('Scan is saved successfully without photo url');
+
+    const uploadScanPhotoInternalDto = new ScanPhotoInternalDto(
+      scan.globalId,
+      patient.globalId,
+      uploadScanInternalDto.imageBase64,
+      uploadScanInternalDto.mimetype,
+      uploadScanInternalDto.type,
+    );
+
+    const photoUrl = await lastValueFrom<string>(
+      this.cloudStorageClient.send(
+        { cmd: CloudStoragePatterns.UPLOAD_SCAN_PHOTO },
+        uploadScanPhotoInternalDto,
+      ),
+    );
+    this.logger.log('Scan photo url is successfully retrieved');
+
+    await this.scansRepository.update({ id: scan.id }, { photoUrl });
+    this.logger.log('Scan photo url is successfully updated');
   }
 }

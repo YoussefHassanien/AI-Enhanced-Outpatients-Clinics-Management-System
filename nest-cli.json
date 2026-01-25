@@ -46,6 +46,15 @@
         "tsConfigPath": "apps/auth/tsconfig.app.json"
       }
     },
+    "cloud-storage": {
+      "type": "application",
+      "root": "apps/cloud-storage",
+      "entryFile": "main",
+      "sourceRoot": "apps/cloud-storage/src",
+      "compilerOptions": {
+        "tsConfigPath": "apps/cloud-storage/tsconfig.app.json"
+      }
+    },
     "common": {
       "type": "library",
       "root": "libs/common",

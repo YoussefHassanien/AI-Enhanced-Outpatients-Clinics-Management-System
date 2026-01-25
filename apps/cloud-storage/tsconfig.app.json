@@ -1,8 +1,8 @@
 {
   "extends": "../../tsconfig.json",
   "compilerOptions": {
-    "declaration": true,
-    "outDir": "../../dist/libs/common",
+    "declaration": false,
+    "outDir": "../../dist/apps/cloud-storage",
     "baseUrl": ".",
     "paths": {
       "@app/common": ["../../libs/common/src"],
