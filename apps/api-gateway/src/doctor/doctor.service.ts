@@ -278,7 +278,8 @@ export class DoctorService {
     page?: number,
     limit?: number,
   ): Promise<{
-    patients: {
+    page: number;
+    items: {
       id: string;
       name: string;
       gender: Gender;
@@ -287,12 +288,12 @@ export class DoctorService {
       address: string;
       job: string;
     }[];
-    total: number;
-    page: number;
-    limit: number;
+    totalItems: number;
+    totalPages: number;
   }> {
     return await lastValueFrom<{
-      patients: {
+      page: number;
+      items: {
         id: string;
         name: string;
         gender: Gender;
@@ -301,9 +302,8 @@ export class DoctorService {
         address: string;
         job: string;
       }[];
-      total: number;
-      page: number;
-      limit: number;
+      totalItems: number;
+      totalPages: number;
     }>(
       this.doctorClient.send(
         { cmd: DoctorPatterns.GET_DOCTOR_PATIENTS },
@@ -317,28 +317,32 @@ export class DoctorService {
     page?: number,
     limit?: number,
   ): Promise<{
-    visits: {
+    page: number;
+    items: {
       id: string;
       diagnoses: string;
-      patientName: string;
-      patientSocialSecurityNumber: string;
+      patient: {
+        name: string;
+        id: string;
+      };
       createdAt: Date;
     }[];
-    total: number;
-    page: number;
-    limit: number;
+    totalItems: number;
+    totalPages: number;
   }> {
     return await lastValueFrom<{
-      visits: {
+      page: number;
+      items: {
         id: string;
         diagnoses: string;
-        patientName: string;
-        patientSocialSecurityNumber: string;
+        patient: {
+          name: string;
+          id: string;
+        };
         createdAt: Date;
       }[];
-      total: number;
-      page: number;
-      limit: number;
+      totalItems: number;
+      totalPages: number;
     }>(
       this.doctorClient.send(
         { cmd: DoctorPatterns.GET_DOCTOR_VISITS },

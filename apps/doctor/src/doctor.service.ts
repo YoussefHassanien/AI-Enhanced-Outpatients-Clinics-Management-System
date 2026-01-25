@@ -244,7 +244,8 @@ export class DoctorService {
   }
 
   async getDoctorPatients(getDoctorPatientsDto: GetDoctorPatientsDto): Promise<{
-    patients: {
+    page: number;
+    items: {
       id: string;
       name: string;
       gender: Gender;
@@ -253,9 +254,8 @@ export class DoctorService {
       address: string;
       job: string;
     }[];
-    total: number;
-    page: number;
-    limit: number;
+    totalItems: number;
+    totalPages: number;
   }> {
     const doctor = await this.getDoctorByUserId(getDoctorPatientsDto.doctorUserId);
 
@@ -276,8 +276,8 @@ export class DoctorService {
       },
     });
     const patientIds = [...new Set(visits.map(visit => visit.patientId))];
-    const total = patientIds.length;
-    this.logger.log(`Found ${total} unique patients for the doctor`);
+    const totalItems = patientIds.length;
+    this.logger.log(`Found ${totalItems} unique patients for the doctor`);
 
     const skip = (page - 1) * limit;
     const paginatedPatientIds = patientIds.slice(skip, skip + limit);
@@ -308,28 +308,30 @@ export class DoctorService {
       }),
     );
 
-    const filteredPatients = patients.filter(p => p !== null);
-    this.logger.log(`Successfully retrieved ${filteredPatients.length} patients for page ${page}`);
+    const items = patients.filter(p => p !== null);
+    this.logger.log(`Successfully retrieved ${items.length} patients for page ${page}`);
 
     return {
-      patients: filteredPatients,
-      total,
       page,
-      limit,
+      items,
+      totalItems,
+      totalPages: Math.ceil(totalItems / limit),
     };
   }
 
   async getDoctorVisits(getDoctorVisitsDto: GetDoctorVisitsDto): Promise<{
-    visits: {
+    page: number;
+    items: {
       id: string;
       diagnoses: string;
-      patientName: string;
-      patientSocialSecurityNumber: string;
+      patient: {
+        name: string;
+        id: string;
+      };
       createdAt: Date;
     }[];
-    total: number;
-    page: number;
-    limit: number;
+    totalItems: number;
+    totalPages: number;
   }> {
     const doctor = await this.getDoctorByUserId(getDoctorVisitsDto.doctorUserId);
 
@@ -341,7 +343,7 @@ export class DoctorService {
     const limit = getDoctorVisitsDto.limit || 10;
     const skip = (page - 1) * limit;
 
-    const [visits, total] = await this.visitsRepository.findAndCount({
+    const [visits, totalItems] = await this.visitsRepository.findAndCount({
       where: {
         doctorId: doctor.id,
         deletedAt: IsNull(),
@@ -372,21 +374,23 @@ export class DoctorService {
         return {
           id: visit.globalId,
           diagnoses: visit.diagnoses,
-          patientName: `${patient.user.firstName} ${patient.user.lastName}`,
-          patientSocialSecurityNumber: patient.user.socialSecurityNumber.toString(),
+          patient: {
+            name: `${patient.user.firstName} ${patient.user.lastName}`,
+            id: patient.globalId,
+          },
           createdAt: visit.createdAt,
         };
       }),
     );
 
-    const filteredVisits = visitsWithPatientInfo.filter(v => v !== null);
-    this.logger.log(`Successfully retrieved ${filteredVisits.length} visits with patient info`);
+    const items = visitsWithPatientInfo.filter(v => v !== null);
+    this.logger.log(`Successfully retrieved ${items.length} visits with patient info`);
 
     return {
-      visits: filteredVisits,
-      total,
       page,
-      limit,
+      items,
+      totalItems,
+      totalPages: Math.ceil(totalItems / limit),
     };
   }
 

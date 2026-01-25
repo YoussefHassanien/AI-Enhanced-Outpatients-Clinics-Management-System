@@ -158,7 +158,8 @@ export class DoctorController {
 
   @MessagePattern({ cmd: DoctorPatterns.GET_DOCTOR_PATIENTS })
   async getDoctorPatients(@Payload() getDoctorPatientsDto: GetDoctorPatientsDto): Promise<{
-    patients: {
+    page: number;
+    items: {
       id: string;
       name: string;
       gender: Gender;
@@ -167,25 +168,26 @@ export class DoctorController {
       address: string;
       job: string;
     }[];
-    total: number;
-    page: number;
-    limit: number;
+    totalItems: number;
+    totalPages: number;
   }> {
     return await this.doctorService.getDoctorPatients(getDoctorPatientsDto);
   }
 
   @MessagePattern({ cmd: DoctorPatterns.GET_DOCTOR_VISITS })
   async getDoctorVisits(@Payload() getDoctorVisitsDto: GetDoctorVisitsDto): Promise<{
-    visits: {
+    page: number;
+    items: {
       id: string;
       diagnoses: string;
-      patientName: string;
-      patientSocialSecurityNumber: string;
+      patient: {
+        name: string;
+        id: string;
+      };
       createdAt: Date;
     }[];
-    total: number;
-    page: number;
-    limit: number;
+    totalItems: number;
+    totalPages: number;
   }> {
     return await this.doctorService.getDoctorVisits(getDoctorVisitsDto);
   }

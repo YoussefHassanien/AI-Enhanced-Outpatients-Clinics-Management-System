@@ -183,7 +183,8 @@ export class DoctorController {
     @Query('page') page?: number,
     @Query('limit') limit?: number,
   ): Promise<{
-    patients: {
+    page: number;
+    items: {
       id: string;
       name: string;
       gender: Gender;
@@ -192,9 +193,8 @@ export class DoctorController {
       address: string;
       job: string;
     }[];
-    total: number;
-    page: number;
-    limit: number;
+    totalItems: number;
+    totalPages: number;
   }> {
     const user = req.user as User;
     return await this.doctorService.getDoctorPatients(user.id, page, limit);
@@ -208,16 +208,18 @@ export class DoctorController {
     @Query('page') page?: number,
     @Query('limit') limit?: number,
   ): Promise<{
-    visits: {
+    page: number;
+    items: {
       id: string;
       diagnoses: string;
-      patientName: string;
-      patientSocialSecurityNumber: string;
+      patient: {
+        name: string;
+        id: string;
+      };
       createdAt: Date;
     }[];
-    total: number;
-    page: number;
-    limit: number;
+    totalItems: number;
+    totalPages: number;
   }> {
     const user = req.user as User;
     return await this.doctorService.getDoctorVisits(user.id, page, limit);
