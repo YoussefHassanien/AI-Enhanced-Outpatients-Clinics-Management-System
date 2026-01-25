@@ -317,10 +317,10 @@ export class AdminService {
       lastName: doctor.user.lastName,
       dateOfBirth: doctor.user.dateOfBirth,
       createdAt: doctor.createdAt,
-      clinic: {
+      clinic: doctor.clinic ? {
         id: doctor.clinic.globalId,
         name: doctor.clinic.name,
-      }
+      } : undefined,
     };
   }
 }

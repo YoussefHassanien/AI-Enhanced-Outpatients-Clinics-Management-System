@@ -12,7 +12,7 @@ export class DoctorResponseDTO {
   lastName: string;
   dateOfBirth: Date;
   createdAt: Date;
-  clinic: {
+  clinic?: {
     id: string;
     name: string;
   }
