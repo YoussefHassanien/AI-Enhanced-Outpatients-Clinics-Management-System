@@ -8,11 +8,11 @@ import { Controller } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import { MedicationDosage, MedicationPeriod, ScanTypes } from './constants';
 import { DoctorService } from './doctor.service';
-import { CreateMedicationInternalDto, CreateVisitInternalDto, GetDoctorPatientsDto, GetDoctorVisitsDto } from './dtos';
+import { CreateMedicationInternalDto, CreateVisitInternalDto } from './dtos';
 
 @Controller()
 export class DoctorController {
-  constructor(private readonly doctorService: DoctorService) { }
+  constructor(private readonly doctorService: DoctorService) {}
 
   @MessagePattern({ cmd: DoctorPatterns.IS_UP })
   isUp(): string {
@@ -155,41 +155,4 @@ export class DoctorController {
   }> {
     return await this.doctorService.getPatientLabs(socialSecurityNumber);
   }
-
-  @MessagePattern({ cmd: DoctorPatterns.GET_DOCTOR_PATIENTS })
-  async getDoctorPatients(@Payload() getDoctorPatientsDto: GetDoctorPatientsDto): Promise<{
-    page: number;
-    items: {
-      id: string;
-      name: string;
-      gender: Gender;
-      dateOfBirth: Date;
-      socialSecurityNumber: string;
-      address: string;
-      job: string;
-    }[];
-    totalItems: number;
-    totalPages: number;
-  }> {
-    return await this.doctorService.getDoctorPatients(getDoctorPatientsDto);
-  }
-
-  @MessagePattern({ cmd: DoctorPatterns.GET_DOCTOR_VISITS })
-  async getDoctorVisits(@Payload() getDoctorVisitsDto: GetDoctorVisitsDto): Promise<{
-    page: number;
-    items: {
-      id: string;
-      diagnoses: string;
-      patient: {
-        name: string;
-        id: string;
-      };
-      createdAt: Date;
-    }[];
-    totalItems: number;
-    totalPages: number;
-  }> {
-    return await this.doctorService.getDoctorVisits(getDoctorVisitsDto);
-  }
-
 }

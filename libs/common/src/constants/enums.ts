@@ -58,8 +58,6 @@ export enum DoctorPatterns {
   GET_PATIENT_LABS = 'doctor.patient.labs',
   GET_PATIENT_SCANS = 'doctor.patient.scans',
   GET_ALL_VISITS = 'doctor.admin.visits',
-  GET_DOCTOR_PATIENTS = 'doctor.patients',
-  GET_DOCTOR_VISITS = 'doctor.visits'
 }
 
 export enum CommonServices {
