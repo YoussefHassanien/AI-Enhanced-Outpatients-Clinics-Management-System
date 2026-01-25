@@ -18,7 +18,7 @@ import {
 export class DoctorService {
   constructor(
     @Inject(Microservices.DOCTOR) private readonly doctorClient: ClientProxy,
-  ) { }
+  ) {}
 
   private validateSocialSecurityNumber(socialSecurityNumber: string): void {
     const regex = /^[23]\d{2}(0[1-9]|1[0-2])(0[1-9]|[12]\d|3[01])\d{7}$/;
@@ -269,84 +269,6 @@ export class DoctorService {
       this.doctorClient.send(
         { cmd: DoctorPatterns.GET_PATIENT_LABS },
         socialSecurityNumber,
-      ),
-    );
-  }
-
-  async getDoctorPatients(
-    doctorUserId: number,
-    page?: number,
-    limit?: number,
-  ): Promise<{
-    page: number;
-    items: {
-      id: string;
-      name: string;
-      gender: Gender;
-      dateOfBirth: Date;
-      socialSecurityNumber: string;
-      address: string;
-      job: string;
-    }[];
-    totalItems: number;
-    totalPages: number;
-  }> {
-    return await lastValueFrom<{
-      page: number;
-      items: {
-        id: string;
-        name: string;
-        gender: Gender;
-        dateOfBirth: Date;
-        socialSecurityNumber: string;
-        address: string;
-        job: string;
-      }[];
-      totalItems: number;
-      totalPages: number;
-    }>(
-      this.doctorClient.send(
-        { cmd: DoctorPatterns.GET_DOCTOR_PATIENTS },
-        { doctorUserId, page, limit },
-      ),
-    );
-  }
-
-  async getDoctorVisits(
-    doctorUserId: number,
-    page?: number,
-    limit?: number,
-  ): Promise<{
-    page: number;
-    items: {
-      id: string;
-      diagnoses: string;
-      patient: {
-        name: string;
-        id: string;
-      };
-      createdAt: Date;
-    }[];
-    totalItems: number;
-    totalPages: number;
-  }> {
-    return await lastValueFrom<{
-      page: number;
-      items: {
-        id: string;
-        diagnoses: string;
-        patient: {
-          name: string;
-          id: string;
-        };
-        createdAt: Date;
-      }[];
-      totalItems: number;
-      totalPages: number;
-    }>(
-      this.doctorClient.send(
-        { cmd: DoctorPatterns.GET_DOCTOR_VISITS },
-        { doctorUserId, page, limit },
       ),
     );
   }
