@@ -67,4 +67,14 @@ export class AdminController {
   async getAllClinicsWithId(): Promise<Clinic[]> {
     return await this.adminService.getAllClinicsWithId();
   }
+
+  @MessagePattern({ cmd: AdminPatterns.GET_PATIENT_BY_GLOBAL_ID })
+  async getPatientByGlobalId(@Payload() globalId: string) {
+    return await this.adminService.getPatientByGlobalId(globalId);
+  }
+
+  @MessagePattern({ cmd: AdminPatterns.GET_DOCTOR_BY_GLOBAL_ID })
+  async getDoctorByGlobalId(@Payload() globalId: string) {
+    return await this.adminService.getDoctorByGlobalId(globalId);
+  }
 }

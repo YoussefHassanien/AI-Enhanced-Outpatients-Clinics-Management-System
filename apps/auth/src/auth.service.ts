@@ -345,27 +345,35 @@ export class AuthService {
   }
 
   async getPatientByGlobalId(globalId: string): Promise<Patient | null> {
-    return await this.patientRepository.findOne({
-      relations: { user: true },
+    const patient = await this.patientRepository.findOne({
+      relations: {
+        user: true,
+      },
       select: {
-        createdAt: false,
-        updatedAt: false,
-        deletedAt: false,
+        id: true,
+        globalId: true,
+        address: true,
+        job: true,
+        createdAt: true,
         user: {
-          id: true,
           globalId: true,
+          socialSecurityNumber: true,
+          gender: true,
           firstName: true,
           lastName: true,
-          gender: true,
           dateOfBirth: true,
-          socialSecurityNumber: true,
         },
       },
       where: {
         globalId,
         deletedAt: IsNull(),
+        user: {
+          deletedAt: IsNull(),
+        },
       },
     });
+
+    return patient;
   }
 
   async getAdminByUserId(userId: number): Promise<Admin | null> {
@@ -889,5 +897,41 @@ export class AuthService {
         globalId: true,
       },
     });
+  }
+
+  async getDoctorByGlobalId(globalId: string): Promise<Doctor | null> {
+    const doctor = await this.doctorRepository.findOne({
+      where: { globalId, deletedAt: IsNull() },
+      relations: { user: true },
+      select: {
+        id: true,
+        phone: true,
+        email: true,
+        speciality: true,
+        isApproved: true,
+        globalId: true,
+        createdAt: true,
+        clinicId: true,
+        user: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          globalId: true,
+          socialSecurityNumber: true,
+          gender: true,
+          dateOfBirth: true,
+        },
+      },
+    });
+    const doctorClinc = await lastValueFrom<Clinic | null>(
+      this.adminClient.send(
+        { cmd: AdminPatterns.GET_CLINIC_BY_ID },
+        doctor?.clinicId,
+      ),
+    );
+    if (doctorClinc) {
+      (doctor as any).clinic = doctorClinc;
+    }
+    return doctor;
   }
 }
