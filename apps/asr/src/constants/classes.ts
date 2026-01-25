@@ -1,5 +1,5 @@
 import { Environment } from '@app/common';
-import { IsEnum, IsNotEmpty, IsString, IsUrl } from 'class-validator';
+import { Equals, IsEnum, IsNotEmpty, IsString, IsUrl } from 'class-validator';
 
 export class EnvironmentVariables {
   @IsEnum(Environment)
@@ -11,12 +11,16 @@ export class EnvironmentVariables {
   @IsUrl({ protocols: ['https'] })
   HF_API_URL: string;
 
-  @IsString()
-  @IsNotEmpty()
+  @IsUrl({
+    protocols: ['amqp'],
+    require_host: true,
+    require_port: true,
+    require_tld: false,
+  })
   RABBIT_MQ_URL: string;
 
   @IsString()
-  @IsNotEmpty()
+  @Equals('asr')
   RABBIT_MQ_ASR_QUEUE: string;
 
   @IsString()

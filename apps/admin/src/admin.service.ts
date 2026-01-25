@@ -16,7 +16,11 @@ import { lastValueFrom } from 'rxjs';
 import { IsNull, Repository } from 'typeorm';
 import { UpdatePatientInternalDto } from '../../auth/src/dtos';
 import { Admin, Patient } from '../../auth/src/entities';
-import { CreateClinicInternalDto } from './dtos';
+import {
+  CreateClinicInternalDto,
+  DoctorResponseDTO,
+  PatientResponseDTO,
+} from './dtos';
 import { Clinic } from './entities';
 
 @Injectable()
@@ -263,5 +267,60 @@ export class AdminService {
         deletedAt: IsNull(),
       },
     });
+  }
+
+  async getPatientByGlobalId(globalId: string): Promise<PatientResponseDTO> {
+    const patient = await lastValueFrom(
+      this.authClient.send(
+        { cmd: AuthPatterns.GET_PATIENT_BY_GLOBAL_ID },
+        globalId,
+      ),
+    );
+    if (!patient) {
+      throw new RpcException(new ErrorResponse('Patient not found', 404));
+    }
+
+    return {
+      id: patient.globalId,
+      address: patient.address,
+      job: patient.job,
+      socialSecurityNumber: patient.user.socialSecurityNumber,
+      gender: patient.user.gender,
+      firstName: patient.user.firstName,
+      lastName: patient.user.lastName,
+      dateOfBirth: patient.user.dateOfBirth,
+      createdAt: patient.createdAt,
+    };
+  }
+
+  async getDoctorByGlobalId(globalId: string): Promise<DoctorResponseDTO> {
+    const doctor = await lastValueFrom(
+      this.authClient.send(
+        { cmd: AuthPatterns.GET_DOCTOR_BY_GLOBAL_ID },
+        globalId,
+      ),
+    );
+
+    if (!doctor) {
+      throw new RpcException(new ErrorResponse('Doctor not found', 404));
+    }
+
+    return {
+      id: doctor.globalId,
+      phone: doctor.phone,
+      email: doctor.email,
+      speciality: doctor.speciality,
+      isApproved: doctor.isApproved,
+      socialSecurityNumber: doctor.user.socialSecurityNumber,
+      gender: doctor.user.gender,
+      firstName: doctor.user.firstName,
+      lastName: doctor.user.lastName,
+      dateOfBirth: doctor.user.dateOfBirth,
+      createdAt: doctor.createdAt,
+      clinic: doctor.clinic ? {
+        id: doctor.clinic.globalId,
+        name: doctor.clinic.name,
+      } : undefined,
+    };
   }
 }

@@ -62,7 +62,7 @@ export class AsrService {
   }
 
   private async processFile(filePath: string) {
-    await this.validateFile(filePath);
+    this.validateFile(filePath);
 
     const fileStream = fs.createReadStream(filePath);
     const formData = new FormData();
@@ -86,7 +86,7 @@ export class AsrService {
     }
   }
 
-  private async validateFile(filePath: string) {
+  private validateFile(filePath: string) {
     if (!fs.existsSync(filePath)) {
       throw new RpcException(`File not found at path: ${filePath}`);
     }

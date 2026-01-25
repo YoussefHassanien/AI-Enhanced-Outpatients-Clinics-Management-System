@@ -27,6 +27,7 @@ export enum Microservices {
   ADMIN = 'ADMIN_MICROSERVICE',
   ASR = 'ASR_MICROSERVICE',
   OCR = 'OCR_MICROSERVICE',
+  CLOUD_STORAGE = 'CLOUD_STORAGE_MICROSERVICE',
 }
 
 export enum AuthPatterns {
@@ -43,6 +44,7 @@ export enum AuthPatterns {
   GET_ALL_PATIENTS = 'auth.admin.patients',
   GET_PATIENT_BY_ID = 'auth.getPatientById',
   GET_DOCTOR_BY_ID = 'auth.getDoctorById',
+  GET_DOCTOR_BY_GLOBAL_ID = 'auth.getDoctorByGlobalId',
   PATIENT_UPDATE = 'auth.patient.update',
   GET_PATIENT_BY_SOCIAL_SECURITY_NUMBER = 'auth.getPatientBySocialSecurityNumber',
 }
@@ -77,6 +79,8 @@ export enum AdminPatterns {
   GET_ALL_CLINICS_WITH_ID = 'admin.getAllClinicsWithId',
   GET_CLINIC_BY_GLOBAL_ID = 'admin.getClinicByGlobalId',
   GET_CLINIC_BY_ID = 'admin.getClinicById',
+  GET_PATIENT_BY_GLOBAL_ID = 'admin.getPatientByGlobalId',
+  GET_DOCTOR_BY_GLOBAL_ID = 'admin.getDoctorByGlobalId',
 }
 
 export enum AsrPatterns {
@@ -88,4 +92,10 @@ export enum AsrPatterns {
 export enum OcrPatterns {
   IS_UP = 'ocr.isUp',
   PROCESS_ID = 'ocr.processId',
+}
+
+export enum CloudStoragePatterns {
+  IS_UP = 'cloud-storage.isUp',
+  UPLOAD_LAB_PHOTO = 'cloud-storage.uploadLabPhoto',
+  UPLOAD_SCAN_PHOTO = 'cloud-storage.uploadScanPhoto',
 }

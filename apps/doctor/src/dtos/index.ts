@@ -4,3 +4,7 @@ export * from './create-visit-internal.dto';
 export * from './create-visit.dto';
 export * from './get-doctor-patients.dto';
 export * from './get-doctor-visits.dto';
+export * from './upload-lab-internal.dto';
+export * from './upload-lab.dto';
+export * from './upload-scan-internal.dto';
+export * from './upload-scan.dto';

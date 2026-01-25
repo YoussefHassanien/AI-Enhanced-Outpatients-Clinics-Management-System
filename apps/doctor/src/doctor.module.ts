@@ -64,6 +64,25 @@ import { Lab, Medication, Scan, Visit } from './entities';
         }),
         inject: [ConfigService],
       },
+      {
+        name: Microservices.CLOUD_STORAGE,
+        imports: [ConfigModule],
+        useFactory: (configService: ConfigService) => ({
+          transport: Transport.RMQ,
+          options: {
+            urls: [configService.getOrThrow<string>('RABBIT_MQ_URL')],
+            queue: configService.getOrThrow<string>(
+              'RABBIT_MQ_CLOUD_STORAGE_QUEUE',
+            ),
+            queueOptions: {
+              durable: true,
+            },
+            persistent: true,
+            maxConnectionAttempts: 5,
+          },
+        }),
+        inject: [ConfigService],
+      },
     ]),
   ],
   controllers: [DoctorController],

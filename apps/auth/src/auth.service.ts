@@ -326,7 +326,15 @@ export class AuthService {
         deletedAt: false,
         password: false,
         isApproved: false,
-        user: { id: true },
+        user: {
+          id: true,
+          globalId: true,
+          firstName: true,
+          lastName: true,
+          gender: true,
+          dateOfBirth: true,
+          socialSecurityNumber: true,
+        },
       },
       where: {
         user: { id: userId },
@@ -337,17 +345,35 @@ export class AuthService {
   }
 
   async getPatientByGlobalId(globalId: string): Promise<Patient | null> {
-    return await this.patientRepository.findOne({
+    const patient = await this.patientRepository.findOne({
+      relations: {
+        user: true,
+      },
       select: {
-        createdAt: false,
-        updatedAt: false,
-        deletedAt: false,
+        id: true,
+        globalId: true,
+        address: true,
+        job: true,
+        createdAt: true,
+        user: {
+          globalId: true,
+          socialSecurityNumber: true,
+          gender: true,
+          firstName: true,
+          lastName: true,
+          dateOfBirth: true,
+        },
       },
       where: {
         globalId,
         deletedAt: IsNull(),
+        user: {
+          deletedAt: IsNull(),
+        },
       },
     });
+
+    return patient;
   }
 
   async getAdminByUserId(userId: number): Promise<Admin | null> {
@@ -358,7 +384,15 @@ export class AuthService {
         updatedAt: false,
         deletedAt: false,
         password: false,
-        user: { id: true },
+        user: {
+          id: true,
+          globalId: true,
+          firstName: true,
+          lastName: true,
+          gender: true,
+          dateOfBirth: true,
+          socialSecurityNumber: true,
+        },
       },
       where: {
         user: { id: userId },
@@ -727,10 +761,19 @@ export class AuthService {
 
   async getPatientById(id: number): Promise<Patient | null> {
     return await this.patientRepository.findOne({
-      where: { id, deletedAt: IsNull() },
       relations: { user: true },
+      where: {
+        id,
+        deletedAt: IsNull(),
+      },
       select: {
+        job: true,
+        address: true,
+        id: true,
+        globalId: true,
         user: {
+          id: true,
+          globalId: true,
           firstName: true,
           lastName: true,
           gender: true,
@@ -746,7 +789,20 @@ export class AuthService {
       where: { id, deletedAt: IsNull(), isApproved: true },
       relations: { user: true },
       select: {
-        user: { firstName: true, lastName: true, id: true, globalId: true },
+        createdAt: false,
+        updatedAt: false,
+        deletedAt: false,
+        password: false,
+        isApproved: false,
+        user: {
+          firstName: true,
+          lastName: true,
+          id: true,
+          globalId: true,
+          socialSecurityNumber: true,
+          gender: true,
+          dateOfBirth: true,
+        },
       },
     });
   }
@@ -841,5 +897,41 @@ export class AuthService {
         globalId: true,
       },
     });
+  }
+
+  async getDoctorByGlobalId(globalId: string): Promise<Doctor | null> {
+    const doctor = await this.doctorRepository.findOne({
+      where: { globalId, deletedAt: IsNull() },
+      relations: { user: true },
+      select: {
+        id: true,
+        phone: true,
+        email: true,
+        speciality: true,
+        isApproved: true,
+        globalId: true,
+        createdAt: true,
+        clinicId: true,
+        user: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          globalId: true,
+          socialSecurityNumber: true,
+          gender: true,
+          dateOfBirth: true,
+        },
+      },
+    });
+    const doctorClinc = await lastValueFrom<Clinic | null>(
+      this.adminClient.send(
+        { cmd: AdminPatterns.GET_CLINIC_BY_ID },
+        doctor?.clinicId,
+      ),
+    );
+    if (doctorClinc) {
+      (doctor as any).clinic = doctorClinc;
+    }
+    return doctor;
   }
 }
