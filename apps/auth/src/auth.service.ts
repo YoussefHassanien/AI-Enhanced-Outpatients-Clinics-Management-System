@@ -326,7 +326,15 @@ export class AuthService {
         deletedAt: false,
         password: false,
         isApproved: false,
-        user: { id: true },
+        user: {
+          id: true,
+          globalId: true,
+          firstName: true,
+          lastName: true,
+          gender: true,
+          dateOfBirth: true,
+          socialSecurityNumber: true,
+        },
       },
       where: {
         user: { id: userId },
@@ -338,10 +346,20 @@ export class AuthService {
 
   async getPatientByGlobalId(globalId: string): Promise<Patient | null> {
     return await this.patientRepository.findOne({
+      relations: { user: true },
       select: {
         createdAt: false,
         updatedAt: false,
         deletedAt: false,
+        user: {
+          id: true,
+          globalId: true,
+          firstName: true,
+          lastName: true,
+          gender: true,
+          dateOfBirth: true,
+          socialSecurityNumber: true,
+        },
       },
       where: {
         globalId,
@@ -358,7 +376,15 @@ export class AuthService {
         updatedAt: false,
         deletedAt: false,
         password: false,
-        user: { id: true },
+        user: {
+          id: true,
+          globalId: true,
+          firstName: true,
+          lastName: true,
+          gender: true,
+          dateOfBirth: true,
+          socialSecurityNumber: true,
+        },
       },
       where: {
         user: { id: userId },
@@ -726,9 +752,27 @@ export class AuthService {
   }
 
   async getPatientById(id: number): Promise<Patient | null> {
-    return await this.patientRepository.findOneBy({
-      id,
-      deletedAt: IsNull(),
+    return await this.patientRepository.findOne({
+      relations: { user: true },
+      where: {
+        id,
+        deletedAt: IsNull(),
+      },
+      select: {
+        job: true,
+        address: true,
+        id: true,
+        globalId: true,
+        user: {
+          id: true,
+          globalId: true,
+          firstName: true,
+          lastName: true,
+          gender: true,
+          dateOfBirth: true,
+          socialSecurityNumber: true,
+        },
+      },
     });
   }
 
@@ -737,7 +781,20 @@ export class AuthService {
       where: { id, deletedAt: IsNull(), isApproved: true },
       relations: { user: true },
       select: {
-        user: { firstName: true, lastName: true, id: true, globalId: true },
+        createdAt: false,
+        updatedAt: false,
+        deletedAt: false,
+        password: false,
+        isApproved: false,
+        user: {
+          firstName: true,
+          lastName: true,
+          id: true,
+          globalId: true,
+          socialSecurityNumber: true,
+          gender: true,
+          dateOfBirth: true,
+        },
       },
     });
   }

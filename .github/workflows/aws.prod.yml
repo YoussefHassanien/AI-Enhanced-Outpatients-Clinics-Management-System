@@ -10,6 +10,7 @@ on:
         'apps/api-gateway/**',
         'apps/ocr/**',
         'apps/asr/**',
+        'apps/cloud-storage/**',
         '.github/workflows/aws.prod.yml',
         'package.json',
         'package-lock.json',
@@ -27,6 +28,7 @@ on:
         'apps/api-gateway/**',
         'apps/ocr/**',
         'apps/asr/**',
+        'apps/cloud-storage/**',
         '.github/workflows/aws.prod.yml',
         'package.json',
         'package-lock.json',
@@ -127,6 +129,15 @@ jobs:
           file: apps/asr/Dockerfile
           push: true
           tags: ${{ secrets.DOCKER_USERNAME }}/asr-service:latest
+
+      # Build and Push Cloud-Storage Service
+      - name: Build and Push Cloud-Storage
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/cloud-storage/Dockerfile
+          push: true
+          tags: ${{ secrets.DOCKER_USERNAME }}/cloud-storage-service:latest
 
   # JOB 3: DEPLOY TO EC2 (Runs ONLY on Pushes)
   deploy:

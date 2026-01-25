@@ -3,6 +3,7 @@
   "compilerOptions": {
     "declaration": false,
     "outDir": "../../dist/apps/doctor",
+    "baseUrl": ".",
     "paths": {
       "@app/common": ["../../libs/common/src"],
       "@app/common/*": ["../../libs/common/src/*"]

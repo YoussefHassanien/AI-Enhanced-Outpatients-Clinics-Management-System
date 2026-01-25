@@ -1,4 +1,4 @@
-import { CommonServices, LoggingService, Microservices } from '@app/common';
+import { Microservices } from '@app/common';
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ClientsModule, Transport } from '@nestjs/microservices';
@@ -28,16 +28,7 @@ import { OcrService } from './ocr.service';
     ]),
   ],
   controllers: [OcrController],
-  providers: [
-    OcrService,
-    {
-      provide: CommonServices.LOGGING,
-      useFactory: (configService: ConfigService) => {
-        return new LoggingService(configService, 'api-gateway');
-      },
-      inject: [ConfigService],
-    },
-  ],
+  providers: [OcrService],
   exports: [OcrService],
 })
 export class OcrModule {}

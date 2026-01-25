@@ -22,7 +22,6 @@ export const dataSourceAsyncOptions: TypeOrmModuleAsyncOptions = {
       autoLoadEntities: true,
       synchronize: false,
       logging: ['error', 'warn'],
-      migrationsRun: true,
     };
   },
 };

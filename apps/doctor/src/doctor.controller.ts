@@ -5,10 +5,15 @@ import {
   PaginationResponse,
 } from '@app/common';
 import { Controller } from '@nestjs/common';
-import { MessagePattern, Payload } from '@nestjs/microservices';
+import { EventPattern, MessagePattern, Payload } from '@nestjs/microservices';
 import { MedicationDosage, MedicationPeriod, ScanTypes } from './constants';
 import { DoctorService } from './doctor.service';
-import { CreateMedicationInternalDto, CreateVisitInternalDto } from './dtos';
+import {
+  CreateMedicationInternalDto,
+  CreateVisitInternalDto,
+  UploadLabInternalDto,
+  UploadScanPhotoInternalDto,
+} from './dtos';
 
 @Controller()
 export class DoctorController {
@@ -154,5 +159,19 @@ export class DoctorController {
     }[];
   }> {
     return await this.doctorService.getPatientLabs(socialSecurityNumber);
+  }
+
+  @EventPattern({ cmd: DoctorPatterns.LAB_UPLOAD })
+  async uploadLab(
+    @Payload() uploadLabInternalDto: UploadLabInternalDto,
+  ): Promise<void> {
+    await this.doctorService.uploadLab(uploadLabInternalDto);
+  }
+
+  @EventPattern({ cmd: DoctorPatterns.SCAN_UPLOAD })
+  async uploadScan(
+    @Payload() uploadScanInternalDto: UploadScanPhotoInternalDto,
+  ): Promise<void> {
+    await this.doctorService.uploadScan(uploadScanInternalDto);
   }
 }

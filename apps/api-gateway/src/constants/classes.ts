@@ -10,6 +10,7 @@ import {
   IsNumberString,
   IsPositive,
   IsString,
+  IsUrl,
   Max,
   Min,
   ValidateIf,
@@ -49,28 +50,32 @@ export class EnvironmentVariables {
   @IsPositive()
   COOKIES_EXPIRATION_TIME: number;
 
-  @IsString()
-  @IsNotEmpty()
+  @IsUrl({
+    protocols: ['amqp'],
+    require_host: true,
+    require_port: true,
+    require_tld: false,
+  })
   RABBIT_MQ_URL: string;
 
   @IsString()
-  @IsNotEmpty()
+  @Equals('auth')
   RABBIT_MQ_AUTH_QUEUE: string;
 
   @IsString()
-  @IsNotEmpty()
+  @Equals('doctor')
   RABBIT_MQ_DOCTOR_QUEUE: string;
 
   @IsString()
-  @IsNotEmpty()
+  @Equals('admin')
   RABBIT_MQ_ADMIN_QUEUE: string;
 
   @IsString()
-  @IsNotEmpty()
+  @Equals('ocr')
   RABBIT_MQ_OCR_QUEUE: string;
 
   @IsString()
-  @IsNotEmpty()
+  @Equals('asr')
   RABBIT_MQ_ASR_QUEUE: string;
 
   @ValidateIf(

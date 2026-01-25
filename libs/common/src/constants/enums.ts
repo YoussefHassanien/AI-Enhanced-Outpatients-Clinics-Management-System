@@ -27,6 +27,7 @@ export enum Microservices {
   ADMIN = 'ADMIN_MICROSERVICE',
   ASR = 'ASR_MICROSERVICE',
   OCR = 'OCR_MICROSERVICE',
+  CLOUD_STORAGE = 'CLOUD_STORAGE_MICROSERVICE',
 }
 
 export enum AuthPatterns {
@@ -86,4 +87,10 @@ export enum AsrPatterns {
 export enum OcrPatterns {
   IS_UP = 'ocr.isUp',
   PROCESS_ID = 'ocr.processId',
+}
+
+export enum CloudStoragePatterns {
+  IS_UP = 'cloud-storage.isUp',
+  UPLOAD_LAB_PHOTO = 'cloud-storage.uploadLabPhoto',
+  UPLOAD_SCAN_PHOTO = 'cloud-storage.uploadScanPhoto',
 }
