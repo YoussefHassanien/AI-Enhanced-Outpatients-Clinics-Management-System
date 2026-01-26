@@ -30,18 +30,16 @@ export class DoctorController {
   async visitCreate(
     @Payload() createVisitInternalDto: CreateVisitInternalDto,
   ): Promise<{ message: string }> {
-    await this.doctorService.createVisit(createVisitInternalDto);
-
-    return { message: 'Visit is successfully created' };
+    return await this.doctorService.createVisit(createVisitInternalDto);
   }
 
   @MessagePattern({ cmd: DoctorPatterns.MEDICATION_CREATE })
   async medicationCreate(
     @Payload() createMedicationInternalDto: CreateMedicationInternalDto,
   ): Promise<{ message: string }> {
-    await this.doctorService.createMedication(createMedicationInternalDto);
-
-    return { message: 'Medication is successfully created' };
+    return await this.doctorService.createMedication(
+      createMedicationInternalDto,
+    );
   }
 
   @MessagePattern({ cmd: DoctorPatterns.GET_ALL_VISITS })
@@ -219,5 +217,25 @@ export class DoctorController {
     @Payload() uploadScanInternalDto: UploadScanPhotoInternalDto,
   ): Promise<void> {
     await this.doctorService.uploadScan(uploadScanInternalDto);
+  }
+
+  @MessagePattern({
+    cmd: DoctorPatterns.SEARCH_FOR_PATIENT_BY_SOCIAL_SECURITY_NUMBER,
+  })
+  async searchForPatientBySocialSecurityNumber(
+    @Payload() socialSecurityNumber: string,
+  ): Promise<{
+    id: string;
+    name: string;
+    gender: Gender;
+    dateOfBirth: Date;
+    socialSecurityNumber: string;
+    job: string;
+    address: string;
+    createdAt: Date;
+  }> {
+    return await this.doctorService.searchForPatientBySocilaSecurityNumber(
+      socialSecurityNumber,
+    );
   }
 }

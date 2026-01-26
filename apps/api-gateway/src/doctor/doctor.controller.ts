@@ -291,4 +291,24 @@ export class DoctorController {
     const user = req.user as User;
     return await this.doctorService.getDoctorVisits(user.id, page, limit);
   }
+
+  @Roles(Role.DOCTOR)
+  @UseGuards(JwtAuthGuard)
+  @Get('patient/:socialSecurityNumber')
+  async searchForPatientBySocialSecurityNumber(
+    @Param('socialSecurityNumber') socialSecurityNumber: string,
+  ): Promise<{
+    id: string;
+    name: string;
+    gender: Gender;
+    dateOfBirth: Date;
+    socialSecurityNumber: string;
+    job: string;
+    address: string;
+    createdAt: Date;
+  }> {
+    return await this.doctorService.searchForPatientBySocialSecurityNumber(
+      socialSecurityNumber,
+    );
+  }
 }

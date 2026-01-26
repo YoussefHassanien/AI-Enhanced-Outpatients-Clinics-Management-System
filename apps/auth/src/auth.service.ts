@@ -309,7 +309,7 @@ export class AuthService {
 
   async getUser(id: number): Promise<User | null> {
     return await this.userRepository.findOne({
-      select: { createdAt: false, updatedAt: false, deletedAt: false },
+      select: { updatedAt: false, deletedAt: false },
       where: {
         id,
         deletedAt: IsNull(),
@@ -337,7 +337,7 @@ export class AuthService {
         },
       },
       where: {
-        user: { id: userId },
+        user: { id: userId, deletedAt: IsNull() },
         deletedAt: IsNull(),
         isApproved: true,
       },
@@ -380,7 +380,6 @@ export class AuthService {
     return await this.adminRepository.findOne({
       relations: { user: true },
       select: {
-        createdAt: false,
         updatedAt: false,
         deletedAt: false,
         password: false,
@@ -395,7 +394,7 @@ export class AuthService {
         },
       },
       where: {
-        user: { id: userId },
+        user: { id: userId, deletedAt: IsNull() },
         deletedAt: IsNull(),
       },
     });
@@ -765,12 +764,14 @@ export class AuthService {
       where: {
         id,
         deletedAt: IsNull(),
+        user: { deletedAt: IsNull() },
       },
       select: {
         job: true,
         address: true,
         id: true,
         globalId: true,
+        createdAt: true,
         user: {
           id: true,
           globalId: true,
@@ -786,10 +787,14 @@ export class AuthService {
 
   async getDoctorById(id: number): Promise<Doctor | null> {
     return await this.doctorRepository.findOne({
-      where: { id, deletedAt: IsNull(), isApproved: true },
+      where: {
+        id,
+        deletedAt: IsNull(),
+        isApproved: true,
+        user: { deletedAt: IsNull() },
+      },
       relations: { user: true },
       select: {
-        createdAt: false,
         updatedAt: false,
         deletedAt: false,
         password: false,
@@ -895,6 +900,7 @@ export class AuthService {
         job: true,
         id: true,
         globalId: true,
+        createdAt: true,
       },
     });
   }
