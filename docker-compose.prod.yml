@@ -32,6 +32,7 @@ services:
       - ocr
       - asr
       - admin
+      - cloud-storage
     command: node api-gateway/main
     networks:
       - services-network

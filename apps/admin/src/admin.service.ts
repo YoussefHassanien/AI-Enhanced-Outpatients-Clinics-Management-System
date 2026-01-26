@@ -134,8 +134,14 @@ export class AdminService {
     PaginationResponse<{
       id: string;
       diagnoses: string;
-      patientId: string;
-      doctorId: string;
+      patient: {
+        name: string;
+        id: string;
+      };
+      doctor: {
+        name: string;
+        id: string;
+      };
       createdAt: Date;
     }>
   > {
@@ -149,8 +155,14 @@ export class AdminService {
       PaginationResponse<{
         id: string;
         diagnoses: string;
-        patientId: string;
-        doctorId: string;
+        patient: {
+          name: string;
+          id: string;
+        };
+        doctor: {
+          name: string;
+          id: string;
+        };
         createdAt: Date;
       }>
     >(
@@ -317,10 +329,12 @@ export class AdminService {
       lastName: doctor.user.lastName,
       dateOfBirth: doctor.user.dateOfBirth,
       createdAt: doctor.createdAt,
-      clinic: doctor.clinic ? {
-        id: doctor.clinic.globalId,
-        name: doctor.clinic.name,
-      } : undefined,
+      clinic: doctor.clinic
+        ? {
+            id: doctor.clinic.globalId,
+            name: doctor.clinic.name,
+          }
+        : undefined,
     };
   }
 }

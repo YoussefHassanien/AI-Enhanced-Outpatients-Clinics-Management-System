@@ -195,6 +195,10 @@ export class DoctorController {
         name: string;
         id: string;
       };
+      doctor: {
+        name: string;
+        id: string;
+      };
       createdAt: Date;
     }[];
     totalItems: number;

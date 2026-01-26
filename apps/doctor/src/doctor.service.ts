@@ -346,6 +346,10 @@ export class DoctorService {
         name: string;
         id: string;
       };
+      doctor: {
+        name: string;
+        id: string;
+      };
       createdAt: Date;
     }[];
     totalItems: number;
@@ -379,40 +383,54 @@ export class DoctorService {
       `Found ${visits.length} visits for doctor ${doctor.globalId}`,
     );
 
-    const visitsWithPatientInfo = await Promise.all(
-      visits.map(async (visit) => {
-        const patient = await lastValueFrom<Patient | null>(
-          this.authClient.send(
-            { cmd: AuthPatterns.GET_PATIENT_BY_ID },
-            visit.patientId,
-          ),
-        );
-
-        if (!patient) {
-          this.logger.log(`Patient with ID ${visit.patientId} not found`);
-          return null;
-        }
-
-        return {
-          id: visit.globalId,
-          diagnoses: visit.diagnoses,
-          patient: {
-            name: `${patient.user.firstName} ${patient.user.lastName}`,
-            id: patient.globalId,
-          },
-          createdAt: visit.createdAt,
-        };
-      }),
+    // Extract unique patient IDs and fetch all patients in parallel
+    const patientIds = [...new Set(visits.map((v) => v.patientId))];
+    const patients = await Promise.all(
+      patientIds.map((id) =>
+        lastValueFrom<Patient | null>(
+          this.authClient.send({ cmd: AuthPatterns.GET_PATIENT_BY_ID }, id),
+        ),
+      ),
     );
 
-    const items = visitsWithPatientInfo.filter((v) => v !== null);
+    // Create patient lookup map
+    const patientsMap = new Map(
+      patients.map((patient, index) => [
+        patientIds[index],
+        patient
+          ? {
+              name: `${patient.user.firstName} ${patient.user.lastName}`,
+              id: patient.globalId,
+            }
+          : { name: 'UNKNOWN', id: 'UNKNOWN' },
+      ]),
+    );
+
+    // Reuse the doctor info we already fetched
+    const doctorInfo = {
+      name: `${doctor.user.firstName} ${doctor.user.lastName}`,
+      id: doctor.globalId,
+    };
+
+    // Map visits using the lookup map
+    const visitsInformation = visits.map((visit) => ({
+      id: visit.globalId,
+      diagnoses: visit.diagnoses,
+      patient: patientsMap.get(visit.patientId) ?? {
+        name: 'UNKNOWN',
+        id: 'UNKNOWN',
+      },
+      doctor: doctorInfo,
+      createdAt: visit.createdAt,
+    }));
+
     this.logger.log(
-      `Successfully retrieved ${items.length} visits with patient info`,
+      `Successfully retrieved ${visitsInformation.length} visits with info`,
     );
 
     return {
       page,
-      items,
+      items: visitsInformation,
       totalItems,
       totalPages: Math.ceil(totalItems / limit),
     };
@@ -896,15 +914,12 @@ export class DoctorService {
       throw new RpcException(new ErrorResponse('Patient not found!', 404));
     }
 
-    const doctor = await lastValueFrom<Doctor | null>(
-      this.authClient.send(
-        { cmd: AuthPatterns.GET_DOCTOR_BY_USER_ID },
-        uploadLabInternalDto.doctorUserId,
-      ),
+    const doctor = await this.getDoctorByUserId(
+      uploadLabInternalDto.doctorUserId,
     );
 
     if (!doctor) {
-      throw new RpcException(new ErrorResponse('Doctor not found!', 404));
+      throw new RpcException(new ErrorResponse('Doctor not found', 404));
     }
 
     const lab = await this.labsRepository.save({
@@ -948,15 +963,12 @@ export class DoctorService {
       throw new RpcException(new ErrorResponse('Patient not found!', 404));
     }
 
-    const doctor = await lastValueFrom<Doctor | null>(
-      this.authClient.send(
-        { cmd: AuthPatterns.GET_DOCTOR_BY_USER_ID },
-        uploadScanInternalDto.doctorUserId,
-      ),
+    const doctor = await this.getDoctorByUserId(
+      uploadScanInternalDto.doctorUserId,
     );
 
     if (!doctor) {
-      throw new RpcException(new ErrorResponse('Doctor not found!', 404));
+      throw new RpcException(new ErrorResponse('Doctor not found', 404));
     }
 
     const scan = await this.scansRepository.save({
