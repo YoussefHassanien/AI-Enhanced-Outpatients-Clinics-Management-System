@@ -1,6 +1,7 @@
 import {
   AdminPatterns,
   AuthPatterns,
+  CloudStoragePatterns,
   CommonServices,
   ErrorResponse,
   Gender,
@@ -16,8 +17,19 @@ import { lastValueFrom } from 'rxjs';
 import { IsNull, Repository } from 'typeorm';
 import { Clinic } from '../../admin/src/entities';
 import { Doctor, Patient } from '../../auth/src/entities';
+import {
+  LabPhotoInternalDto,
+  ScanPhotoInternalDto,
+} from '../../cloud-storage/src/dtos';
 import { MedicationDosage, MedicationPeriod, ScanTypes } from './constants';
-import { CreateMedicationInternalDto, CreateVisitInternalDto } from './dtos';
+import {
+  CreateMedicationInternalDto,
+  CreateVisitInternalDto,
+  GetDoctorPatientsDto,
+  GetDoctorVisitsDto,
+  UploadLabInternalDto,
+  UploadScanPhotoInternalDto,
+} from './dtos';
 import { Lab, Medication, Scan, Visit } from './entities';
 
 @Injectable()
@@ -34,6 +46,8 @@ export class DoctorService {
     private readonly scansRepository: Repository<Scan>,
     @Inject(Microservices.AUTH) private readonly authClient: ClientProxy,
     @Inject(Microservices.ADMIN) private readonly adminClient: ClientProxy,
+    @Inject(Microservices.CLOUD_STORAGE)
+    private readonly cloudStorageClient: ClientProxy,
     @Inject(CommonServices.LOGGING) logger: LoggingService,
   ) {
     this.logger = logger;
@@ -241,6 +255,185 @@ export class DoctorService {
     };
 
     return response;
+  }
+
+  async getDoctorPatients(getDoctorPatientsDto: GetDoctorPatientsDto): Promise<{
+    page: number;
+    items: {
+      id: string;
+      name: string;
+      gender: Gender;
+      dateOfBirth: Date;
+      socialSecurityNumber: string;
+      address: string;
+      job: string;
+    }[];
+    totalItems: number;
+    totalPages: number;
+  }> {
+    const doctor = await this.getDoctorByUserId(
+      getDoctorPatientsDto.doctorUserId,
+    );
+
+    if (!doctor) {
+      throw new RpcException(new ErrorResponse('Doctor not found!', 404));
+    }
+
+    const page = getDoctorPatientsDto.page || 1;
+    const limit = getDoctorPatientsDto.limit || 10;
+
+    const visits = await this.visitsRepository.find({
+      where: {
+        doctorId: doctor.id,
+        deletedAt: IsNull(),
+      },
+      select: {
+        patientId: true,
+      },
+    });
+    const patientIds = [...new Set(visits.map((visit) => visit.patientId))];
+    const totalItems = patientIds.length;
+    this.logger.log(`Found ${totalItems} unique patients for the doctor`);
+
+    const skip = (page - 1) * limit;
+    const paginatedPatientIds = patientIds.slice(skip, skip + limit);
+
+    const patients = await Promise.all(
+      paginatedPatientIds.map(async (patientId) => {
+        const patient = await lastValueFrom<Patient | null>(
+          this.authClient.send(
+            { cmd: AuthPatterns.GET_PATIENT_BY_ID },
+            patientId,
+          ),
+        );
+
+        if (!patient) {
+          this.logger.log(`Patient with ID ${patientId} not found`);
+          return null;
+        }
+
+        return {
+          id: patient.globalId,
+          name: `${patient.user.firstName} ${patient.user.lastName}`,
+          gender: patient.user.gender,
+          dateOfBirth: patient.user.dateOfBirth,
+          socialSecurityNumber: patient.user.socialSecurityNumber.toString(),
+          address: patient.address,
+          job: patient.job,
+        };
+      }),
+    );
+
+    const items = patients.filter((p) => p !== null);
+    this.logger.log(
+      `Successfully retrieved ${items.length} patients for page ${page}`,
+    );
+
+    return {
+      page,
+      items,
+      totalItems,
+      totalPages: Math.ceil(totalItems / limit),
+    };
+  }
+
+  async getDoctorVisits(getDoctorVisitsDto: GetDoctorVisitsDto): Promise<{
+    page: number;
+    items: {
+      id: string;
+      diagnoses: string;
+      patient: {
+        name: string;
+        id: string;
+      };
+      doctor: {
+        name: string;
+        id: string;
+      };
+      createdAt: Date;
+    }[];
+    totalItems: number;
+    totalPages: number;
+  }> {
+    const doctor = await this.getDoctorByUserId(
+      getDoctorVisitsDto.doctorUserId,
+    );
+
+    if (!doctor) {
+      throw new RpcException(new ErrorResponse('Doctor not found!', 404));
+    }
+
+    const page = getDoctorVisitsDto.page || 1;
+    const limit = getDoctorVisitsDto.limit || 10;
+    const skip = (page - 1) * limit;
+
+    const [visits, totalItems] = await this.visitsRepository.findAndCount({
+      where: {
+        doctorId: doctor.id,
+        deletedAt: IsNull(),
+      },
+      order: {
+        createdAt: 'DESC',
+      },
+      skip,
+      take: limit,
+    });
+
+    this.logger.log(
+      `Found ${visits.length} visits for doctor ${doctor.globalId}`,
+    );
+
+    // Extract unique patient IDs and fetch all patients in parallel
+    const patientIds = [...new Set(visits.map((v) => v.patientId))];
+    const patients = await Promise.all(
+      patientIds.map((id) =>
+        lastValueFrom<Patient | null>(
+          this.authClient.send({ cmd: AuthPatterns.GET_PATIENT_BY_ID }, id),
+        ),
+      ),
+    );
+
+    // Create patient lookup map
+    const patientsMap = new Map(
+      patients.map((patient, index) => [
+        patientIds[index],
+        patient
+          ? {
+              name: `${patient.user.firstName} ${patient.user.lastName}`,
+              id: patient.globalId,
+            }
+          : { name: 'UNKNOWN', id: 'UNKNOWN' },
+      ]),
+    );
+
+    // Reuse the doctor info we already fetched
+    const doctorInfo = {
+      name: `${doctor.user.firstName} ${doctor.user.lastName}`,
+      id: doctor.globalId,
+    };
+
+    // Map visits using the lookup map
+    const visitsInformation = visits.map((visit) => ({
+      id: visit.globalId,
+      diagnoses: visit.diagnoses,
+      patient: patientsMap.get(visit.patientId) ?? {
+        name: 'UNKNOWN',
+        id: 'UNKNOWN',
+      },
+      doctor: doctorInfo,
+      createdAt: visit.createdAt,
+    }));
+
+    this.logger.log(
+      `Successfully retrieved ${visitsInformation.length} visits with info`,
+    );
+
+    return {
+      page,
+      items: visitsInformation,
+      totalItems,
+      totalPages: Math.ceil(totalItems / limit),
+    };
   }
 
   async getPatientVisits(socialSecurityNumber: string): Promise<{
@@ -707,5 +900,103 @@ export class DoctorService {
       patient: patientInfo,
       labs,
     };
+  }
+
+  async uploadLab(uploadLabInternalDto: UploadLabInternalDto): Promise<void> {
+    const patient = await lastValueFrom<Patient | null>(
+      this.authClient.send(
+        { cmd: AuthPatterns.GET_PATIENT_BY_SOCIAL_SECURITY_NUMBER },
+        uploadLabInternalDto.patientSocialSecurityNumber,
+      ),
+    );
+
+    if (!patient) {
+      throw new RpcException(new ErrorResponse('Patient not found!', 404));
+    }
+
+    const doctor = await this.getDoctorByUserId(
+      uploadLabInternalDto.doctorUserId,
+    );
+
+    if (!doctor) {
+      throw new RpcException(new ErrorResponse('Doctor not found', 404));
+    }
+
+    const lab = await this.labsRepository.save({
+      name: uploadLabInternalDto.name,
+      comments: uploadLabInternalDto.comments,
+      doctorId: doctor.id,
+      patientId: patient.id,
+    });
+    this.logger.log('Lab is saved successfully without photo url');
+
+    const uploadLabPhotoInternalDto = new LabPhotoInternalDto(
+      lab.globalId,
+      patient.globalId,
+      uploadLabInternalDto.imageBase64,
+      uploadLabInternalDto.mimetype,
+    );
+
+    const photoUrl = await lastValueFrom<string>(
+      this.cloudStorageClient.send(
+        { cmd: CloudStoragePatterns.UPLOAD_LAB_PHOTO },
+        uploadLabPhotoInternalDto,
+      ),
+    );
+    this.logger.log('Lab photo url is successfully retrieved');
+
+    await this.labsRepository.update({ id: lab.id }, { photoUrl });
+    this.logger.log('Lab photo url is successfully updated');
+  }
+
+  async uploadScan(
+    uploadScanInternalDto: UploadScanPhotoInternalDto,
+  ): Promise<void> {
+    const patient = await lastValueFrom<Patient | null>(
+      this.authClient.send(
+        { cmd: AuthPatterns.GET_PATIENT_BY_SOCIAL_SECURITY_NUMBER },
+        uploadScanInternalDto.patientSocialSecurityNumber,
+      ),
+    );
+
+    if (!patient) {
+      throw new RpcException(new ErrorResponse('Patient not found!', 404));
+    }
+
+    const doctor = await this.getDoctorByUserId(
+      uploadScanInternalDto.doctorUserId,
+    );
+
+    if (!doctor) {
+      throw new RpcException(new ErrorResponse('Doctor not found', 404));
+    }
+
+    const scan = await this.scansRepository.save({
+      name: uploadScanInternalDto.name,
+      comments: uploadScanInternalDto.comments,
+      type: uploadScanInternalDto.type,
+      patientId: patient.id,
+      doctorId: doctor.id,
+    });
+    this.logger.log('Scan is saved successfully without photo url');
+
+    const uploadScanPhotoInternalDto = new ScanPhotoInternalDto(
+      scan.globalId,
+      patient.globalId,
+      uploadScanInternalDto.imageBase64,
+      uploadScanInternalDto.mimetype,
+      uploadScanInternalDto.type,
+    );
+
+    const photoUrl = await lastValueFrom<string>(
+      this.cloudStorageClient.send(
+        { cmd: CloudStoragePatterns.UPLOAD_SCAN_PHOTO },
+        uploadScanPhotoInternalDto,
+      ),
+    );
+    this.logger.log('Scan photo url is successfully retrieved');
+
+    await this.scansRepository.update({ id: scan.id }, { photoUrl });
+    this.logger.log('Scan photo url is successfully updated');
   }
 }

@@ -4,10 +4,15 @@ import {
   Controller,
   Get,
   Param,
+  ParseFilePipeBuilder,
   Post,
+  Query,
   Req,
+  UploadedFile,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { Request } from 'express';
 import { User } from '../../../auth/src/entities';
 import {
@@ -15,7 +20,12 @@ import {
   MedicationPeriod,
   ScanTypes,
 } from '../../../doctor/src/constants';
-import { CreateMedicationDto, CreateVisitDto } from '../../../doctor/src/dtos';
+import {
+  CreateMedicationDto,
+  CreateVisitDto,
+  UploadLabDto,
+  UploadScanDto,
+} from '../../../doctor/src/dtos';
 import { JwtAuthGuard } from '../auth/guards';
 import { DoctorService } from './doctor.service';
 
@@ -172,5 +182,113 @@ export class DoctorController {
     }[];
   }> {
     return await this.doctorService.getPatientLabs(socialSecurityNumber);
+  }
+
+  @Roles(Role.DOCTOR)
+  @UseGuards(JwtAuthGuard)
+  @UseInterceptors(FileInterceptor('image'))
+  @Post('lab/:socialSecurityNumber')
+  async uploadLab(
+    @Param('socialSecurityNumber') socialSecurityNumber: string,
+    @Body() uploadLabDto: UploadLabDto,
+    @UploadedFile(
+      new ParseFilePipeBuilder()
+        .addFileTypeValidator({
+          fileType: /(image\/jpeg|image\/jpg|image\/png)$/,
+        })
+        .addMaxSizeValidator({
+          maxSize: 5 * 1024 * 1024, // 5 MB,
+        })
+        .build(),
+    )
+    image: Express.Multer.File,
+    @Req() req: Request,
+  ): Promise<void> {
+    const user = req.user as User;
+    await this.doctorService.uploadLab(
+      uploadLabDto,
+      socialSecurityNumber,
+      image,
+      user.id,
+    );
+  }
+
+  @Roles(Role.DOCTOR)
+  @UseGuards(JwtAuthGuard)
+  @UseInterceptors(FileInterceptor('image'))
+  @Post('scan/:socialSecurityNumber')
+  async uploadScan(
+    @Param('socialSecurityNumber') socialSecurityNumber: string,
+    @Body() uploadScanDto: UploadScanDto,
+    @UploadedFile(
+      new ParseFilePipeBuilder()
+        .addFileTypeValidator({
+          fileType: /(image\/jpeg|image\/jpg|image\/png)$/,
+        })
+        .addMaxSizeValidator({
+          maxSize: 5 * 1024 * 1024, // 5 MB,
+        })
+        .build(),
+    )
+    image: Express.Multer.File,
+    @Req() req: Request,
+  ): Promise<void> {
+    const user = req.user as User;
+    await this.doctorService.uploadScan(
+      uploadScanDto,
+      socialSecurityNumber,
+      image,
+      user.id,
+    );
+  }
+
+  @Roles(Role.DOCTOR)
+  @UseGuards(JwtAuthGuard)
+  @Get('patients')
+  async getDoctorPatients(
+    @Req() req: Request,
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+  ): Promise<{
+    page: number;
+    items: {
+      id: string;
+      name: string;
+      gender: Gender;
+      dateOfBirth: Date;
+      socialSecurityNumber: string;
+      address: string;
+      job: string;
+    }[];
+    totalItems: number;
+    totalPages: number;
+  }> {
+    const user = req.user as User;
+    return await this.doctorService.getDoctorPatients(user.id, page, limit);
+  }
+
+  @Roles(Role.DOCTOR)
+  @UseGuards(JwtAuthGuard)
+  @Get('visits')
+  async getDoctorVisits(
+    @Req() req: Request,
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+  ): Promise<{
+    page: number;
+    items: {
+      id: string;
+      diagnoses: string;
+      patient: {
+        name: string;
+        id: string;
+      };
+      createdAt: Date;
+    }[];
+    totalItems: number;
+    totalPages: number;
+  }> {
+    const user = req.user as User;
+    return await this.doctorService.getDoctorVisits(user.id, page, limit);
   }
 }

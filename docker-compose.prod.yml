@@ -1,5 +1,5 @@
 services:
-  rabbitMq:
+  rabbitmq:
     image: rabbitmq:4.1.6-alpine
     ports:
       - 5672
@@ -13,7 +13,7 @@ services:
     image: youssefhassanien1/auth-service:latest
     env_file: ./auth.env
     depends_on:
-      - rabbitMq
+      - rabbitmq
     command: node auth/main
     networks:
       - services-network
@@ -26,23 +26,25 @@ services:
     ports:
       - 4000
     depends_on:
-      - rabbitMq
+      - rabbitmq
       - auth
       - doctor
       - ocr
       - asr
       - admin
+      - cloud-storage
     command: node api-gateway/main
     networks:
       - services-network
     volumes:
       - ./logs:/app/logs
+      - ./tmp/asr_uploads:/app/tmp/asr_uploads
 
   doctor:
     image: youssefhassanien1/doctor-service:latest
     env_file: ./doctor.env
     depends_on:
-      - rabbitMq
+      - rabbitmq
     command: node doctor/main
     networks:
       - services-network
@@ -54,7 +56,7 @@ services:
     env_file:
       - ./admin.env
     depends_on:
-      - rabbitMq
+      - rabbitmq
     command: node admin/main
     networks:
       - services-network
@@ -66,7 +68,7 @@ services:
     env_file:
       - ./ocr.env
     depends_on:
-      - rabbitMq
+      - rabbitmq
     command: ['python', 'run_consumer.py']
     networks:
       - services-network
@@ -79,13 +81,27 @@ services:
     env_file:
       - ./asr.env
     depends_on:
-      - rabbitMq
+      - rabbitmq
     command: node asr/main
     networks:
       - services-network
     volumes:
       - ./logs:/app/logs
       - ./tmp/asr_uploads:/app/tmp/asr_uploads
+
+  cloud-storage:
+    build:
+      context: .
+      dockerfile: ./apps/cloud-storage/Dockerfile
+    env_file:
+      - ./apps/cloud-storage/.env
+    depends_on:
+      - rabbitmq
+    command: node cloud-storage/main
+    networks:
+      - services-network
+    volumes:
+      - ./logs:/app/logs
 
   nginx:
     image: nginx:latest

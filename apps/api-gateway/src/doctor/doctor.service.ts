@@ -12,6 +12,10 @@ import {
   CreateMedicationInternalDto,
   CreateVisitDto,
   CreateVisitInternalDto,
+  UploadLabDto,
+  UploadLabInternalDto,
+  UploadScanDto,
+  UploadScanPhotoInternalDto,
 } from '../../../doctor/src/dtos';
 
 @Injectable()
@@ -269,6 +273,132 @@ export class DoctorService {
       this.doctorClient.send(
         { cmd: DoctorPatterns.GET_PATIENT_LABS },
         socialSecurityNumber,
+      ),
+    );
+  }
+
+  async uploadLab(
+    uploadLabDto: UploadLabDto,
+    patientSocialSecurityNumber: string,
+    image: Express.Multer.File,
+    doctorUserId: number,
+  ): Promise<void> {
+    this.validateSocialSecurityNumber(patientSocialSecurityNumber);
+
+    const uploadLabInternalDto = new UploadLabInternalDto(
+      uploadLabDto,
+      patientSocialSecurityNumber,
+      image.buffer.toString('base64'),
+      image.mimetype,
+      doctorUserId,
+    );
+
+    await lastValueFrom<void>(
+      this.doctorClient.emit(
+        { cmd: DoctorPatterns.LAB_UPLOAD },
+        uploadLabInternalDto,
+      ),
+    );
+  }
+
+  async uploadScan(
+    uploadScanDto: UploadScanDto,
+    patientSocialSecurityNumber: string,
+    image: Express.Multer.File,
+    doctorUserId: number,
+  ): Promise<void> {
+    this.validateSocialSecurityNumber(patientSocialSecurityNumber);
+
+    const uploadScanInternalDto = new UploadScanPhotoInternalDto(
+      uploadScanDto,
+      patientSocialSecurityNumber,
+      image.buffer.toString('base64'),
+      image.mimetype,
+      doctorUserId,
+    );
+
+    await lastValueFrom<void>(
+      this.doctorClient.emit(
+        { cmd: DoctorPatterns.SCAN_UPLOAD },
+        uploadScanInternalDto,
+      ),
+    );
+  }
+
+  async getDoctorVisits(
+    doctorUserId: number,
+    page?: number,
+    limit?: number,
+  ): Promise<{
+    page: number;
+    items: {
+      id: string;
+      diagnoses: string;
+      patient: {
+        name: string;
+        id: string;
+      };
+      createdAt: Date;
+    }[];
+    totalItems: number;
+    totalPages: number;
+  }> {
+    return await lastValueFrom<{
+      page: number;
+      items: {
+        id: string;
+        diagnoses: string;
+        patient: {
+          name: string;
+          id: string;
+        };
+        createdAt: Date;
+      }[];
+      totalItems: number;
+      totalPages: number;
+    }>(
+      this.doctorClient.send(
+        { cmd: DoctorPatterns.GET_DOCTOR_VISITS },
+        { doctorUserId, page, limit },
+      ),
+    );
+  }
+
+  async getDoctorPatients(
+    doctorUserId: number,
+    page?: number,
+    limit?: number,
+  ): Promise<{
+    page: number;
+    items: {
+      id: string;
+      name: string;
+      gender: Gender;
+      dateOfBirth: Date;
+      socialSecurityNumber: string;
+      address: string;
+      job: string;
+    }[];
+    totalItems: number;
+    totalPages: number;
+  }> {
+    return await lastValueFrom<{
+      page: number;
+      items: {
+        id: string;
+        name: string;
+        gender: Gender;
+        dateOfBirth: Date;
+        socialSecurityNumber: string;
+        address: string;
+        job: string;
+      }[];
+      totalItems: number;
+      totalPages: number;
+    }>(
+      this.doctorClient.send(
+        { cmd: DoctorPatterns.GET_DOCTOR_PATIENTS },
+        { doctorUserId, page, limit },
       ),
     );
   }

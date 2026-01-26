@@ -5,10 +5,17 @@ import {
   PaginationResponse,
 } from '@app/common';
 import { Controller } from '@nestjs/common';
-import { MessagePattern, Payload } from '@nestjs/microservices';
+import { EventPattern, MessagePattern, Payload } from '@nestjs/microservices';
 import { MedicationDosage, MedicationPeriod, ScanTypes } from './constants';
 import { DoctorService } from './doctor.service';
-import { CreateMedicationInternalDto, CreateVisitInternalDto } from './dtos';
+import {
+  CreateMedicationInternalDto,
+  CreateVisitInternalDto,
+  GetDoctorPatientsDto,
+  GetDoctorVisitsDto,
+  UploadLabInternalDto,
+  UploadScanPhotoInternalDto,
+} from './dtos';
 
 @Controller()
 export class DoctorController {
@@ -154,5 +161,63 @@ export class DoctorController {
     }[];
   }> {
     return await this.doctorService.getPatientLabs(socialSecurityNumber);
+  }
+
+  @MessagePattern({ cmd: DoctorPatterns.GET_DOCTOR_PATIENTS })
+  async getDoctorPatients(
+    @Payload() getDoctorPatientsDto: GetDoctorPatientsDto,
+  ): Promise<{
+    page: number;
+    items: {
+      id: string;
+      name: string;
+      gender: Gender;
+      dateOfBirth: Date;
+      socialSecurityNumber: string;
+      address: string;
+      job: string;
+    }[];
+    totalItems: number;
+    totalPages: number;
+  }> {
+    return await this.doctorService.getDoctorPatients(getDoctorPatientsDto);
+  }
+
+  @MessagePattern({ cmd: DoctorPatterns.GET_DOCTOR_VISITS })
+  async getDoctorVisits(
+    @Payload() getDoctorVisitsDto: GetDoctorVisitsDto,
+  ): Promise<{
+    page: number;
+    items: {
+      id: string;
+      diagnoses: string;
+      patient: {
+        name: string;
+        id: string;
+      };
+      doctor: {
+        name: string;
+        id: string;
+      };
+      createdAt: Date;
+    }[];
+    totalItems: number;
+    totalPages: number;
+  }> {
+    return await this.doctorService.getDoctorVisits(getDoctorVisitsDto);
+  }
+
+  @EventPattern({ cmd: DoctorPatterns.LAB_UPLOAD })
+  async uploadLab(
+    @Payload() uploadLabInternalDto: UploadLabInternalDto,
+  ): Promise<void> {
+    await this.doctorService.uploadLab(uploadLabInternalDto);
+  }
+
+  @EventPattern({ cmd: DoctorPatterns.SCAN_UPLOAD })
+  async uploadScan(
+    @Payload() uploadScanInternalDto: UploadScanPhotoInternalDto,
+  ): Promise<void> {
+    await this.doctorService.uploadScan(uploadScanInternalDto);
   }
 }

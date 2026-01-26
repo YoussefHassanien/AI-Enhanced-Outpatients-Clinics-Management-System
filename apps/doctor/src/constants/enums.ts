@@ -61,10 +61,10 @@ export enum MedicationDosage {
 }
 
 export enum ScanTypes {
-  MRI,
-  CT,
-  X_RAY,
-  ULTRA_SOUND,
-  PET_CT,
-  MAMOGRAPHY,
+  MRI = '0',
+  CT = '1',
+  X_RAY = '2',
+  ULTRA_SOUND = '3',
+  PET_CT = '4',
+  MAMOGRAPHY = '5',
 }

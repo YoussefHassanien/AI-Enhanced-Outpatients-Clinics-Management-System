@@ -185,4 +185,22 @@ export class AdminService {
       ),
     );
   }
+
+  async getPatientByGlobalId(globalId: string) {
+    return await lastValueFrom(
+      this.adminClient.send(
+        { cmd: AdminPatterns.GET_PATIENT_BY_GLOBAL_ID },
+        globalId,
+      ),
+    );
+  }
+
+  async getDoctorByGlobalId(globalId: string) {
+    return await lastValueFrom(
+      this.adminClient.send(
+        { cmd: AdminPatterns.GET_DOCTOR_BY_GLOBAL_ID },
+        globalId,
+      ),
+    );
+  }
 }

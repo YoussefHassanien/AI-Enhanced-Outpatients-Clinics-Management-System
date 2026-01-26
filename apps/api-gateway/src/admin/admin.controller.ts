@@ -29,7 +29,7 @@ import { AdminService } from './admin.service';
 
 @Controller('admin')
 export class AdminController {
-  constructor(private readonly adminService: AdminService) {}
+  constructor(private readonly adminService: AdminService) { }
 
   @Get()
   async isUp(): Promise<string> {
@@ -148,5 +148,35 @@ export class AdminController {
   @Get('clinics')
   async getAllClincs() {
     return await this.adminService.getAllClinics();
+  }
+
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @UseGuards(JwtAuthGuard)
+  @Get('patient/:id')
+  async getPatientByGlobalId(
+    @Param(
+      'id',
+      new ParseUUIDPipe({
+        exceptionFactory: () => new BadRequestException('Invalid patient ID'),
+      }),
+    )
+    globalId: string,
+  ) {
+    return await this.adminService.getPatientByGlobalId(globalId);
+  }
+
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @UseGuards(JwtAuthGuard)
+  @Get('doctor/:id')
+  async getDoctorByGlobalId(
+    @Param(
+      'id',
+      new ParseUUIDPipe({
+        exceptionFactory: () => new BadRequestException('Invalid doctor ID'),
+      }),
+    )
+    globalId: string,
+  ) {
+    return await this.adminService.getDoctorByGlobalId(globalId);
   }
 }

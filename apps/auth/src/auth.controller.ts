@@ -208,4 +208,17 @@ export class AuthController {
       socialSecurityNumber,
     );
   }
+
+  @MessagePattern({ cmd: AuthPatterns.GET_DOCTOR_BY_GLOBAL_ID })
+  async getDoctorByGlobalId(
+    @Payload(
+      new ParseUUIDPipe({
+        exceptionFactory: () =>
+          new RpcException(new ErrorResponse('Invalid UUID', 400)),
+      }),
+    )
+    doctorGlobalId: string,
+  ): Promise<Doctor | null> {
+    return await this.authService.getDoctorByGlobalId(doctorGlobalId);
+  }
 }

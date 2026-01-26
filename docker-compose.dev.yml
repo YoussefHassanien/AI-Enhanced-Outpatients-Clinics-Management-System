@@ -1,5 +1,5 @@
 services:
-  rabbitMq:
+  rabbitmq:
     image: rabbitmq:4.1.6-alpine
     ports:
       - 5672
@@ -12,7 +12,7 @@ services:
     env_file:
       - ./apps/auth/.env
     depends_on:
-      - rabbitMq
+      - rabbitmq
     command: node auth/main
     networks:
       - services-network
@@ -28,17 +28,19 @@ services:
     ports:
       - 4000:4000
     depends_on:
-      - rabbitMq
+      - rabbitmq
       - auth
       - doctor
       - ocr
       - asr
       - admin
+      - cloud-storage
     command: node api-gateway/main
     networks:
       - services-network
     volumes:
       - ./logs:/app/logs
+      - ./tmp/asr_uploads:/app/tmp/asr_uploads
 
   doctor:
     build:
@@ -47,7 +49,7 @@ services:
     env_file:
       - ./apps/doctor/.env
     depends_on:
-      - rabbitMq
+      - rabbitmq
     command: node doctor/main
     networks:
       - services-network
@@ -61,7 +63,7 @@ services:
     env_file:
       - ./apps/admin/.env
     depends_on:
-      - rabbitMq
+      - rabbitmq
     command: node admin/main
     networks:
       - services-network
@@ -75,7 +77,7 @@ services:
     env_file:
       - ./apps/asr/.env
     depends_on:
-      - rabbitMq
+      - rabbitmq
     command: node asr/main
     networks:
       - services-network
@@ -89,13 +91,27 @@ services:
     env_file:
       - ./apps/ocr/.env
     depends_on:
-      - rabbitMq
+      - rabbitmq
     command: ['python', 'run_consumer.py']
     networks:
       - services-network
     volumes:
       - ./logs/ocr:/app/logs
       - paddleocr-cache:/root/.paddlex
+
+  cloud-storage:
+    build:
+      context: .
+      dockerfile: ./apps/cloud-storage/Dockerfile
+    env_file:
+      - ./apps/cloud-storage/.env
+    depends_on:
+      - rabbitmq
+    command: node cloud-storage/main
+    networks:
+      - services-network
+    volumes:
+      - ./logs:/app/logs
 
 volumes:
   paddleocr-cache:
