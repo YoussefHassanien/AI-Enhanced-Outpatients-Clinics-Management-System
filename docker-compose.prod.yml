@@ -90,11 +90,9 @@ services:
       - ./tmp/asr_uploads:/app/tmp/asr_uploads
 
   cloud-storage:
-    build:
-      context: .
-      dockerfile: ./apps/cloud-storage/Dockerfile
+    image: youssefhassanien1/cloud-storage-service:latest
     env_file:
-      - ./apps/cloud-storage/.env
+      - ./cloud-storage.env
     depends_on:
       - rabbitmq
     command: node cloud-storage/main

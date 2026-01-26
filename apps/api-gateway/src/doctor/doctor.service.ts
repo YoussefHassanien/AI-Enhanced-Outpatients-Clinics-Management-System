@@ -402,4 +402,33 @@ export class DoctorService {
       ),
     );
   }
+
+  async searchForPatientBySocialSecurityNumber(
+    socialSecurityNumber: string,
+  ): Promise<{
+    id: string;
+    name: string;
+    gender: Gender;
+    dateOfBirth: Date;
+    socialSecurityNumber: string;
+    job: string;
+    address: string;
+    createdAt: Date;
+  }> {
+    return await lastValueFrom<{
+      id: string;
+      name: string;
+      gender: Gender;
+      dateOfBirth: Date;
+      socialSecurityNumber: string;
+      job: string;
+      address: string;
+      createdAt: Date;
+    }>(
+      this.doctorClient.send(
+        { cmd: DoctorPatterns.SEARCH_FOR_PATIENT_BY_SOCIAL_SECURITY_NUMBER },
+        socialSecurityNumber,
+      ),
+    );
+  }
 }

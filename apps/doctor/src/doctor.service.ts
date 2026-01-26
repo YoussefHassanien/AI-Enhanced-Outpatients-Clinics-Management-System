@@ -91,6 +91,25 @@ export class DoctorService {
     return patient;
   }
 
+  private async getPatientBySocialSecurityNumber(
+    socialSecurityNumber: string,
+  ): Promise<Patient | null> {
+    const patient = await lastValueFrom<Patient | null>(
+      this.authClient.send(
+        { cmd: AuthPatterns.GET_PATIENT_BY_SOCIAL_SECURITY_NUMBER },
+        socialSecurityNumber,
+      ),
+    );
+
+    if (!patient) {
+      this.logger.log('Patient not found');
+      return null;
+    }
+
+    this.logger.log('Patient is found');
+    return patient;
+  }
+
   private validateSocialSecurityNumber(socialSecurityNumber: string): void {
     const regex = /^[23]\d{2}(0[1-9]|1[0-2])(0[1-9]|[12]\d|3[01])\d{7}$/;
     if (!regex.test(socialSecurityNumber)) {
@@ -106,7 +125,7 @@ export class DoctorService {
 
   async createVisit(
     createVisitInternalDto: CreateVisitInternalDto,
-  ): Promise<void> {
+  ): Promise<{ message: string }> {
     const doctor = await this.getDoctorByUserId(
       createVisitInternalDto.doctorUserId,
     );
@@ -144,11 +163,13 @@ export class DoctorService {
 
     await this.visitsRepository.insert(visit);
     this.logger.log('Successfully inserted visit');
+
+    return { message: 'Visit is successfully created' };
   }
 
   async createMedication(
     createMedicationInternalDto: CreateMedicationInternalDto,
-  ): Promise<void> {
+  ): Promise<{ message: string }> {
     const doctor = await this.getDoctorByUserId(
       createMedicationInternalDto.doctorUserId,
     );
@@ -177,6 +198,8 @@ export class DoctorService {
 
     await this.medicationsRepository.insert(medication);
     this.logger.log('Successfully inserted medication');
+
+    return { message: 'Medication is successfully created' };
   }
 
   async getAllVisits(paginationRequest: PaginationRequest): Promise<
@@ -461,12 +484,8 @@ export class DoctorService {
   }> {
     this.validateSocialSecurityNumber(socialSecurityNumber);
 
-    const patient = await lastValueFrom<Patient | null>(
-      this.authClient.send(
-        { cmd: AuthPatterns.GET_PATIENT_BY_SOCIAL_SECURITY_NUMBER },
-        socialSecurityNumber,
-      ),
-    );
+    const patient =
+      await this.getPatientBySocialSecurityNumber(socialSecurityNumber);
 
     if (!patient) {
       throw new RpcException(new ErrorResponse('Patient not found!', 404));
@@ -607,12 +626,8 @@ export class DoctorService {
   }> {
     this.validateSocialSecurityNumber(socialSecurityNumber);
 
-    const patient = await lastValueFrom<Patient | null>(
-      this.authClient.send(
-        { cmd: AuthPatterns.GET_PATIENT_BY_SOCIAL_SECURITY_NUMBER },
-        socialSecurityNumber,
-      ),
-    );
+    const patient =
+      await this.getPatientBySocialSecurityNumber(socialSecurityNumber);
 
     if (!patient) {
       throw new RpcException(new ErrorResponse('Patient not found!', 404));
@@ -714,12 +729,8 @@ export class DoctorService {
   }> {
     this.validateSocialSecurityNumber(socialSecurityNumber);
 
-    const patient = await lastValueFrom<Patient | null>(
-      this.authClient.send(
-        { cmd: AuthPatterns.GET_PATIENT_BY_SOCIAL_SECURITY_NUMBER },
-        socialSecurityNumber,
-      ),
-    );
+    const patient =
+      await this.getPatientBySocialSecurityNumber(socialSecurityNumber);
 
     if (!patient) {
       throw new RpcException(new ErrorResponse('Patient not found!', 404));
@@ -820,12 +831,8 @@ export class DoctorService {
   }> {
     this.validateSocialSecurityNumber(socialSecurityNumber);
 
-    const patient = await lastValueFrom<Patient | null>(
-      this.authClient.send(
-        { cmd: AuthPatterns.GET_PATIENT_BY_SOCIAL_SECURITY_NUMBER },
-        socialSecurityNumber,
-      ),
-    );
+    const patient =
+      await this.getPatientBySocialSecurityNumber(socialSecurityNumber);
 
     if (!patient) {
       throw new RpcException(new ErrorResponse('Patient not found!', 404));
@@ -903,11 +910,8 @@ export class DoctorService {
   }
 
   async uploadLab(uploadLabInternalDto: UploadLabInternalDto): Promise<void> {
-    const patient = await lastValueFrom<Patient | null>(
-      this.authClient.send(
-        { cmd: AuthPatterns.GET_PATIENT_BY_SOCIAL_SECURITY_NUMBER },
-        uploadLabInternalDto.patientSocialSecurityNumber,
-      ),
+    const patient = await this.getPatientBySocialSecurityNumber(
+      uploadLabInternalDto.patientSocialSecurityNumber,
     );
 
     if (!patient) {
@@ -952,11 +956,8 @@ export class DoctorService {
   async uploadScan(
     uploadScanInternalDto: UploadScanPhotoInternalDto,
   ): Promise<void> {
-    const patient = await lastValueFrom<Patient | null>(
-      this.authClient.send(
-        { cmd: AuthPatterns.GET_PATIENT_BY_SOCIAL_SECURITY_NUMBER },
-        uploadScanInternalDto.patientSocialSecurityNumber,
-      ),
+    const patient = await this.getPatientBySocialSecurityNumber(
+      uploadScanInternalDto.patientSocialSecurityNumber,
     );
 
     if (!patient) {
@@ -998,5 +999,36 @@ export class DoctorService {
 
     await this.scansRepository.update({ id: scan.id }, { photoUrl });
     this.logger.log('Scan photo url is successfully updated');
+  }
+
+  async searchForPatientBySocilaSecurityNumber(
+    socialSecurityNumber: string,
+  ): Promise<{
+    id: string;
+    name: string;
+    gender: Gender;
+    dateOfBirth: Date;
+    socialSecurityNumber: string;
+    job: string;
+    address: string;
+    createdAt: Date;
+  }> {
+    const patient =
+      await this.getPatientBySocialSecurityNumber(socialSecurityNumber);
+
+    if (!patient) {
+      throw new RpcException(new ErrorResponse('Patient not found!', 404));
+    }
+
+    return {
+      id: patient.globalId,
+      name: `${patient.user.firstName} ${patient.user.lastName}`,
+      gender: patient.user.gender,
+      dateOfBirth: patient.user.dateOfBirth,
+      socialSecurityNumber: String(patient.user.socialSecurityNumber),
+      job: patient.job,
+      address: patient.address,
+      createdAt: patient.createdAt,
+    };
   }
 }
