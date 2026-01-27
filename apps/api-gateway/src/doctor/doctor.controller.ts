@@ -9,10 +9,14 @@ import {
   Query,
   Req,
   UploadedFile,
+  UploadedFiles,
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
+import {
+  FileFieldsInterceptor,
+  FileInterceptor,
+} from '@nestjs/platform-express';
 import { Request } from 'express';
 import { User } from '../../../auth/src/entities';
 import {
@@ -40,10 +44,22 @@ export class DoctorController {
 
   @Roles(Role.DOCTOR)
   @UseGuards(JwtAuthGuard)
+  @UseInterceptors(FileInterceptor('audio'))
   @Post('visit/create')
   async createVisit(
     @Body() createVisitDto: CreateVisitDto,
     @Req() req: Request,
+    @UploadedFile(
+      new ParseFilePipeBuilder()
+        .addFileTypeValidator({
+          fileType: /(audio\/mpeg|audio\/wav|audio\/mp3|audio\/ogg)$/,
+        })
+        .addMaxSizeValidator({
+          maxSize: 10 * 1024 * 1024, // 10 MB,
+        })
+        .build(),
+    )
+    audio: Express.Multer.File,
   ): Promise<{ message: string }> {
     const user = req.user as User;
     return await this.doctorService.createVisit(createVisitDto, user.id);
@@ -186,59 +202,53 @@ export class DoctorController {
 
   @Roles(Role.DOCTOR)
   @UseGuards(JwtAuthGuard)
-  @UseInterceptors(FileInterceptor('image'))
+  @UseInterceptors(
+    FileFieldsInterceptor([
+      { name: 'image', maxCount: 1 },
+      { name: 'audio', maxCount: 1 },
+    ]),
+  )
   @Post('lab/:socialSecurityNumber')
   async uploadLab(
     @Param('socialSecurityNumber') socialSecurityNumber: string,
     @Body() uploadLabDto: UploadLabDto,
-    @UploadedFile(
-      new ParseFilePipeBuilder()
-        .addFileTypeValidator({
-          fileType: /(image\/jpeg|image\/jpg|image\/png)$/,
-        })
-        .addMaxSizeValidator({
-          maxSize: 5 * 1024 * 1024, // 5 MB,
-        })
-        .build(),
-    )
-    image: Express.Multer.File,
+    @UploadedFiles()
+    files: { image?: Express.Multer.File[]; audio?: Express.Multer.File[] },
     @Req() req: Request,
   ): Promise<void> {
     const user = req.user as User;
     await this.doctorService.uploadLab(
       uploadLabDto,
       socialSecurityNumber,
-      image,
       user.id,
+      files.image?.[0],
+      files.audio?.[0],
     );
   }
 
   @Roles(Role.DOCTOR)
   @UseGuards(JwtAuthGuard)
-  @UseInterceptors(FileInterceptor('image'))
+  @UseInterceptors(
+    FileFieldsInterceptor([
+      { name: 'image', maxCount: 1 },
+      { name: 'audio', maxCount: 1 },
+    ]),
+  )
   @Post('scan/:socialSecurityNumber')
   async uploadScan(
     @Param('socialSecurityNumber') socialSecurityNumber: string,
     @Body() uploadScanDto: UploadScanDto,
-    @UploadedFile(
-      new ParseFilePipeBuilder()
-        .addFileTypeValidator({
-          fileType: /(image\/jpeg|image\/jpg|image\/png)$/,
-        })
-        .addMaxSizeValidator({
-          maxSize: 5 * 1024 * 1024, // 5 MB,
-        })
-        .build(),
-    )
-    image: Express.Multer.File,
+    @UploadedFiles()
+    files: { image?: Express.Multer.File[]; audio?: Express.Multer.File[] },
     @Req() req: Request,
   ): Promise<void> {
     const user = req.user as User;
     await this.doctorService.uploadScan(
       uploadScanDto,
       socialSecurityNumber,
-      image,
       user.id,
+      files.image?.[0],
+      files.audio?.[0],
     );
   }
 

@@ -87,7 +87,6 @@ export enum AdminPatterns {
 export enum AsrPatterns {
   TRANSCRIBE_AUDIO = 'transcribe-audio',
   IS_UP = 'asr.isUp',
-  IS_READY = 'asr.isReady',
 }
 
 export enum OcrPatterns {

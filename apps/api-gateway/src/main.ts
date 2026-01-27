@@ -1,4 +1,9 @@
-import { CommonServices, LoggingMiddleware, LoggingService } from '@app/common';
+import {
+  CommonServices,
+  Environment,
+  LoggingMiddleware,
+  LoggingService,
+} from '@app/common';
 import { Logger, ValidationPipe, VersioningType } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
@@ -40,16 +45,24 @@ async function bootstrap() {
     credentials: configService.getOrThrow<boolean>('CREDENTIALS'),
   });
 
-  // MUST BE DELETED ON PRODUCTION
-  const config = new DocumentBuilder()
-    .setTitle('CodeBlue Project APIs Documentation')
-    .setDescription(
-      'These APIs are made for CodeBlue project that mainly serve El Kasr El Ainy Outpatients Clinics',
-    )
-    .setVersion('1.0.0')
-    .build();
-  const documentFactory = () => SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup(`${globalPrefix}/v${version}/docs`, app, documentFactory);
+  if (
+    configService.getOrThrow<Environment>('ENVIRONMENT') ===
+    Environment.DEVELOPMENT
+  ) {
+    const config = new DocumentBuilder()
+      .setTitle('CodeBlue Project APIs Documentation')
+      .setDescription(
+        'These APIs are made for CodeBlue project that mainly serve El Kasr El Ainy Outpatients Clinics',
+      )
+      .setVersion('1.0.0')
+      .build();
+    const documentFactory = () => SwaggerModule.createDocument(app, config);
+    SwaggerModule.setup(
+      `${globalPrefix}/v${version}/docs`,
+      app,
+      documentFactory,
+    );
+  }
 
   await app.listen(port);
 

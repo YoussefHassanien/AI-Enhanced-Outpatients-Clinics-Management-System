@@ -11,4 +11,7 @@ export class Lab extends DoctorPatientRelationEntity {
 
   @Column('varchar', { length: 512, nullable: true })
   comments: string;
+
+  @Column('text', { nullable: true })
+  commentsAudioUrl: string;
 }

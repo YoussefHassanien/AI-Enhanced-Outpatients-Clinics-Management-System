@@ -6,6 +6,9 @@ export class Visit extends DoctorPatientRelationEntity {
   @Column('text')
   diagnoses: string;
 
+  @Column('text', { nullable: true })
+  diagnosesAudioUrl: string;
+
   @Column('integer', { nullable: false })
   @Index()
   clinicId: number;

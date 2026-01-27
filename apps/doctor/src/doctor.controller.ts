@@ -26,14 +26,14 @@ export class DoctorController {
     return this.doctorService.isUp();
   }
 
-  @MessagePattern({ cmd: DoctorPatterns.VISIT_CREATE })
+  @EventPattern({ cmd: DoctorPatterns.VISIT_CREATE })
   async visitCreate(
     @Payload() createVisitInternalDto: CreateVisitInternalDto,
   ): Promise<{ message: string }> {
     return await this.doctorService.createVisit(createVisitInternalDto);
   }
 
-  @MessagePattern({ cmd: DoctorPatterns.MEDICATION_CREATE })
+  @EventPattern({ cmd: DoctorPatterns.MEDICATION_CREATE })
   async medicationCreate(
     @Payload() createMedicationInternalDto: CreateMedicationInternalDto,
   ): Promise<{ message: string }> {

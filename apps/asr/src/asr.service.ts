@@ -1,4 +1,4 @@
-import { CommonServices, LoggingService } from '@app/common';
+import { CommonServices, ErrorResponse, LoggingService } from '@app/common';
 import { HttpService } from '@nestjs/axios';
 import { Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -17,37 +17,44 @@ export class AsrService {
     private readonly logger: LoggingService,
   ) {}
 
-  isUp(): string {
-    return 'ASR service is up';
-  }
-
-  async isReady(): Promise<{ service: string; status: string }> {
+  async isUp(): Promise<{ status: number; message: string }> {
     const hfApiUrl = this.configService.getOrThrow<string>('HF_API_URL');
-    try {
-      const response = await firstValueFrom(
-        this.httpService.get(`${hfApiUrl}/is-up`),
-      );
-      return response.data;
-    } catch (error) {
-      this.logger.error(
-        'HuggingFace Whisper API is not reachable',
-        error.stack,
-      );
-      return {
-        service: 'Whisper-FastAPI',
-        status: 'DOWN',
-      };
+    const response = await firstValueFrom(
+      this.httpService.get(`${hfApiUrl}/is-up`),
+    );
+
+    if (response.status >= 400) {
+      return { message: 'ASR service is down!', status: response.status };
     }
+
+    return { message: 'ASR service is up', status: response.status };
   }
 
   async transcribe(data: TranscribeAudioDto) {
     const filePath = data.file;
     try {
-      const result = await this.processFile(filePath);
-      return result;
-    } catch (error) {
-      this.logger.error(`Failed to process file ${filePath}:`, error.stack);
-      throw error; // Re-throw the error to be handled by the controller
+      this.validateFile(filePath);
+
+      const fileStream = fs.createReadStream(filePath);
+      const formData = new FormData();
+      formData.append('files', fileStream);
+
+      const apiUrl = this.configService.getOrThrow<string>('API_URL');
+
+      const response = await firstValueFrom(
+        this.httpService.post(apiUrl, formData, {
+          headers: {
+            ...formData.getHeaders(),
+          },
+        }),
+      );
+
+      return response.data;
+    } catch (error: unknown) {
+      this.logger.error(`Failed to transcribe the file: ${String(error)}`);
+      throw new RpcException(
+        new ErrorResponse('Failed to transcribe the file', 500),
+      );
     } finally {
       // Clean up the file after processing
       fs.unlink(filePath, (err) => {
@@ -58,31 +65,6 @@ export class AsrService {
           );
         }
       });
-    }
-  }
-
-  private async processFile(filePath: string) {
-    this.validateFile(filePath);
-
-    const fileStream = fs.createReadStream(filePath);
-    const formData = new FormData();
-    formData.append('files', fileStream);
-
-    const apiUrl = this.configService.getOrThrow<string>('API_URL');
-
-    try {
-      const response = await firstValueFrom(
-        this.httpService.post(apiUrl, formData, {
-          headers: {
-            ...formData.getHeaders(),
-          },
-        }),
-      );
-      return response.data;
-    } catch (error) {
-      throw new RpcException(
-        `Error transcribing file: ${error.response?.status} - ${error.response?.data || error.message}`,
-      );
     }
   }
 

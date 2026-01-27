@@ -9,13 +9,8 @@ export class AsrController {
   constructor(private readonly asrService: AsrService) {}
 
   @MessagePattern({ cmd: AsrPatterns.IS_UP })
-  isUp(): string {
-    return this.asrService.isUp();
-  }
-
-  @MessagePattern({ cmd: AsrPatterns.IS_READY })
-  isReady(): Promise<{ service: string; status: string }> {
-    return this.asrService.isReady();
+  async isUp(): Promise<{ status: number; message: string }> {
+    return await this.asrService.isUp();
   }
 
   @MessagePattern({ cmd: AsrPatterns.TRANSCRIBE_AUDIO })

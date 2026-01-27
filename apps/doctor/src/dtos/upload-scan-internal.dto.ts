@@ -1,7 +1,7 @@
 import { IsInt, IsNotEmpty, IsString } from 'class-validator';
 import { UploadScanDto } from './upload-scan.dto';
 
-export class UploadScanPhotoInternalDto extends UploadScanDto {
+export class UploadScanInternalDto extends UploadScanDto {
   @IsString()
   @IsNotEmpty()
   readonly patientSocialSecurityNumber: string;
@@ -12,7 +12,15 @@ export class UploadScanPhotoInternalDto extends UploadScanDto {
 
   @IsString()
   @IsNotEmpty()
-  readonly mimetype: string;
+  readonly imageMimetype: string;
+
+  @IsString()
+  @IsNotEmpty()
+  readonly audioBase64?: string;
+
+  @IsString()
+  @IsNotEmpty()
+  readonly audioMimetype?: string;
 
   @IsInt()
   readonly doctorUserId: number;
@@ -20,15 +28,19 @@ export class UploadScanPhotoInternalDto extends UploadScanDto {
   constructor(
     uploadScanDto: UploadScanDto,
     patientSocialSecurityNumber: string,
-    imageBase64: string,
-    mimetype: string,
     doctorUserId: number,
+    imageBase64: string,
+    imageMimetype: string,
+    audioBase64?: string,
+    audioMimetype?: string,
   ) {
     super();
     Object.assign(this, uploadScanDto);
     this.patientSocialSecurityNumber = patientSocialSecurityNumber;
     this.imageBase64 = imageBase64;
-    this.mimetype = mimetype;
+    this.imageMimetype = imageMimetype;
+    this.audioBase64 = audioBase64;
+    this.audioMimetype = audioMimetype;
     this.doctorUserId = doctorUserId;
   }
 }

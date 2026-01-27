@@ -15,7 +15,7 @@ import {
   UploadLabDto,
   UploadLabInternalDto,
   UploadScanDto,
-  UploadScanPhotoInternalDto,
+  UploadScanInternalDto,
 } from '../../../doctor/src/dtos';
 
 @Injectable()
@@ -28,6 +28,39 @@ export class DoctorService {
     const regex = /^[23]\d{2}(0[1-9]|1[0-2])(0[1-9]|[12]\d|3[01])\d{7}$/;
     if (!regex.test(socialSecurityNumber)) {
       throw new BadRequestException('Invalid social security number format');
+    }
+  }
+
+  private validateImageFile(image?: Express.Multer.File) {
+    const imageTypeRegExp: RegExp = /(image\/jpeg|image\/jpg|image\/png)$/;
+    const imageSize: number = 5 * 1024 * 1024; // 5 MB
+
+    if (!image) {
+      throw new BadRequestException('Image file is required');
+    }
+
+    if (!imageTypeRegExp.test(image.mimetype)) {
+      throw new BadRequestException('Invalid image file type');
+    }
+
+    if (image.size > imageSize) {
+      throw new BadRequestException('Image file too large');
+    }
+  }
+
+  private validateAudioFile(audio?: Express.Multer.File) {
+    const audioTypeRegExp: RegExp =
+      /(audio\/mpeg|audio\/wav|audio\/mp3|audio\/ogg)$/;
+    const audioSize: number = 10 * 1024 * 1024; // 10 MB
+
+    if (audio) {
+      if (!audioTypeRegExp.test(audio.mimetype)) {
+        throw new BadRequestException('Invalid audio file type');
+      }
+
+      if (audio.size > audioSize) {
+        throw new BadRequestException('Audio file too large');
+      }
     }
   }
   async isUp(): Promise<string> {
@@ -280,17 +313,22 @@ export class DoctorService {
   async uploadLab(
     uploadLabDto: UploadLabDto,
     patientSocialSecurityNumber: string,
-    image: Express.Multer.File,
     doctorUserId: number,
+    image?: Express.Multer.File,
+    audio?: Express.Multer.File,
   ): Promise<void> {
+    this.validateImageFile(image);
+    this.validateAudioFile(audio);
     this.validateSocialSecurityNumber(patientSocialSecurityNumber);
 
     const uploadLabInternalDto = new UploadLabInternalDto(
       uploadLabDto,
       patientSocialSecurityNumber,
-      image.buffer.toString('base64'),
-      image.mimetype,
       doctorUserId,
+      image!.buffer.toString('base64'),
+      image!.mimetype,
+      audio?.buffer.toString('base64'),
+      audio?.mimetype,
     );
 
     await lastValueFrom<void>(
@@ -304,17 +342,22 @@ export class DoctorService {
   async uploadScan(
     uploadScanDto: UploadScanDto,
     patientSocialSecurityNumber: string,
-    image: Express.Multer.File,
     doctorUserId: number,
+    image?: Express.Multer.File,
+    audio?: Express.Multer.File,
   ): Promise<void> {
+    this.validateImageFile(image);
+    this.validateAudioFile(audio);
     this.validateSocialSecurityNumber(patientSocialSecurityNumber);
 
-    const uploadScanInternalDto = new UploadScanPhotoInternalDto(
+    const uploadScanInternalDto = new UploadScanInternalDto(
       uploadScanDto,
       patientSocialSecurityNumber,
-      image.buffer.toString('base64'),
-      image.mimetype,
       doctorUserId,
+      image!.buffer.toString('base64'),
+      image!.mimetype,
+      audio?.buffer.toString('base64'),
+      audio?.mimetype,
     );
 
     await lastValueFrom<void>(
