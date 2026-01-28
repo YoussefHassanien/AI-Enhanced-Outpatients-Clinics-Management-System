@@ -31,8 +31,7 @@ import { MedicationDosage, MedicationPeriod, ScanTypes } from './constants';
 import {
   CreateMedicationInternalDto,
   CreateVisitInternalDto,
-  GetDoctorPatientsDto,
-  GetDoctorVisitsDto,
+  DoctorInternalPaginationRequestDto,
   UploadLabInternalDto,
   UploadScanInternalDto,
 } from './dtos';
@@ -71,7 +70,21 @@ export class DoctorService {
     );
 
     if (!doctor) {
-      this.logger.log('Doctor not found');
+      this.logger.log(`Doctor of user id: ${doctorUserId} not found`);
+      return null;
+    }
+
+    this.logger.log('Doctor is found');
+    return doctor;
+  }
+
+  private async getDoctorById(doctorId: number): Promise<Doctor | null> {
+    const doctor = await lastValueFrom<Doctor | null>(
+      this.authClient.send({ cmd: AuthPatterns.GET_DOCTOR_BY_ID }, doctorId),
+    );
+
+    if (!doctor) {
+      this.logger.log(`Doctor of id: ${doctorId} not found`);
       return null;
     }
 
@@ -90,7 +103,21 @@ export class DoctorService {
     );
 
     if (!patient) {
-      this.logger.log('Patient not found');
+      this.logger.log(`Patient of global id: ${patientGlobalId} not found`);
+      return null;
+    }
+
+    this.logger.log('Patient is found');
+    return patient;
+  }
+
+  private async getPatientById(patientId: number): Promise<Patient | null> {
+    const patient = await lastValueFrom<Patient | null>(
+      this.authClient.send({ cmd: AuthPatterns.GET_PATIENT_BY_ID }, patientId),
+    );
+
+    if (!patient) {
+      this.logger.log(`Patient of id: ${patientId} not found`);
       return null;
     }
 
@@ -109,7 +136,9 @@ export class DoctorService {
     );
 
     if (!patient) {
-      this.logger.log('Patient not found');
+      this.logger.log(
+        `Patient of social security number: ${socialSecurityNumber} not found`,
+      );
       return null;
     }
 
@@ -117,7 +146,9 @@ export class DoctorService {
     return patient;
   }
 
-  private async uploadLabPhoto(labPhotoInternalDto: LabPhotoInternalDto) {
+  private async uploadLabPhoto(
+    labPhotoInternalDto: LabPhotoInternalDto,
+  ): Promise<string> {
     const photoUrl = await lastValueFrom<string>(
       this.cloudStorageClient.send(
         { cmd: CloudStoragePatterns.UPLOAD_LAB_PHOTO },
@@ -129,7 +160,9 @@ export class DoctorService {
     return photoUrl;
   }
 
-  private async uploadScanPhoto(scanPhotoInternalDto: ScanPhotoInternalDto) {
+  private async uploadScanPhoto(
+    scanPhotoInternalDto: ScanPhotoInternalDto,
+  ): Promise<string> {
     const photoUrl = await lastValueFrom<string>(
       this.cloudStorageClient.send(
         { cmd: CloudStoragePatterns.UPLOAD_SCAN_PHOTO },
@@ -141,7 +174,9 @@ export class DoctorService {
     return photoUrl;
   }
 
-  private async uploadLabAudio(labAudioInternalDto: LabAudioInternalDto) {
+  private async uploadLabAudio(
+    labAudioInternalDto: LabAudioInternalDto,
+  ): Promise<string> {
     const photoUrl = await lastValueFrom<string>(
       this.cloudStorageClient.send(
         { cmd: CloudStoragePatterns.UPLOAD_LAB_AUDIO },
@@ -153,7 +188,9 @@ export class DoctorService {
     return photoUrl;
   }
 
-  private async uploadScanAudio(scanAudioInternalDto: ScanAudioInternalDto) {
+  private async uploadScanAudio(
+    scanAudioInternalDto: ScanAudioInternalDto,
+  ): Promise<string> {
     const photoUrl = await lastValueFrom<string>(
       this.cloudStorageClient.send(
         { cmd: CloudStoragePatterns.UPLOAD_SCAN_AUDIO },
@@ -167,7 +204,7 @@ export class DoctorService {
 
   private async uploadMedicationAudio(
     medicationAudioInternalDto: MedicationAudioInternalDto,
-  ) {
+  ): Promise<string> {
     const photoUrl = await lastValueFrom<string>(
       this.cloudStorageClient.send(
         { cmd: CloudStoragePatterns.UPLOAD_MEDICATION_AUDIO },
@@ -177,6 +214,29 @@ export class DoctorService {
     this.logger.log('Medication audio url is successfully retrieved');
 
     return photoUrl;
+  }
+
+  private async getClinicById(clinicId: number): Promise<Clinic | null> {
+    const clinic = await lastValueFrom<Clinic | null>(
+      this.adminClient.send<Clinic | null>(
+        { cmd: AdminPatterns.GET_CLINIC_BY_ID },
+        clinicId,
+      ),
+    );
+
+    if (!clinic) {
+      this.logger.log(`Clinic of id: ${clinicId} not found`);
+      return null;
+    }
+
+    this.logger.log('Clinic is found');
+    return clinic;
+  }
+
+  private async getAllClinicsWithId(): Promise<Clinic[]> {
+    return await lastValueFrom<Clinic[]>(
+      this.adminClient.send({ cmd: AdminPatterns.GET_ALL_CLINICS_WITH_ID }, {}),
+    );
   }
 
   private async uploadVisitAudio(visitAudioInternalDto: VisitAudioInternalDto) {
@@ -237,53 +297,96 @@ export class DoctorService {
       throw new RpcException(new ErrorResponse('Patient not found!', 404));
     }
 
-    const clinic = await lastValueFrom<Clinic | null>(
-      this.adminClient.send(
-        { cmd: AdminPatterns.GET_CLINIC_BY_ID },
-        doctor.clinicId,
-      ),
-    );
+    const clinic = await this.getClinicById(doctor.clinicId);
 
     if (!clinic) {
       throw new RpcException(new ErrorResponse('Clinic not found!', 404));
     }
 
-    const visit = await this.visitsRepository.save({
-      diagnoses: createVisitInternalDto.diagnoses,
-      patientId: patient.id,
-      doctorId: doctor.id,
-      clinicId: doctor.clinicId,
-    });
-    this.logger.log('Successfully saved visit');
-
+    // If no written diagnoses provided, require audio to be present
     if (
+      !createVisitInternalDto.diagnoses &&
+      (!createVisitInternalDto.audioFilePath ||
+        !createVisitInternalDto.audioMimetype)
+    ) {
+      throw new RpcException(
+        new ErrorResponse(
+          'Either audio or written diagnoses must be provided',
+          400,
+        ),
+      );
+    }
+
+    if (createVisitInternalDto.diagnoses) {
+      const visit = await this.visitsRepository.save({
+        diagnoses: createVisitInternalDto.diagnoses,
+        patientId: patient.id,
+        doctorId: doctor.id,
+        clinicId: doctor.clinicId,
+      });
+      this.logger.log('Successfully saved visit');
+
+      if (
+        createVisitInternalDto.audioFilePath &&
+        createVisitInternalDto.audioMimetype
+      ) {
+        const visitAudioInternalDto = new VisitAudioInternalDto(
+          visit.globalId,
+          patient.globalId,
+          createVisitInternalDto.audioFilePath,
+          createVisitInternalDto.audioMimetype,
+        );
+
+        const diagnosesAudioUrl = await this.uploadVisitAudio(
+          visitAudioInternalDto,
+        );
+        this.logger.log('Visit audio url is successfully uploaded');
+
+        await this.visitsRepository.update(
+          { id: visit.id },
+          { diagnosesAudioUrl },
+        );
+        this.logger.log('Visit audio url is successfully saved');
+
+        return;
+      }
+    } else if (
       createVisitInternalDto.audioFilePath &&
       createVisitInternalDto.audioMimetype
     ) {
-      const visitAudioInternalDto = new VisitAudioInternalDto(
-        visit.globalId,
-        patient.globalId,
-        createVisitInternalDto.audioFilePath,
-        createVisitInternalDto.audioMimetype,
-      );
-      const diagnosesAudioUrl = await this.uploadVisitAudio(
-        visitAudioInternalDto,
-      );
-      this.logger.log('Visit audio url is successfully uploaded');
-
       const transcribeAudioDto = new TranscribeAudioDto();
       transcribeAudioDto.file = createVisitInternalDto.audioFilePath;
 
       const extractedText = await this.extractTextFromAudio(transcribeAudioDto);
       this.logger.log('Text extracted from visit audio');
 
-      const updatedDiagnoses = `Original text: ${createVisitInternalDto.diagnoses}\nExtracted text from audio: ${extractedText}`;
+      const visit = await this.visitsRepository.save({
+        diagnoses: extractedText,
+        patientId: patient.id,
+        doctorId: doctor.id,
+        clinicId: doctor.clinicId,
+      });
+      this.logger.log('Successfully saved visit');
+
+      const visitAudioInternalDto = new VisitAudioInternalDto(
+        visit.globalId,
+        patient.globalId,
+        createVisitInternalDto.audioFilePath,
+        createVisitInternalDto.audioMimetype,
+      );
+
+      const diagnosesAudioUrl = await this.uploadVisitAudio(
+        visitAudioInternalDto,
+      );
+      this.logger.log('Visit audio url is successfully uploaded');
 
       await this.visitsRepository.update(
         { id: visit.id },
-        { diagnosesAudioUrl, diagnoses: updatedDiagnoses },
+        { diagnosesAudioUrl },
       );
-      this.logger.log('Visit audio url and diagnoses successfully updated');
+      this.logger.log('Visit audio url is successfully saved');
+
+      return;
     }
   }
 
@@ -360,14 +463,7 @@ export class DoctorService {
       createdAt: Date;
     }>
   > {
-    const count = await this.visitsRepository.count({
-      where: {
-        deletedAt: IsNull(),
-      },
-    });
-    this.logger.log(`Visits count is ${count}`);
-
-    const visits = await this.visitsRepository.find({
+    const [visits, count] = await this.visitsRepository.findAndCount({
       select: {
         globalId: true,
         diagnoses: true,
@@ -381,6 +477,7 @@ export class DoctorService {
       skip: (paginationRequest.page - 1) * paginationRequest.limit,
       take: paginationRequest.limit,
     });
+    this.logger.log(`Visits count is ${count}`);
     this.logger.log(
       `Successfully retrieved ${paginationRequest.limit} visits from page: ${paginationRequest.page - 1}`,
     );
@@ -389,18 +486,8 @@ export class DoctorService {
     const items = await Promise.all(
       visits.map(async (visit) => {
         const [patient, doctor] = await Promise.all([
-          lastValueFrom<Patient | null>(
-            this.authClient.send(
-              { cmd: AuthPatterns.GET_PATIENT_BY_ID },
-              visit.patientId,
-            ),
-          ),
-          lastValueFrom<Doctor | null>(
-            this.authClient.send(
-              { cmd: AuthPatterns.GET_DOCTOR_BY_ID },
-              visit.doctorId,
-            ),
-          ),
+          this.getPatientById(visit.patientId),
+          this.getDoctorById(visit.doctorId),
         ]);
 
         return {
@@ -413,25 +500,26 @@ export class DoctorService {
       }),
     );
 
-    const response: PaginationResponse<{
+    const paginatedResponse = new PaginationResponse<{
       id: string;
       diagnoses: string;
       patientId: string;
       doctorId: string;
       createdAt: Date;
-    }> = {
-      page: paginationRequest.page,
+    }>(
+      paginationRequest.page,
       items,
-      totalItems: count,
-      totalPages: Math.ceil(count / paginationRequest.limit),
-    };
+      count,
+      Math.ceil(count / paginationRequest.limit),
+    );
 
-    return response;
+    return paginatedResponse;
   }
 
-  async getDoctorPatients(getDoctorPatientsDto: GetDoctorPatientsDto): Promise<{
-    page: number;
-    items: {
+  async getDoctorPatients(
+    doctorInternalPaginationRequestDto: DoctorInternalPaginationRequestDto,
+  ): Promise<
+    PaginationResponse<{
       id: string;
       name: string;
       gender: Gender;
@@ -439,20 +527,15 @@ export class DoctorService {
       socialSecurityNumber: string;
       address: string;
       job: string;
-    }[];
-    totalItems: number;
-    totalPages: number;
-  }> {
+    }>
+  > {
     const doctor = await this.getDoctorByUserId(
-      getDoctorPatientsDto.doctorUserId,
+      doctorInternalPaginationRequestDto.doctorUserId,
     );
 
     if (!doctor) {
       throw new RpcException(new ErrorResponse('Doctor not found!', 404));
     }
-
-    const page = getDoctorPatientsDto.page || 1;
-    const limit = getDoctorPatientsDto.limit || 10;
 
     const visits = await this.visitsRepository.find({
       where: {
@@ -467,17 +550,17 @@ export class DoctorService {
     const totalItems = patientIds.length;
     this.logger.log(`Found ${totalItems} unique patients for the doctor`);
 
-    const skip = (page - 1) * limit;
-    const paginatedPatientIds = patientIds.slice(skip, skip + limit);
+    const skip =
+      (doctorInternalPaginationRequestDto.page - 1) *
+      doctorInternalPaginationRequestDto.limit;
+    const paginatedPatientIds = patientIds.slice(
+      skip,
+      skip + doctorInternalPaginationRequestDto.limit,
+    );
 
     const patients = await Promise.all(
       paginatedPatientIds.map(async (patientId) => {
-        const patient = await lastValueFrom<Patient | null>(
-          this.authClient.send(
-            { cmd: AuthPatterns.GET_PATIENT_BY_ID },
-            patientId,
-          ),
-        );
+        const patient = await this.getPatientById(patientId);
 
         if (!patient) {
           this.logger.log(`Patient with ID ${patientId} not found`);
@@ -498,20 +581,31 @@ export class DoctorService {
 
     const items = patients.filter((p) => p !== null);
     this.logger.log(
-      `Successfully retrieved ${items.length} patients for page ${page}`,
+      `Successfully retrieved ${items.length} patients for page ${doctorInternalPaginationRequestDto.page}`,
     );
 
-    return {
-      page,
+    const paginatedResponse = new PaginationResponse<{
+      id: string;
+      name: string;
+      gender: Gender;
+      dateOfBirth: Date;
+      socialSecurityNumber: string;
+      address: string;
+      job: string;
+    }>(
+      doctorInternalPaginationRequestDto.page,
       items,
       totalItems,
-      totalPages: Math.ceil(totalItems / limit),
-    };
+      Math.ceil(totalItems / doctorInternalPaginationRequestDto.limit),
+    );
+
+    return paginatedResponse;
   }
 
-  async getDoctorVisits(getDoctorVisitsDto: GetDoctorVisitsDto): Promise<{
-    page: number;
-    items: {
+  async getDoctorVisits(
+    doctorInternalPaginationRequestDto: DoctorInternalPaginationRequestDto,
+  ): Promise<
+    PaginationResponse<{
       id: string;
       diagnoses: string;
       patient: {
@@ -523,21 +617,15 @@ export class DoctorService {
         id: string;
       };
       createdAt: Date;
-    }[];
-    totalItems: number;
-    totalPages: number;
-  }> {
+    }>
+  > {
     const doctor = await this.getDoctorByUserId(
-      getDoctorVisitsDto.doctorUserId,
+      doctorInternalPaginationRequestDto.doctorUserId,
     );
 
     if (!doctor) {
       throw new RpcException(new ErrorResponse('Doctor not found!', 404));
     }
-
-    const page = getDoctorVisitsDto.page || 1;
-    const limit = getDoctorVisitsDto.limit || 10;
-    const skip = (page - 1) * limit;
 
     const [visits, totalItems] = await this.visitsRepository.findAndCount({
       where: {
@@ -547,8 +635,10 @@ export class DoctorService {
       order: {
         createdAt: 'DESC',
       },
-      skip,
-      take: limit,
+      skip:
+        (doctorInternalPaginationRequestDto.page - 1) *
+        doctorInternalPaginationRequestDto.limit,
+      take: doctorInternalPaginationRequestDto.limit,
     });
 
     this.logger.log(
@@ -558,11 +648,7 @@ export class DoctorService {
     // Extract unique patient IDs and fetch all patients in parallel
     const patientIds = [...new Set(visits.map((v) => v.patientId))];
     const patients = await Promise.all(
-      patientIds.map((id) =>
-        lastValueFrom<Patient | null>(
-          this.authClient.send({ cmd: AuthPatterns.GET_PATIENT_BY_ID }, id),
-        ),
-      ),
+      patientIds.map((id) => this.getPatientById(id)),
     );
 
     // Create patient lookup map
@@ -600,12 +686,26 @@ export class DoctorService {
       `Successfully retrieved ${visitsInformation.length} visits with info`,
     );
 
-    return {
-      page,
-      items: visitsInformation,
+    const paginatedResponse = new PaginationResponse<{
+      id: string;
+      diagnoses: string;
+      patient: {
+        name: string;
+        id: string;
+      };
+      doctor: {
+        name: string;
+        id: string;
+      };
+      createdAt: Date;
+    }>(
+      doctorInternalPaginationRequestDto.page,
+      visitsInformation,
       totalItems,
-      totalPages: Math.ceil(totalItems / limit),
-    };
+      Math.ceil(totalItems / doctorInternalPaginationRequestDto.limit),
+    );
+
+    return paginatedResponse;
   }
 
   async getPatientVisits(socialSecurityNumber: string): Promise<{
@@ -642,12 +742,7 @@ export class DoctorService {
 
     // Fetch clinics and visits in parallel
     const [clinics, patientVisits] = await Promise.all([
-      lastValueFrom<Clinic[]>(
-        this.adminClient.send(
-          { cmd: AdminPatterns.GET_ALL_CLINICS_WITH_ID },
-          {},
-        ),
-      ),
+      this.getAllClinicsWithId(),
       this.visitsRepository.find({
         where: {
           patientId: patient.id,
@@ -664,11 +759,7 @@ export class DoctorService {
 
     // Fetch all doctors in parallel (batch request)
     const doctors = await Promise.all(
-      doctorsIds.map((id) =>
-        lastValueFrom<Doctor | null>(
-          this.authClient.send({ cmd: AuthPatterns.GET_DOCTOR_BY_ID }, id),
-        ),
-      ),
+      doctorsIds.map((id) => this.getDoctorById(id)),
     );
 
     // Create lookup maps
@@ -797,11 +888,7 @@ export class DoctorService {
 
     // Fetch all doctors in parallel
     const doctors = await Promise.all(
-      doctorsIds.map((id) =>
-        lastValueFrom<Doctor | null>(
-          this.authClient.send({ cmd: AuthPatterns.GET_DOCTOR_BY_ID }, id),
-        ),
-      ),
+      doctorsIds.map((id) => this.getDoctorById(id)),
     );
 
     // Create doctors lookup map
@@ -900,11 +987,7 @@ export class DoctorService {
 
     // Fetch all doctors in parallel
     const doctors = await Promise.all(
-      doctorsIds.map((id) =>
-        lastValueFrom<Doctor | null>(
-          this.authClient.send({ cmd: AuthPatterns.GET_DOCTOR_BY_ID }, id),
-        ),
-      ),
+      doctorsIds.map((id) => this.getDoctorById(id)),
     );
 
     // Create doctors lookup map
@@ -1002,11 +1085,7 @@ export class DoctorService {
 
     // Fetch all doctors in parallel
     const doctors = await Promise.all(
-      doctorsIds.map((id) =>
-        lastValueFrom<Doctor | null>(
-          this.authClient.send({ cmd: AuthPatterns.GET_DOCTOR_BY_ID }, id),
-        ),
-      ),
+      doctorsIds.map((id) => this.getDoctorById(id)),
     );
 
     // Create doctors lookup map

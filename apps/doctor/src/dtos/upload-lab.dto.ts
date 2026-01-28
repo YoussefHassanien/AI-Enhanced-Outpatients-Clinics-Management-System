@@ -18,5 +18,5 @@ export class UploadLabDto {
   @IsString()
   @MaxLength(512)
   @IsOptional()
-  comments: string;
+  comments?: string;
 }

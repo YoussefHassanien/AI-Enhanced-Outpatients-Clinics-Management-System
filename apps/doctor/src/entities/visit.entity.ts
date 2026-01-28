@@ -7,7 +7,7 @@ export class Visit extends DoctorPatientRelationEntity {
   diagnoses: string;
 
   @Column('text', { nullable: true })
-  diagnosesAudioUrl: string;
+  diagnosesAudioUrl?: string;
 
   @Column('integer', { nullable: false })
   @Index()

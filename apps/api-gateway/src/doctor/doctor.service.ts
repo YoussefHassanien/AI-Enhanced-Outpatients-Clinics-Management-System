@@ -1,4 +1,10 @@
-import { DoctorPatterns, Gender, Microservices } from '@app/common';
+import {
+  DoctorPatterns,
+  Gender,
+  Microservices,
+  PaginationRequest,
+  PaginationResponse,
+} from '@app/common';
 import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { lastValueFrom } from 'rxjs';
@@ -12,6 +18,7 @@ import {
   CreateMedicationInternalDto,
   CreateVisitDto,
   CreateVisitInternalDto,
+  DoctorInternalPaginationRequestDto,
   UploadLabDto,
   UploadLabInternalDto,
   UploadScanDto,
@@ -381,11 +388,10 @@ export class DoctorService {
 
   async getDoctorVisits(
     doctorUserId: number,
-    page?: number,
-    limit?: number,
-  ): Promise<{
-    page: number;
-    items: {
+    page: number,
+    limit: number,
+  ): Promise<
+    PaginationResponse<{
       id: string;
       diagnoses: string;
       patient: {
@@ -393,13 +399,13 @@ export class DoctorService {
         id: string;
       };
       createdAt: Date;
-    }[];
-    totalItems: number;
-    totalPages: number;
-  }> {
-    return await lastValueFrom<{
-      page: number;
-      items: {
+    }>
+  > {
+    const paginationRequest = new PaginationRequest(page, limit);
+    const doctorInternalPaginationRequestDto =
+      new DoctorInternalPaginationRequestDto(paginationRequest, doctorUserId);
+    return await lastValueFrom<
+      PaginationResponse<{
         id: string;
         diagnoses: string;
         patient: {
@@ -407,52 +413,55 @@ export class DoctorService {
           id: string;
         };
         createdAt: Date;
-      }[];
-      totalItems: number;
-      totalPages: number;
-    }>(
+      }>
+    >(
       this.doctorClient.send(
         { cmd: DoctorPatterns.GET_DOCTOR_VISITS },
-        { doctorUserId, page, limit },
+        doctorInternalPaginationRequestDto,
       ),
     );
   }
 
   async getDoctorPatients(
     doctorUserId: number,
-    page?: number,
-    limit?: number,
-  ): Promise<{
-    page: number;
-    items: {
+    page: number,
+    limit: number,
+  ): Promise<
+    PaginationResponse<{
       id: string;
-      name: string;
-      gender: Gender;
-      dateOfBirth: Date;
-      socialSecurityNumber: string;
-      address: string;
-      job: string;
-    }[];
-    totalItems: number;
-    totalPages: number;
-  }> {
-    return await lastValueFrom<{
-      page: number;
-      items: {
-        id: string;
+      diagnoses: string;
+      patient: {
         name: string;
-        gender: Gender;
-        dateOfBirth: Date;
-        socialSecurityNumber: string;
-        address: string;
-        job: string;
-      }[];
-      totalItems: number;
-      totalPages: number;
-    }>(
+        id: string;
+      };
+      doctor: {
+        name: string;
+        id: string;
+      };
+      createdAt: Date;
+    }>
+  > {
+    const paginationRequest = new PaginationRequest(page, limit);
+    const doctorInternalPaginationRequestDto =
+      new DoctorInternalPaginationRequestDto(paginationRequest, doctorUserId);
+    return await lastValueFrom<
+      PaginationResponse<{
+        id: string;
+        diagnoses: string;
+        patient: {
+          name: string;
+          id: string;
+        };
+        doctor: {
+          name: string;
+          id: string;
+        };
+        createdAt: Date;
+      }>
+    >(
       this.doctorClient.send(
         { cmd: DoctorPatterns.GET_DOCTOR_PATIENTS },
-        { doctorUserId, page, limit },
+        doctorInternalPaginationRequestDto,
       ),
     );
   }

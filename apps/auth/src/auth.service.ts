@@ -553,14 +553,11 @@ export class AuthService {
 
         const patientRepository = manager.getRepository(Patient);
 
-        const patient = patientRepository.create({
+        const patient = await patientRepository.save({
           user: createdUser,
-          job: patientDto.job ?? null,
-          address: patientDto.address ?? null,
+          job: patientDto.job,
+          address: patientDto.address,
         });
-        this.logger.log('Successfully created a patient');
-
-        await patientRepository.insert(patient);
         this.logger.log('Successfully inserted a patient');
 
         return patient.globalId;
@@ -670,8 +667,8 @@ export class AuthService {
   async getAllPatients(paginationRequest: PaginationRequest): Promise<
     PaginationResponse<{
       id: string;
-      address: string;
-      job: string;
+      address?: string;
+      job?: string;
       user: {
         id: string;
         socialSecurityNumber: bigint;
@@ -726,8 +723,8 @@ export class AuthService {
 
     const response: PaginationResponse<{
       id: string;
-      address: string;
-      job: string;
+      address?: string;
+      job?: string;
       user: {
         id: string;
         socialSecurityNumber: bigint;
@@ -906,18 +903,13 @@ export class AuthService {
   }
 
   async getDoctorByGlobalId(globalId: string): Promise<Doctor | null> {
-    const doctor = await this.doctorRepository.findOne({
+    return await this.doctorRepository.findOne({
       where: { globalId, deletedAt: IsNull() },
       relations: { user: true },
       select: {
-        id: true,
-        phone: true,
-        email: true,
-        speciality: true,
-        isApproved: true,
-        globalId: true,
-        createdAt: true,
-        clinicId: true,
+        password: false,
+        updatedAt: false,
+        deletedAt: false,
         user: {
           id: true,
           firstName: true,
@@ -929,15 +921,5 @@ export class AuthService {
         },
       },
     });
-    const doctorClinc = await lastValueFrom<Clinic | null>(
-      this.adminClient.send(
-        { cmd: AdminPatterns.GET_CLINIC_BY_ID },
-        doctor?.clinicId,
-      ),
-    );
-    if (doctorClinc) {
-      (doctor as any).clinic = doctorClinc;
-    }
-    return doctor;
   }
 }

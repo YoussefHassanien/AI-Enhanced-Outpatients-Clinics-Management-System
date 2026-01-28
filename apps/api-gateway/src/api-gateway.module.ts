@@ -53,4 +53,4 @@ import { OcrModule } from './ocr/ocr.module';
     },
   ],
 })
-export class ApiGatewayModule { }
+export class ApiGatewayModule {}

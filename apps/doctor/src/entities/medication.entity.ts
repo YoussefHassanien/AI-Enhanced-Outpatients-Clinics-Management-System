@@ -14,8 +14,8 @@ export class Medication extends DoctorPatientRelationEntity {
   period: MedicationPeriod;
 
   @Column('varchar', { length: 512, nullable: true })
-  comments: string;
+  comments?: string;
 
   @Column('text', { nullable: true })
-  commentsAudioUrl: string;
+  commentsAudioUrl?: string;
 }

@@ -37,7 +37,7 @@ export abstract class CreateUserDto {
   })
   @IsOptional()
   @IsEnum(Language)
-  language: Language;
+  language?: Language;
 
   @ApiProperty({
     description: 'User national ID',

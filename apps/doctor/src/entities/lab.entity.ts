@@ -7,11 +7,11 @@ export class Lab extends DoctorPatientRelationEntity {
   name: string;
 
   @Column('text', { nullable: true })
-  photoUrl: string;
+  photoUrl?: string;
 
   @Column('varchar', { length: 512, nullable: true })
-  comments: string;
+  comments?: string;
 
   @Column('text', { nullable: true })
-  commentsAudioUrl: string;
+  commentsAudioUrl?: string;
 }

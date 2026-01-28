@@ -1,9 +1,11 @@
-import { Gender, Role, Roles } from '@app/common';
+import { Gender, PaginationResponse, Role, Roles } from '@app/common';
 import {
   Body,
   Controller,
+  DefaultValuePipe,
   Get,
   Param,
+  ParseIntPipe,
   Post,
   Query,
   Req,
@@ -294,22 +296,19 @@ export class DoctorController {
   @Get('patients')
   async getDoctorPatients(
     @Req() req: Request,
-    @Query('page') page?: number,
-    @Query('limit') limit?: number,
-  ): Promise<{
-    page: number;
-    items: {
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query('limit', new DefaultValuePipe(30), ParseIntPipe) limit: number,
+  ): Promise<
+    PaginationResponse<{
       id: string;
-      name: string;
-      gender: Gender;
-      dateOfBirth: Date;
-      socialSecurityNumber: string;
-      address: string;
-      job: string;
-    }[];
-    totalItems: number;
-    totalPages: number;
-  }> {
+      diagnoses: string;
+      patient: {
+        name: string;
+        id: string;
+      };
+      createdAt: Date;
+    }>
+  > {
     const user = req.user as User;
     return await this.doctorService.getDoctorPatients(user.id, page, limit);
   }
@@ -319,11 +318,10 @@ export class DoctorController {
   @Get('visits')
   async getDoctorVisits(
     @Req() req: Request,
-    @Query('page') page?: number,
-    @Query('limit') limit?: number,
-  ): Promise<{
-    page: number;
-    items: {
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query('limit', new DefaultValuePipe(30), ParseIntPipe) limit: number,
+  ): Promise<
+    PaginationResponse<{
       id: string;
       diagnoses: string;
       patient: {
@@ -331,10 +329,8 @@ export class DoctorController {
         id: string;
       };
       createdAt: Date;
-    }[];
-    totalItems: number;
-    totalPages: number;
-  }> {
+    }>
+  > {
     const user = req.user as User;
     return await this.doctorService.getDoctorVisits(user.id, page, limit);
   }

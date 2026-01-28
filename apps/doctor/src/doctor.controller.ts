@@ -11,8 +11,7 @@ import { DoctorService } from './doctor.service';
 import {
   CreateMedicationInternalDto,
   CreateVisitInternalDto,
-  GetDoctorPatientsDto,
-  GetDoctorVisitsDto,
+  DoctorInternalPaginationRequestDto,
   UploadLabInternalDto,
   UploadScanInternalDto,
 } from './dtos';
@@ -163,10 +162,10 @@ export class DoctorController {
 
   @MessagePattern({ cmd: DoctorPatterns.GET_DOCTOR_PATIENTS })
   async getDoctorPatients(
-    @Payload() getDoctorPatientsDto: GetDoctorPatientsDto,
-  ): Promise<{
-    page: number;
-    items: {
+    @Payload()
+    doctorInternalPaginationRequestDto: DoctorInternalPaginationRequestDto,
+  ): Promise<
+    PaginationResponse<{
       id: string;
       name: string;
       gender: Gender;
@@ -174,19 +173,19 @@ export class DoctorController {
       socialSecurityNumber: string;
       address: string;
       job: string;
-    }[];
-    totalItems: number;
-    totalPages: number;
-  }> {
-    return await this.doctorService.getDoctorPatients(getDoctorPatientsDto);
+    }>
+  > {
+    return await this.doctorService.getDoctorPatients(
+      doctorInternalPaginationRequestDto,
+    );
   }
 
   @MessagePattern({ cmd: DoctorPatterns.GET_DOCTOR_VISITS })
   async getDoctorVisits(
-    @Payload() getDoctorVisitsDto: GetDoctorVisitsDto,
-  ): Promise<{
-    page: number;
-    items: {
+    @Payload()
+    doctorInternalPaginationRequestDto: DoctorInternalPaginationRequestDto,
+  ): Promise<
+    PaginationResponse<{
       id: string;
       diagnoses: string;
       patient: {
@@ -198,11 +197,11 @@ export class DoctorController {
         id: string;
       };
       createdAt: Date;
-    }[];
-    totalItems: number;
-    totalPages: number;
-  }> {
-    return await this.doctorService.getDoctorVisits(getDoctorVisitsDto);
+    }>
+  > {
+    return await this.doctorService.getDoctorVisits(
+      doctorInternalPaginationRequestDto,
+    );
   }
 
   @EventPattern({ cmd: DoctorPatterns.LAB_UPLOAD })

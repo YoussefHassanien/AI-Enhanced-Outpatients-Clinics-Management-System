@@ -16,6 +16,7 @@ import {
   UpdatePatientDto,
   UpdatePatientInternalDto,
 } from '../../../auth/src/dtos';
+import { Doctor, Patient } from '../../../auth/src/entities';
 
 export class AdminService {
   constructor(
@@ -186,8 +187,8 @@ export class AdminService {
     );
   }
 
-  async getPatientByGlobalId(globalId: string) {
-    return await lastValueFrom(
+  async getPatientByGlobalId(globalId: string): Promise<Patient | null> {
+    return await lastValueFrom<Patient | null>(
       this.adminClient.send(
         { cmd: AdminPatterns.GET_PATIENT_BY_GLOBAL_ID },
         globalId,
@@ -195,8 +196,8 @@ export class AdminService {
     );
   }
 
-  async getDoctorByGlobalId(globalId: string) {
-    return await lastValueFrom(
+  async getDoctorByGlobalId(globalId: string): Promise<Doctor | null> {
+    return await lastValueFrom<Doctor | null>(
       this.adminClient.send(
         { cmd: AdminPatterns.GET_DOCTOR_BY_GLOBAL_ID },
         globalId,

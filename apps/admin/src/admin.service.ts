@@ -15,7 +15,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { lastValueFrom } from 'rxjs';
 import { IsNull, Repository } from 'typeorm';
 import { UpdatePatientInternalDto } from '../../auth/src/dtos';
-import { Admin, Patient } from '../../auth/src/entities';
+import { Admin, Doctor, Patient } from '../../auth/src/entities';
 import {
   CreateClinicInternalDto,
   DoctorResponseDTO,
@@ -36,6 +36,7 @@ export class AdminService {
   ) {
     this.logger = logger;
   }
+
   isUp(): string {
     return 'Admin service is up';
   }
@@ -282,12 +283,13 @@ export class AdminService {
   }
 
   async getPatientByGlobalId(globalId: string): Promise<PatientResponseDTO> {
-    const patient = await lastValueFrom(
+    const patient = await lastValueFrom<Patient | null>(
       this.authClient.send(
         { cmd: AuthPatterns.GET_PATIENT_BY_GLOBAL_ID },
         globalId,
       ),
     );
+
     if (!patient) {
       throw new RpcException(new ErrorResponse('Patient not found', 404));
     }
@@ -306,7 +308,7 @@ export class AdminService {
   }
 
   async getDoctorByGlobalId(globalId: string): Promise<DoctorResponseDTO> {
-    const doctor = await lastValueFrom(
+    const doctor = await lastValueFrom<Doctor | null>(
       this.authClient.send(
         { cmd: AuthPatterns.GET_DOCTOR_BY_GLOBAL_ID },
         globalId,
@@ -317,7 +319,21 @@ export class AdminService {
       throw new RpcException(new ErrorResponse('Doctor not found', 404));
     }
 
-    return {
+    const clinic = await this.clinicRepository.findOne({
+      where: {
+        id: doctor.clinicId,
+      },
+      select: {
+        globalId: true,
+        name: true,
+      },
+    });
+
+    if (!clinic) {
+      throw new RpcException(new ErrorResponse('Clinic not found', 404));
+    }
+
+    const response: DoctorResponseDTO = {
       id: doctor.globalId,
       phone: doctor.phone,
       email: doctor.email,
@@ -329,12 +345,12 @@ export class AdminService {
       lastName: doctor.user.lastName,
       dateOfBirth: doctor.user.dateOfBirth,
       createdAt: doctor.createdAt,
-      clinic: doctor.clinic
-        ? {
-            id: doctor.clinic.globalId,
-            name: doctor.clinic.name,
-          }
-        : undefined,
+      clinic: {
+        id: clinic.globalId,
+        name: clinic.name,
+      },
     };
+
+    return response;
   }
 }
