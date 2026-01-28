@@ -27,4 +27,8 @@ export class EnvironmentVariables {
   @IsString()
   @Equals('admin')
   RABBIT_MQ_ADMIN_QUEUE: string;
+
+  @IsString()
+  @Equals('asr')
+  RABBIT_MQ_ASR_QUEUE: string;
 }

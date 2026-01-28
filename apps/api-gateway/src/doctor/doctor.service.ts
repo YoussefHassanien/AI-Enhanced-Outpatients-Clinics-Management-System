@@ -50,10 +50,11 @@ export class DoctorService {
 
   private validateAudioFile(audio?: Express.Multer.File) {
     const audioTypeRegExp: RegExp =
-      /(audio\/mpeg|audio\/wav|audio\/mp3|audio\/ogg)$/;
+      /(audio\/mpeg|audio\/wave|audio\/mp3|audio\/ogg)$/;
     const audioSize: number = 10 * 1024 * 1024; // 10 MB
 
     if (audio) {
+      console.log('Audio mimetype:', audio.mimetype);
       if (!audioTypeRegExp.test(audio.mimetype)) {
         throw new BadRequestException('Invalid audio file type');
       }
@@ -72,14 +73,19 @@ export class DoctorService {
   async createVisit(
     createVisitDto: CreateVisitDto,
     userId: number,
-  ): Promise<{ message: string }> {
+    audio?: Express.Multer.File,
+  ): Promise<void> {
+    this.validateAudioFile(audio);
+
     const createVisitInternalDto = new CreateVisitInternalDto(
       createVisitDto,
       userId,
+      audio?.path,
+      audio?.mimetype,
     );
 
-    return await lastValueFrom<{ message: string }>(
-      this.doctorClient.send(
+    await lastValueFrom<void>(
+      this.doctorClient.emit(
         { cmd: DoctorPatterns.VISIT_CREATE },
         createVisitInternalDto,
       ),
@@ -89,14 +95,19 @@ export class DoctorService {
   async createMedication(
     createMedicationDto: CreateMedicationDto,
     userId: number,
-  ): Promise<{ message: string }> {
+    audio?: Express.Multer.File,
+  ): Promise<void> {
+    this.validateAudioFile(audio);
+
     const createMedicationInternalDto = new CreateMedicationInternalDto(
       createMedicationDto,
       userId,
+      audio?.path,
+      audio?.mimetype,
     );
 
-    return await lastValueFrom<{ message: string }>(
-      this.doctorClient.send(
+    await lastValueFrom<void>(
+      this.doctorClient.emit(
         { cmd: DoctorPatterns.MEDICATION_CREATE },
         createMedicationInternalDto,
       ),
@@ -325,9 +336,9 @@ export class DoctorService {
       uploadLabDto,
       patientSocialSecurityNumber,
       doctorUserId,
-      image!.buffer.toString('base64'),
+      image!.path,
       image!.mimetype,
-      audio?.buffer.toString('base64'),
+      audio?.path,
       audio?.mimetype,
     );
 
@@ -354,9 +365,9 @@ export class DoctorService {
       uploadScanDto,
       patientSocialSecurityNumber,
       doctorUserId,
-      image!.buffer.toString('base64'),
+      image!.path,
       image!.mimetype,
-      audio?.buffer.toString('base64'),
+      audio?.path,
       audio?.mimetype,
     );
 

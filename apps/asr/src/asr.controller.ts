@@ -14,7 +14,9 @@ export class AsrController {
   }
 
   @MessagePattern({ cmd: AsrPatterns.TRANSCRIBE_AUDIO })
-  async transcribe(@Payload() data: TranscribeAudioDto) {
+  async transcribe(
+    @Payload() data: TranscribeAudioDto,
+  ): Promise<{ transcription: string }> {
     return this.asrService.transcribe(data);
   }
 }

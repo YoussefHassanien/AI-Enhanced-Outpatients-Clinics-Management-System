@@ -33,28 +33,11 @@ export class AsrService {
   async transcribe(data: TranscribeAudioDto) {
     const filePath = data.file;
     try {
-      this.validateFile(filePath);
-
-      const fileStream = fs.createReadStream(filePath);
-      const formData = new FormData();
-      formData.append('files', fileStream);
-
-      const apiUrl = this.configService.getOrThrow<string>('API_URL');
-
-      const response = await firstValueFrom(
-        this.httpService.post(apiUrl, formData, {
-          headers: {
-            ...formData.getHeaders(),
-          },
-        }),
-      );
-
-      return response.data;
-    } catch (error: unknown) {
-      this.logger.error(`Failed to transcribe the file: ${String(error)}`);
-      throw new RpcException(
-        new ErrorResponse('Failed to transcribe the file', 500),
-      );
+      const result = await this.processFile(filePath);
+      return result;
+    } catch (error) {
+      this.logger.error(`Failed to process file ${filePath}:`, error.stack);
+      throw error; // Re-throw the error to be handled by the controller
     } finally {
       // Clean up the file after processing
       fs.unlink(filePath, (err) => {
@@ -65,6 +48,32 @@ export class AsrService {
           );
         }
       });
+    }
+  }
+
+  private async processFile(filePath: string) {
+    this.validateFile(filePath);
+
+    const fileStream = fs.createReadStream(filePath);
+    const formData = new FormData();
+    formData.append('files', fileStream);
+
+    const apiUrl = this.configService.getOrThrow<string>('API_URL');
+
+    try {
+      const response = await firstValueFrom(
+        this.httpService.post<{ transcription: string }>(apiUrl, formData, {
+          headers: {
+            ...formData.getHeaders(),
+          },
+        }),
+      );
+      return response.data;
+    } catch (error) {
+      this.logger.error(`Failed to transcribe the file: ${String(error)}`);
+      throw new RpcException(
+        new ErrorResponse('Failed to transcribe the file', 500),
+      );
     }
   }
 

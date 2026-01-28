@@ -1,4 +1,10 @@
-import { IsInt, IsNotEmpty, IsPositive, IsString } from 'class-validator';
+import {
+  IsInt,
+  IsMimeType,
+  IsOptional,
+  IsPositive,
+  IsString,
+} from 'class-validator';
 import { CreateVisitDto } from './create-visit.dto';
 
 export class CreateVisitInternalDto extends CreateVisitDto {
@@ -7,23 +13,23 @@ export class CreateVisitInternalDto extends CreateVisitDto {
   readonly doctorUserId: number;
 
   @IsString()
-  @IsNotEmpty()
-  readonly audioBase64?: string;
+  @IsOptional()
+  readonly audioFilePath?: string;
 
-  @IsString()
-  @IsNotEmpty()
+  @IsMimeType()
+  @IsOptional()
   readonly audioMimetype?: string;
 
   constructor(
     createVisitDto: CreateVisitDto,
     doctorUserId: number,
-    audioBase64?: string,
+    audioFilePath?: string,
     audioMimetype?: string,
   ) {
     super();
     Object.assign(this, createVisitDto);
     this.doctorUserId = doctorUserId;
-    this.audioBase64 = audioBase64;
+    this.audioFilePath = audioFilePath;
     this.audioMimetype = audioMimetype;
   }
 }

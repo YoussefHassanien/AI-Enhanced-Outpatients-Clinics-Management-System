@@ -1,4 +1,10 @@
-import { IsInt, IsNotEmpty, IsString } from 'class-validator';
+import {
+  IsInt,
+  IsMimeType,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+} from 'class-validator';
 import { UploadLabDto } from './upload-lab.dto';
 
 export class UploadLabInternalDto extends UploadLabDto {
@@ -8,18 +14,17 @@ export class UploadLabInternalDto extends UploadLabDto {
 
   @IsString()
   @IsNotEmpty()
-  readonly imageBase64: string;
+  readonly imageFilePath: string;
 
-  @IsString()
-  @IsNotEmpty()
+  @IsMimeType()
   readonly imageMimetype: string;
 
   @IsString()
-  @IsNotEmpty()
-  readonly audioBase64?: string;
+  @IsOptional()
+  readonly audioFilePath?: string;
 
-  @IsString()
-  @IsNotEmpty()
+  @IsMimeType()
+  @IsOptional()
   readonly audioMimetype?: string;
 
   @IsInt()
@@ -29,17 +34,17 @@ export class UploadLabInternalDto extends UploadLabDto {
     uploadLabDto: UploadLabDto,
     patientSocialSecurityNumber: string,
     doctorUserId: number,
-    imageBase64: string,
+    imageFilePath: string,
     imageMimetype: string,
-    audioBase64?: string,
+    audioFilePath?: string,
     audioMimetype?: string,
   ) {
     super();
     Object.assign(this, uploadLabDto);
     this.patientSocialSecurityNumber = patientSocialSecurityNumber;
-    this.imageBase64 = imageBase64;
+    this.imageFilePath = imageFilePath;
     this.imageMimetype = imageMimetype;
-    this.audioBase64 = audioBase64;
+    this.audioFilePath = audioFilePath;
     this.audioMimetype = audioMimetype;
     this.doctorUserId = doctorUserId;
   }

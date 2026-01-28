@@ -98,4 +98,8 @@ export enum CloudStoragePatterns {
   IS_UP = 'cloud-storage.isUp',
   UPLOAD_LAB_PHOTO = 'cloud-storage.uploadLabPhoto',
   UPLOAD_SCAN_PHOTO = 'cloud-storage.uploadScanPhoto',
+  UPLOAD_LAB_AUDIO = 'cloud-storage.uploadLabAudio',
+  UPLOAD_SCAN_AUDIO = 'cloud-storage.uploadScanAudio',
+  UPLOAD_MEDICATION_AUDIO = 'cloud-storage.uploadMedicationAudio',
+  UPLOAD_VISIT_AUDIO = 'cloud-storage.uploadVisitAudio',
 }

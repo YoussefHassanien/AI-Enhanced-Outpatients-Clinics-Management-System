@@ -14,7 +14,7 @@ import {
   GetDoctorPatientsDto,
   GetDoctorVisitsDto,
   UploadLabInternalDto,
-  UploadScanPhotoInternalDto,
+  UploadScanInternalDto,
 } from './dtos';
 
 @Controller()
@@ -29,14 +29,14 @@ export class DoctorController {
   @EventPattern({ cmd: DoctorPatterns.VISIT_CREATE })
   async visitCreate(
     @Payload() createVisitInternalDto: CreateVisitInternalDto,
-  ): Promise<{ message: string }> {
+  ): Promise<void> {
     return await this.doctorService.createVisit(createVisitInternalDto);
   }
 
   @EventPattern({ cmd: DoctorPatterns.MEDICATION_CREATE })
   async medicationCreate(
     @Payload() createMedicationInternalDto: CreateMedicationInternalDto,
-  ): Promise<{ message: string }> {
+  ): Promise<void> {
     return await this.doctorService.createMedication(
       createMedicationInternalDto,
     );
@@ -214,7 +214,7 @@ export class DoctorController {
 
   @EventPattern({ cmd: DoctorPatterns.SCAN_UPLOAD })
   async uploadScan(
-    @Payload() uploadScanInternalDto: UploadScanPhotoInternalDto,
+    @Payload() uploadScanInternalDto: UploadScanInternalDto,
   ): Promise<void> {
     await this.doctorService.uploadScan(uploadScanInternalDto);
   }

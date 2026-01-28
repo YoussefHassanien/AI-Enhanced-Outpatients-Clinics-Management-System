@@ -50,6 +50,7 @@ services:
       - services-network
     volumes:
       - ./logs:/app/logs
+      - ./tmp/asr_uploads:/app/tmp/asr_uploads
 
   admin:
     image: youssefhassanien1/admin-service:latest
@@ -100,6 +101,7 @@ services:
       - services-network
     volumes:
       - ./logs:/app/logs
+      - ./tmp/asr_uploads:/app/tmp/asr_uploads
 
   nginx:
     image: nginx:latest

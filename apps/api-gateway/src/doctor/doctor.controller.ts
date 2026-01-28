@@ -4,7 +4,6 @@ import {
   Controller,
   Get,
   Param,
-  ParseFilePipeBuilder,
   Post,
   Query,
   Req,
@@ -18,6 +17,9 @@ import {
   FileInterceptor,
 } from '@nestjs/platform-express';
 import { Request } from 'express';
+import { diskStorage } from 'multer';
+import { extname } from 'path';
+import { v4 as uuidv4 } from 'uuid';
 import { User } from '../../../auth/src/entities';
 import {
   MedicationDosage,
@@ -44,38 +46,51 @@ export class DoctorController {
 
   @Roles(Role.DOCTOR)
   @UseGuards(JwtAuthGuard)
-  @UseInterceptors(FileInterceptor('audio'))
+  @UseInterceptors(
+    FileInterceptor('audio', {
+      storage: diskStorage({
+        destination: process.env.ASR_TMP_DIR,
+        filename: (req, file, cb) => {
+          const randomName = uuidv4();
+          cb(null, `${randomName}${extname(file.originalname)}`);
+        },
+      }),
+    }),
+  )
   @Post('visit/create')
   async createVisit(
     @Body() createVisitDto: CreateVisitDto,
     @Req() req: Request,
-    @UploadedFile(
-      new ParseFilePipeBuilder()
-        .addFileTypeValidator({
-          fileType: /(audio\/mpeg|audio\/wav|audio\/mp3|audio\/ogg)$/,
-        })
-        .addMaxSizeValidator({
-          maxSize: 10 * 1024 * 1024, // 10 MB,
-        })
-        .build(),
-    )
-    audio: Express.Multer.File,
-  ): Promise<{ message: string }> {
+    @UploadedFile() audio?: Express.Multer.File,
+  ): Promise<void> {
     const user = req.user as User;
-    return await this.doctorService.createVisit(createVisitDto, user.id);
+    return await this.doctorService.createVisit(createVisitDto, user.id, audio);
   }
 
   @Roles(Role.DOCTOR)
   @UseGuards(JwtAuthGuard)
+  @UseInterceptors(
+    FileInterceptor('audio', {
+      storage: diskStorage({
+        destination: process.env.ASR_TMP_DIR,
+        filename: (req, file, cb) => {
+          const randomName = uuidv4();
+          cb(null, `${randomName}${extname(file.originalname)}`);
+        },
+      }),
+    }),
+  )
   @Post('medication/create')
   async createMedication(
     @Body() createMedicationDto: CreateMedicationDto,
     @Req() req: Request,
-  ): Promise<{ message: string }> {
+    @UploadedFile() audio?: Express.Multer.File,
+  ): Promise<void> {
     const user = req.user as User;
     return await this.doctorService.createMedication(
       createMedicationDto,
       user.id,
+      audio,
     );
   }
 
@@ -203,10 +218,21 @@ export class DoctorController {
   @Roles(Role.DOCTOR)
   @UseGuards(JwtAuthGuard)
   @UseInterceptors(
-    FileFieldsInterceptor([
-      { name: 'image', maxCount: 1 },
-      { name: 'audio', maxCount: 1 },
-    ]),
+    FileFieldsInterceptor(
+      [
+        { name: 'image', maxCount: 1 },
+        { name: 'audio', maxCount: 1 },
+      ],
+      {
+        storage: diskStorage({
+          destination: process.env.ASR_TMP_DIR,
+          filename: (req, file, cb) => {
+            const randomName = uuidv4();
+            cb(null, `${randomName}${extname(file.originalname)}`);
+          },
+        }),
+      },
+    ),
   )
   @Post('lab/:socialSecurityNumber')
   async uploadLab(
@@ -229,10 +255,21 @@ export class DoctorController {
   @Roles(Role.DOCTOR)
   @UseGuards(JwtAuthGuard)
   @UseInterceptors(
-    FileFieldsInterceptor([
-      { name: 'image', maxCount: 1 },
-      { name: 'audio', maxCount: 1 },
-    ]),
+    FileFieldsInterceptor(
+      [
+        { name: 'image', maxCount: 1 },
+        { name: 'audio', maxCount: 1 },
+      ],
+      {
+        storage: diskStorage({
+          destination: process.env.ASR_TMP_DIR,
+          filename: (req, file, cb) => {
+            const randomName = uuidv4();
+            cb(null, `${randomName}${extname(file.originalname)}`);
+          },
+        }),
+      },
+    ),
   )
   @Post('scan/:socialSecurityNumber')
   async uploadScan(

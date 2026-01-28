@@ -3,33 +3,33 @@ import { ScanTypes } from '../../../doctor/src/constants';
 
 export class ScanPhotoInternalDto {
   @IsUUID()
-  scanGlobalId: string;
+  readonly scanGlobalId: string;
 
   @IsUUID()
-  patientGlobalId: string;
-
-  @IsString()
-  @IsNotEmpty()
-  imageBase64: string;
-
-  @IsString()
-  @IsNotEmpty()
-  mimetype: string;
+  readonly patientGlobalId: string;
 
   @IsEnum(ScanTypes)
-  type: ScanTypes;
+  readonly type: ScanTypes;
+
+  @IsString()
+  @IsNotEmpty()
+  readonly imageFilePath: string;
+
+  @IsString()
+  @IsNotEmpty()
+  readonly imageMimetype: string;
 
   constructor(
     scanGlobalId: string,
     patientGlobalId: string,
-    imageBase64: string,
-    mimetype: string,
     type: ScanTypes,
+    imageFilePath: string,
+    imageMimetype: string,
   ) {
     this.scanGlobalId = scanGlobalId;
     this.patientGlobalId = patientGlobalId;
-    this.imageBase64 = imageBase64;
-    this.mimetype = mimetype;
     this.type = type;
+    this.imageFilePath = imageFilePath;
+    this.imageMimetype = imageMimetype;
   }
 }
