@@ -62,8 +62,8 @@ export class DoctorController {
       gender: Gender;
       dateOfBirth: Date;
       socialSecurityNumber: string;
-      address: string;
-      job: string;
+      address: string | null;
+      job: string | null;
     };
     clinics: {
       id: string;
@@ -73,6 +73,7 @@ export class DoctorController {
           name: string;
           speciality: string;
         };
+        diagnosesAudioUrl: string | null;
         diagnoses: string;
         createdAt: Date;
       }[];
@@ -91,14 +92,15 @@ export class DoctorController {
       gender: Gender;
       dateOfBirth: Date;
       socialSecurityNumber: string;
-      address: string;
-      job: string;
+      address: string | null;
+      job: string | null;
     };
     medications: {
       name: string;
       dosage: MedicationDosage;
       period: MedicationPeriod;
-      comments: string;
+      comments: string | null;
+      commentsAudioUrl: string | null;
       doctor: {
         name: string;
         speciality: string;
@@ -117,14 +119,15 @@ export class DoctorController {
       gender: Gender;
       dateOfBirth: Date;
       socialSecurityNumber: string;
-      address: string;
-      job: string;
+      address: string | null;
+      job: string | null;
     };
     scans: {
       name: string;
       type: ScanTypes;
       photoUrl: string;
-      comments: string;
+      comments: string | null;
+      commentsAudioUrl: string | null;
       doctor: {
         name: string;
         speciality: string;
@@ -143,13 +146,14 @@ export class DoctorController {
       gender: Gender;
       dateOfBirth: Date;
       socialSecurityNumber: string;
-      address: string;
-      job: string;
+      address: string | null;
+      job: string | null;
     };
     labs: {
       name: string;
       photoUrl: string;
-      comments: string;
+      comments: string | null;
+      commentsAudioUrl: string | null;
       doctor: {
         name: string;
         speciality: string;
@@ -171,8 +175,8 @@ export class DoctorController {
       gender: Gender;
       dateOfBirth: Date;
       socialSecurityNumber: string;
-      address: string;
-      job: string;
+      address: string | null;
+      job: string | null;
     }>
   > {
     return await this.doctorService.getDoctorPatients(
@@ -188,6 +192,7 @@ export class DoctorController {
     PaginationResponse<{
       id: string;
       diagnoses: string;
+      diagnosesAudioUrl: string | null;
       patient: {
         name: string;
         id: string;
@@ -229,8 +234,8 @@ export class DoctorController {
     gender: Gender;
     dateOfBirth: Date;
     socialSecurityNumber: string;
-    job: string;
-    address: string;
+    job: string | null;
+    address: string | null;
     createdAt: Date;
   }> {
     return await this.doctorService.searchForPatientBySocilaSecurityNumber(

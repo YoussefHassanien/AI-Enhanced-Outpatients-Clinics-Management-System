@@ -22,21 +22,12 @@ export class PaginationResponse<T> {
 
   items: T[];
 
+  @IsInt()
   totalItems: number;
 
+  @IsInt()
+  @IsPositive()
   totalPages: number;
-
-  constructor(
-    page: number,
-    items: T[],
-    totatItems: number,
-    totalPages: number,
-  ) {
-    this.items = items;
-    this.page = page;
-    this.totalItems = totatItems;
-    this.totalPages = totalPages;
-  }
 }
 
 export class PaginationRequest {
@@ -47,9 +38,4 @@ export class PaginationRequest {
   @IsInt()
   @IsPositive()
   page: number;
-
-  constructor(page: number, limit: number) {
-    this.limit = limit;
-    this.page = page;
-  }
 }

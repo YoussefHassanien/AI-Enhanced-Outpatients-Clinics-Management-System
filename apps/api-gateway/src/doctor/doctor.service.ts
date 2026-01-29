@@ -57,7 +57,7 @@ export class DoctorService {
 
   private validateAudioFile(audio?: Express.Multer.File) {
     const audioTypeRegExp: RegExp =
-      /(audio\/mpeg|audio\/wave|audio\/mp3|audio\/ogg)$/;
+      /(audio\/mpeg|audio\/wave|audio\/mp3|audio\/ogg|audio\/wav)$/;
     const audioSize: number = 10 * 1024 * 1024; // 10 MB
 
     if (audio) {
@@ -401,7 +401,7 @@ export class DoctorService {
       createdAt: Date;
     }>
   > {
-    const paginationRequest = new PaginationRequest(page, limit);
+    const paginationRequest: PaginationRequest = { page, limit };
     const doctorInternalPaginationRequestDto =
       new DoctorInternalPaginationRequestDto(paginationRequest, doctorUserId);
     return await lastValueFrom<
@@ -441,7 +441,7 @@ export class DoctorService {
       createdAt: Date;
     }>
   > {
-    const paginationRequest = new PaginationRequest(page, limit);
+    const paginationRequest: PaginationRequest = { page, limit };
     const doctorInternalPaginationRequestDto =
       new DoctorInternalPaginationRequestDto(paginationRequest, doctorUserId);
     return await lastValueFrom<

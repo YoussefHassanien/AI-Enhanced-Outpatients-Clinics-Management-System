@@ -408,7 +408,7 @@ export class AuthService {
     );
 
     if (existingUser) {
-      throw new RpcException(new ErrorResponse('User already exists!', 400));
+      throw new RpcException(new ErrorResponse('Doctor already exists!', 400));
     }
 
     const existingDoctor = await this.checkExistingDoctor(
@@ -417,6 +417,15 @@ export class AuthService {
     );
 
     if (existingDoctor) {
+      throw new RpcException(new ErrorResponse('Doctor already exists!', 400));
+    }
+
+    const existingAdmin = await this.checkExistingAdmin(
+      doctorDto.email,
+      doctorDto.phone,
+    );
+
+    if (existingAdmin) {
       throw new RpcException(new ErrorResponse('Doctor already exists!', 400));
     }
 
@@ -478,7 +487,7 @@ export class AuthService {
     );
 
     if (existingUser) {
-      throw new RpcException(new ErrorResponse('User already exists!', 400));
+      throw new RpcException(new ErrorResponse('Admin already exists!', 400));
     }
 
     const existingAdmin = await this.checkExistingAdmin(
@@ -487,6 +496,15 @@ export class AuthService {
     );
 
     if (existingAdmin) {
+      throw new RpcException(new ErrorResponse('Admin already exists!', 400));
+    }
+
+    const existingDoctor = await this.checkExistingDoctor(
+      adminDto.email,
+      adminDto.phone,
+    );
+
+    if (existingDoctor) {
       throw new RpcException(new ErrorResponse('Admin already exists!', 400));
     }
 
@@ -667,8 +685,8 @@ export class AuthService {
   async getAllPatients(paginationRequest: PaginationRequest): Promise<
     PaginationResponse<{
       id: string;
-      address?: string;
-      job?: string;
+      address: string | null;
+      job: string | null;
       user: {
         id: string;
         socialSecurityNumber: bigint;
@@ -723,8 +741,8 @@ export class AuthService {
 
     const response: PaginationResponse<{
       id: string;
-      address?: string;
-      job?: string;
+      address: string | null;
+      job: string | null;
       user: {
         id: string;
         socialSecurityNumber: bigint;

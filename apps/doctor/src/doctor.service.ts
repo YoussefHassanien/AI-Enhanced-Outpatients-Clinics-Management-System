@@ -16,8 +16,9 @@ import { ClientProxy, RpcException } from '@nestjs/microservices';
 import { InjectRepository } from '@nestjs/typeorm';
 import { lastValueFrom } from 'rxjs';
 import { IsNull, Repository } from 'typeorm';
+import { v4 as uuidv4 } from 'uuid';
 import { Clinic } from '../../admin/src/entities';
-import { TranscribeAudioDto } from '../../asr/src/dtos/transcribe-audio.dto';
+import { TranscribeAudioInternalDto } from '../../asr/src/dtos';
 import { Doctor, Patient } from '../../auth/src/entities';
 import {
   LabAudioInternalDto,
@@ -155,7 +156,7 @@ export class DoctorService {
         labPhotoInternalDto,
       ),
     );
-    this.logger.log('Lab photo url is successfully retrieved');
+    this.logger.log('Lab photo is successfully uploaded');
 
     return photoUrl;
   }
@@ -169,7 +170,7 @@ export class DoctorService {
         scanPhotoInternalDto,
       ),
     );
-    this.logger.log('Scan photo url is successfully retrieved');
+    this.logger.log('Scan photo is successfully uploaded');
 
     return photoUrl;
   }
@@ -183,7 +184,7 @@ export class DoctorService {
         labAudioInternalDto,
       ),
     );
-    this.logger.log('Lab audio url is successfully retrieved');
+    this.logger.log('Lab audio is successfully uploaded');
 
     return photoUrl;
   }
@@ -197,7 +198,7 @@ export class DoctorService {
         scanAudioInternalDto,
       ),
     );
-    this.logger.log('Scan audio url is successfully retrieved');
+    this.logger.log('Scan audio is successfully uploaded');
 
     return photoUrl;
   }
@@ -211,7 +212,7 @@ export class DoctorService {
         medicationAudioInternalDto,
       ),
     );
-    this.logger.log('Medication audio url is successfully retrieved');
+    this.logger.log('Medication audio is successfully uploaded');
 
     return photoUrl;
   }
@@ -239,20 +240,22 @@ export class DoctorService {
     );
   }
 
-  private async uploadVisitAudio(visitAudioInternalDto: VisitAudioInternalDto) {
+  private async uploadVisitAudio(
+    visitAudioInternalDto: VisitAudioInternalDto,
+  ): Promise<string> {
     const photoUrl = await lastValueFrom<string>(
       this.cloudStorageClient.send(
         { cmd: CloudStoragePatterns.UPLOAD_VISIT_AUDIO },
         visitAudioInternalDto,
       ),
     );
-    this.logger.log('Visit audio url is successfully retrieved');
+    this.logger.log('Visit audio is successfully uploaded');
 
     return photoUrl;
   }
 
   private async extractTextFromAudio(
-    transcribeAudioDto: TranscribeAudioDto,
+    transcribeAudioDto: TranscribeAudioInternalDto,
   ): Promise<string> {
     const text = await lastValueFrom<{ transcription: string }>(
       this.asrClient.send(
@@ -274,190 +277,32 @@ export class DoctorService {
     }
   }
 
+  private async deleteCloudStorageTemporaryFile(
+    filePath: string,
+  ): Promise<void> {
+    await lastValueFrom<void>(
+      this.cloudStorageClient.emit(
+        { cmd: CloudStoragePatterns.DELETE_TEMPORARY_FILE },
+        filePath,
+      ),
+    );
+  }
+
+  private async deleteAsrTemporaryFile(filePath: string): Promise<void> {
+    await lastValueFrom<void>(
+      this.asrClient.emit({ cmd: AsrPatterns.DELETE_TEMPORARY_FILE }, filePath),
+    );
+  }
+
   isUp(): string {
     return 'Doctor service is up';
-  }
-
-  async createVisit(
-    createVisitInternalDto: CreateVisitInternalDto,
-  ): Promise<void> {
-    const doctor = await this.getDoctorByUserId(
-      createVisitInternalDto.doctorUserId,
-    );
-
-    if (!doctor) {
-      throw new RpcException(new ErrorResponse('Doctor not found!', 404));
-    }
-
-    const patient = await this.getPatientByGlobalId(
-      createVisitInternalDto.patientId,
-    );
-
-    if (!patient) {
-      throw new RpcException(new ErrorResponse('Patient not found!', 404));
-    }
-
-    const clinic = await this.getClinicById(doctor.clinicId);
-
-    if (!clinic) {
-      throw new RpcException(new ErrorResponse('Clinic not found!', 404));
-    }
-
-    // If no written diagnoses provided, require audio to be present
-    if (
-      !createVisitInternalDto.diagnoses &&
-      (!createVisitInternalDto.audioFilePath ||
-        !createVisitInternalDto.audioMimetype)
-    ) {
-      throw new RpcException(
-        new ErrorResponse(
-          'Either audio or written diagnoses must be provided',
-          400,
-        ),
-      );
-    }
-
-    if (createVisitInternalDto.diagnoses) {
-      const visit = await this.visitsRepository.save({
-        diagnoses: createVisitInternalDto.diagnoses,
-        patientId: patient.id,
-        doctorId: doctor.id,
-        clinicId: doctor.clinicId,
-      });
-      this.logger.log('Successfully saved visit');
-
-      if (
-        createVisitInternalDto.audioFilePath &&
-        createVisitInternalDto.audioMimetype
-      ) {
-        const visitAudioInternalDto = new VisitAudioInternalDto(
-          visit.globalId,
-          patient.globalId,
-          createVisitInternalDto.audioFilePath,
-          createVisitInternalDto.audioMimetype,
-        );
-
-        const diagnosesAudioUrl = await this.uploadVisitAudio(
-          visitAudioInternalDto,
-        );
-        this.logger.log('Visit audio url is successfully uploaded');
-
-        await this.visitsRepository.update(
-          { id: visit.id },
-          { diagnosesAudioUrl },
-        );
-        this.logger.log('Visit audio url is successfully saved');
-
-        return;
-      }
-    } else if (
-      createVisitInternalDto.audioFilePath &&
-      createVisitInternalDto.audioMimetype
-    ) {
-      const transcribeAudioDto = new TranscribeAudioDto();
-      transcribeAudioDto.file = createVisitInternalDto.audioFilePath;
-
-      const extractedText = await this.extractTextFromAudio(transcribeAudioDto);
-      this.logger.log('Text extracted from visit audio');
-
-      const visit = await this.visitsRepository.save({
-        diagnoses: extractedText,
-        patientId: patient.id,
-        doctorId: doctor.id,
-        clinicId: doctor.clinicId,
-      });
-      this.logger.log('Successfully saved visit');
-
-      const visitAudioInternalDto = new VisitAudioInternalDto(
-        visit.globalId,
-        patient.globalId,
-        createVisitInternalDto.audioFilePath,
-        createVisitInternalDto.audioMimetype,
-      );
-
-      const diagnosesAudioUrl = await this.uploadVisitAudio(
-        visitAudioInternalDto,
-      );
-      this.logger.log('Visit audio url is successfully uploaded');
-
-      await this.visitsRepository.update(
-        { id: visit.id },
-        { diagnosesAudioUrl },
-      );
-      this.logger.log('Visit audio url is successfully saved');
-
-      return;
-    }
-  }
-
-  async createMedication(
-    createMedicationInternalDto: CreateMedicationInternalDto,
-  ): Promise<void> {
-    const doctor = await this.getDoctorByUserId(
-      createMedicationInternalDto.doctorUserId,
-    );
-
-    if (!doctor) {
-      throw new RpcException(new ErrorResponse('Doctor not found!', 404));
-    }
-
-    const patient = await this.getPatientByGlobalId(
-      createMedicationInternalDto.patientId,
-    );
-
-    if (!patient) {
-      throw new RpcException(new ErrorResponse('Patient not found!', 404));
-    }
-
-    const medication = await this.medicationsRepository.save({
-      name: createMedicationInternalDto.name,
-      dosage: createMedicationInternalDto.dosage,
-      period: createMedicationInternalDto.period,
-      comments: createMedicationInternalDto.comments,
-      patientId: patient.id,
-      doctorId: doctor.id,
-    });
-    this.logger.log('Successfully saved medication');
-
-    if (
-      createMedicationInternalDto.audioFilePath &&
-      createMedicationInternalDto.audioMimetype
-    ) {
-      const medicationAudioInternalDto = new MedicationAudioInternalDto(
-        medication.globalId,
-        patient.globalId,
-        createMedicationInternalDto.audioFilePath,
-        createMedicationInternalDto.audioMimetype,
-      );
-      const commentsAudioUrl = await this.uploadMedicationAudio(
-        medicationAudioInternalDto,
-      );
-      this.logger.log('Medication audio url is successfully uploaded');
-
-      const transcribeAudioDto = new TranscribeAudioDto();
-      transcribeAudioDto.file = createMedicationInternalDto.audioFilePath;
-
-      const extractedText = await this.extractTextFromAudio(transcribeAudioDto);
-      this.logger.log('Text extracted from medication audio');
-
-      let updatedComments = `Original text: ${createMedicationInternalDto.comments}\nExtracted text from audio: ${extractedText}`;
-
-      if (updatedComments.length > 512) {
-        updatedComments = updatedComments.substring(0, 512);
-      }
-
-      await this.medicationsRepository.update(
-        { id: medication.id },
-        { commentsAudioUrl, comments: updatedComments },
-      );
-      this.logger.log('Medication audio url and comments successfully updated');
-    }
   }
 
   async getAllVisits(paginationRequest: PaginationRequest): Promise<
     PaginationResponse<{
       id: string;
       diagnoses: string;
+      diagnosesAudioUrl: string | null;
       patientId: string;
       doctorId: string;
       createdAt: Date;
@@ -493,6 +338,7 @@ export class DoctorService {
         return {
           id: visit.globalId,
           diagnoses: visit.diagnoses,
+          diagnosesAudioUrl: visit.diagnosesAudioUrl,
           patientId: patient?.globalId ?? 'UNKNOWN',
           doctorId: doctor?.globalId ?? 'UNKNOWN',
           createdAt: visit.createdAt,
@@ -500,18 +346,19 @@ export class DoctorService {
       }),
     );
 
-    const paginatedResponse = new PaginationResponse<{
+    const paginatedResponse: PaginationResponse<{
       id: string;
       diagnoses: string;
+      diagnosesAudioUrl: string | null;
       patientId: string;
       doctorId: string;
       createdAt: Date;
-    }>(
-      paginationRequest.page,
+    }> = {
+      page: paginationRequest.page,
       items,
-      count,
-      Math.ceil(count / paginationRequest.limit),
-    );
+      totalItems: count,
+      totalPages: Math.ceil(count / paginationRequest.limit),
+    };
 
     return paginatedResponse;
   }
@@ -525,8 +372,8 @@ export class DoctorService {
       gender: Gender;
       dateOfBirth: Date;
       socialSecurityNumber: string;
-      address: string;
-      job: string;
+      address: string | null;
+      job: string | null;
     }>
   > {
     const doctor = await this.getDoctorByUserId(
@@ -584,20 +431,22 @@ export class DoctorService {
       `Successfully retrieved ${items.length} patients for page ${doctorInternalPaginationRequestDto.page}`,
     );
 
-    const paginatedResponse = new PaginationResponse<{
+    const paginatedResponse: PaginationResponse<{
       id: string;
       name: string;
       gender: Gender;
       dateOfBirth: Date;
       socialSecurityNumber: string;
-      address: string;
-      job: string;
-    }>(
-      doctorInternalPaginationRequestDto.page,
+      address: string | null;
+      job: string | null;
+    }> = {
+      page: doctorInternalPaginationRequestDto.page,
       items,
       totalItems,
-      Math.ceil(totalItems / doctorInternalPaginationRequestDto.limit),
-    );
+      totalPages: Math.ceil(
+        totalItems / doctorInternalPaginationRequestDto.limit,
+      ),
+    };
 
     return paginatedResponse;
   }
@@ -608,6 +457,7 @@ export class DoctorService {
     PaginationResponse<{
       id: string;
       diagnoses: string;
+      diagnosesAudioUrl: string | null;
       patient: {
         name: string;
         id: string;
@@ -674,6 +524,7 @@ export class DoctorService {
     const visitsInformation = visits.map((visit) => ({
       id: visit.globalId,
       diagnoses: visit.diagnoses,
+      diagnosesAudioUrl: visit.diagnosesAudioUrl,
       patient: patientsMap.get(visit.patientId) ?? {
         name: 'UNKNOWN',
         id: 'UNKNOWN',
@@ -686,9 +537,10 @@ export class DoctorService {
       `Successfully retrieved ${visitsInformation.length} visits with info`,
     );
 
-    const paginatedResponse = new PaginationResponse<{
+    const paginatedResponse: PaginationResponse<{
       id: string;
       diagnoses: string;
+      diagnosesAudioUrl: string | null;
       patient: {
         name: string;
         id: string;
@@ -698,12 +550,14 @@ export class DoctorService {
         id: string;
       };
       createdAt: Date;
-    }>(
-      doctorInternalPaginationRequestDto.page,
-      visitsInformation,
+    }> = {
+      page: doctorInternalPaginationRequestDto.page,
+      items: visitsInformation,
       totalItems,
-      Math.ceil(totalItems / doctorInternalPaginationRequestDto.limit),
-    );
+      totalPages: Math.ceil(
+        totalItems / doctorInternalPaginationRequestDto.limit,
+      ),
+    };
 
     return paginatedResponse;
   }
@@ -715,8 +569,8 @@ export class DoctorService {
       gender: Gender;
       dateOfBirth: Date;
       socialSecurityNumber: string;
-      address: string;
-      job: string;
+      address: string | null;
+      job: string | null;
     };
     clinics: {
       id: string;
@@ -727,6 +581,7 @@ export class DoctorService {
           speciality: string;
         };
         diagnoses: string;
+        diagnosesAudioUrl: string | null;
         createdAt: Date;
       }[];
     }[];
@@ -808,6 +663,7 @@ export class DoctorService {
               name: string;
               speciality: string;
             };
+            diagnosesAudioUrl: string | null;
             diagnoses: string;
             createdAt: Date;
           }[];
@@ -832,6 +688,7 @@ export class DoctorService {
           name: doctor?.name ?? 'UNKNOWN',
           speciality: doctor?.speciality ?? 'UNKNOWN',
         },
+        diagnosesAudioUrl: visit.diagnosesAudioUrl,
         diagnoses: visit.diagnoses,
         createdAt: visit.createdAt,
       });
@@ -849,14 +706,15 @@ export class DoctorService {
       gender: Gender;
       dateOfBirth: Date;
       socialSecurityNumber: string;
-      address: string;
-      job: string;
+      address: string | null;
+      job: string | null;
     };
     medications: {
       name: string;
       dosage: MedicationDosage;
       period: MedicationPeriod;
-      comments: string;
+      comments: string | null;
+      commentsAudioUrl: string | null;
       doctor: {
         name: string;
         speciality: string;
@@ -927,6 +785,7 @@ export class DoctorService {
         dosage: medication.dosage,
         period: medication.period,
         comments: medication.comments,
+        commentsAudioUrl: medication.commentsAudioUrl,
         doctor: {
           name: doctor.name,
           speciality: doctor.speciality,
@@ -948,14 +807,15 @@ export class DoctorService {
       gender: Gender;
       dateOfBirth: Date;
       socialSecurityNumber: string;
-      address: string;
-      job: string;
+      address: string | null;
+      job: string | null;
     };
     scans: {
       name: string;
       type: ScanTypes;
       photoUrl: string;
-      comments: string;
+      comments: string | null;
+      commentsAudioUrl: string | null;
       doctor: {
         name: string;
         speciality: string;
@@ -1026,6 +886,7 @@ export class DoctorService {
         type: scan.type,
         photoUrl: scan.photoUrl,
         comments: scan.comments,
+        commentsAudioUrl: scan.commentsAudioUrl,
         doctor: {
           name: doctor.name,
           speciality: doctor.speciality,
@@ -1047,13 +908,14 @@ export class DoctorService {
       gender: Gender;
       dateOfBirth: Date;
       socialSecurityNumber: string;
-      address: string;
-      job: string;
+      address: string | null;
+      job: string | null;
     };
     labs: {
       name: string;
       photoUrl: string;
-      comments: string;
+      comments: string | null;
+      commentsAudioUrl: string | null;
       doctor: {
         name: string;
         speciality: string;
@@ -1123,6 +985,7 @@ export class DoctorService {
         name: lab.name,
         photoUrl: lab.photoUrl,
         comments: lab.comments,
+        commentsAudioUrl: lab.commentsAudioUrl,
         doctor: {
           name: doctor.name,
           speciality: doctor.speciality,
@@ -1135,6 +998,162 @@ export class DoctorService {
       patient: patientInfo,
       labs,
     };
+  }
+
+  async createVisit(
+    createVisitInternalDto: CreateVisitInternalDto,
+  ): Promise<void> {
+    const doctor = await this.getDoctorByUserId(
+      createVisitInternalDto.doctorUserId,
+    );
+
+    if (!doctor) {
+      throw new RpcException(new ErrorResponse('Doctor not found!', 404));
+    }
+
+    const patient = await this.getPatientByGlobalId(
+      createVisitInternalDto.patientId,
+    );
+
+    if (!patient) {
+      throw new RpcException(new ErrorResponse('Patient not found!', 404));
+    }
+
+    const clinic = await this.getClinicById(doctor.clinicId);
+
+    if (!clinic) {
+      throw new RpcException(new ErrorResponse('Clinic not found!', 404));
+    }
+
+    // If no written diagnoses provided, require audio to be present
+    if (
+      !createVisitInternalDto.diagnoses &&
+      (!createVisitInternalDto.audioFilePath ||
+        !createVisitInternalDto.audioMimetype)
+    ) {
+      throw new RpcException(
+        new ErrorResponse(
+          'Either audio or written diagnoses must be provided',
+          400,
+        ),
+      );
+    }
+
+    const visitGlobalId = uuidv4();
+    const visit = this.visitsRepository.create({
+      globalId: visitGlobalId,
+      diagnoses: '',
+      diagnosesAudioUrl: null,
+      patientId: patient.id,
+      doctorId: doctor.id,
+      clinicId: doctor.clinicId,
+    });
+
+    if (createVisitInternalDto.diagnoses) {
+      visit.diagnoses = createVisitInternalDto.diagnoses;
+    }
+
+    if (
+      createVisitInternalDto.audioFilePath &&
+      createVisitInternalDto.audioMimetype
+    ) {
+      const visitAudioInternalDto = new VisitAudioInternalDto(
+        visitGlobalId,
+        patient.globalId,
+        createVisitInternalDto.audioFilePath,
+        createVisitInternalDto.audioMimetype,
+      );
+
+      visit.diagnosesAudioUrl = await this.uploadVisitAudio(
+        visitAudioInternalDto,
+      );
+
+      if (!createVisitInternalDto.diagnoses) {
+        const transcribeAudioDto = new TranscribeAudioInternalDto();
+        transcribeAudioDto.filePath = createVisitInternalDto.audioFilePath;
+
+        visit.diagnoses = await this.extractTextFromAudio(transcribeAudioDto);
+        this.logger.log('Diagnoses is successfully extracted from visit audio');
+      }
+
+      await this.deleteCloudStorageTemporaryFile(
+        createVisitInternalDto.audioFilePath,
+      );
+    }
+
+    await this.visitsRepository.insert(visit);
+    this.logger.log('Successfully inserted visit');
+  }
+
+  async createMedication(
+    createMedicationInternalDto: CreateMedicationInternalDto,
+  ): Promise<void> {
+    const doctor = await this.getDoctorByUserId(
+      createMedicationInternalDto.doctorUserId,
+    );
+
+    if (!doctor) {
+      throw new RpcException(new ErrorResponse('Doctor not found!', 404));
+    }
+
+    const patient = await this.getPatientByGlobalId(
+      createMedicationInternalDto.patientId,
+    );
+
+    if (!patient) {
+      throw new RpcException(new ErrorResponse('Patient not found!', 404));
+    }
+
+    const medicationGlobalId = uuidv4();
+    const medication = this.medicationsRepository.create({
+      globalId: medicationGlobalId,
+      name: createMedicationInternalDto.name,
+      comments: null,
+      doctorId: doctor.id,
+      patientId: patient.id,
+      period: createMedicationInternalDto.period,
+      dosage: createMedicationInternalDto.dosage,
+      commentsAudioUrl: null,
+    });
+
+    if (createMedicationInternalDto.comments) {
+      medication.comments = createMedicationInternalDto.comments;
+    }
+
+    if (
+      createMedicationInternalDto.audioFilePath &&
+      createMedicationInternalDto.audioMimetype
+    ) {
+      const medicationAudioInternalDto: MedicationAudioInternalDto = {
+        medicationGlobalId,
+        patientGlobalId: patient.globalId,
+        audioFilePath: createMedicationInternalDto.audioFilePath,
+        audioMimetype: createMedicationInternalDto.audioMimetype,
+      };
+
+      medication.commentsAudioUrl = await this.uploadMedicationAudio(
+        medicationAudioInternalDto,
+      );
+
+      if (!createMedicationInternalDto.comments) {
+        const transcribeAudioDto: TranscribeAudioInternalDto = {
+          filePath: createMedicationInternalDto.audioFilePath,
+        };
+
+        medication.comments =
+          await this.extractTextFromAudio(transcribeAudioDto);
+        this.logger.log(
+          'Comments are successfully extracted from medication audio',
+        );
+      }
+
+      await this.deleteCloudStorageTemporaryFile(
+        createMedicationInternalDto.audioFilePath,
+      );
+    }
+
+    await this.medicationsRepository.insert(medication);
+    this.logger.log('Successfully inserted medication');
   }
 
   async uploadLab(uploadLabInternalDto: UploadLabInternalDto): Promise<void> {
@@ -1154,57 +1173,63 @@ export class DoctorService {
       throw new RpcException(new ErrorResponse('Doctor not found', 404));
     }
 
-    const lab = await this.labsRepository.save({
+    const labGlobalId = uuidv4();
+    const lab = this.labsRepository.create({
+      globalId: labGlobalId,
       name: uploadLabInternalDto.name,
-      comments: uploadLabInternalDto.comments,
+      comments: null,
       doctorId: doctor.id,
       patientId: patient.id,
+      photoUrl: '',
+      commentsAudioUrl: null,
     });
-    this.logger.log('Lab is saved successfully without photo url');
 
-    const uploadLabPhotoInternalDto = new LabPhotoInternalDto(
-      lab.globalId,
-      patient.globalId,
+    const labPhotoInternalDto: LabPhotoInternalDto = {
+      labGlobalId,
+      patientGlobalId: patient.globalId,
+      imageFilePath: uploadLabInternalDto.imageFilePath,
+      imageMimetype: uploadLabInternalDto.imageMimetype,
+    };
+
+    lab.photoUrl = await this.uploadLabPhoto(labPhotoInternalDto);
+
+    await this.deleteCloudStorageTemporaryFile(
       uploadLabInternalDto.imageFilePath,
-      uploadLabInternalDto.imageMimetype,
     );
 
-    const photoUrl = await this.uploadLabPhoto(uploadLabPhotoInternalDto);
-
-    await this.labsRepository.update({ id: lab.id }, { photoUrl });
-    this.logger.log('Lab photo url is successfully updated');
+    if (uploadLabInternalDto.comments) {
+      lab.comments = uploadLabInternalDto.comments;
+    }
 
     if (
       uploadLabInternalDto.audioFilePath &&
       uploadLabInternalDto.audioMimetype
     ) {
-      const uploadLabAudioInternalDto = new LabAudioInternalDto(
-        lab.globalId,
-        patient.globalId,
-        uploadLabInternalDto.audioFilePath,
-        uploadLabInternalDto.audioMimetype,
-      );
-      const audioUrl = await this.uploadLabAudio(uploadLabAudioInternalDto);
-      this.logger.log('Lab audio url is successfully uploaded');
+      const labAudioInternalDto: LabAudioInternalDto = {
+        labGlobalId,
+        patientGlobalId: patient.globalId,
+        audioFilePath: uploadLabInternalDto.audioFilePath,
+        audioMimetype: uploadLabInternalDto.audioMimetype,
+      };
 
-      const transcribeAudioDto = new TranscribeAudioDto();
-      transcribeAudioDto.file = uploadLabInternalDto.audioFilePath;
+      lab.commentsAudioUrl = await this.uploadLabAudio(labAudioInternalDto);
 
-      const extractedText = await this.extractTextFromAudio(transcribeAudioDto);
-      this.logger.log('Text extracted from lab audio');
+      if (!uploadLabInternalDto.comments) {
+        const transcribeAudioDto: TranscribeAudioInternalDto = {
+          filePath: uploadLabInternalDto.audioFilePath,
+        };
 
-      let updatedComments = `Original text: ${uploadLabInternalDto.comments}\nExtracted text from audio: ${extractedText}`;
-
-      if (updatedComments.length > 512) {
-        updatedComments = updatedComments.substring(0, 512);
+        lab.comments = await this.extractTextFromAudio(transcribeAudioDto);
+        this.logger.log('Comments are successfully extracted from lab audio');
       }
 
-      await this.labsRepository.update(
-        { id: lab.id },
-        { commentsAudioUrl: audioUrl, comments: updatedComments },
+      await this.deleteCloudStorageTemporaryFile(
+        uploadLabInternalDto.audioFilePath,
       );
-      this.logger.log('Lab audio url and comments successfully updated');
     }
+
+    await this.labsRepository.insert(lab);
+    this.logger.log('Lab is inserted successfully');
   }
 
   async uploadScan(
@@ -1226,59 +1251,64 @@ export class DoctorService {
       throw new RpcException(new ErrorResponse('Doctor not found', 404));
     }
 
-    const scan = await this.scansRepository.save({
+    const scanGlobalId = uuidv4();
+    const scan = this.scansRepository.create({
+      globalId: scanGlobalId,
       name: uploadScanInternalDto.name,
-      comments: uploadScanInternalDto.comments,
       type: uploadScanInternalDto.type,
-      patientId: patient.id,
+      comments: null,
       doctorId: doctor.id,
+      patientId: patient.id,
+      photoUrl: '',
+      commentsAudioUrl: null,
     });
-    this.logger.log('Scan is saved successfully without photo url');
 
-    const uploadScanPhotoInternalDto = new ScanPhotoInternalDto(
-      scan.globalId,
-      patient.globalId,
-      uploadScanInternalDto.type,
+    const scanPhotoInternalDto: ScanPhotoInternalDto = {
+      scanGlobalId,
+      patientGlobalId: patient.globalId,
+      imageFilePath: uploadScanInternalDto.imageFilePath,
+      imageMimetype: uploadScanInternalDto.imageMimetype,
+    };
+
+    scan.photoUrl = await this.uploadScanPhoto(scanPhotoInternalDto);
+
+    await this.deleteCloudStorageTemporaryFile(
       uploadScanInternalDto.imageFilePath,
-      uploadScanInternalDto.imageMimetype,
     );
 
-    const photoUrl = await this.uploadScanPhoto(uploadScanPhotoInternalDto);
-
-    await this.scansRepository.update({ id: scan.id }, { photoUrl });
-    this.logger.log('Scan photo url is successfully updated');
+    if (uploadScanInternalDto.comments) {
+      scan.comments = uploadScanInternalDto.comments;
+    }
 
     if (
       uploadScanInternalDto.audioFilePath &&
       uploadScanInternalDto.audioMimetype
     ) {
-      const uploadScanAudioInternalDto = new ScanAudioInternalDto(
-        scan.globalId,
+      const scanAudioInternalDto = new ScanAudioInternalDto(
+        scanGlobalId,
         patient.globalId,
         uploadScanInternalDto.audioFilePath,
         uploadScanInternalDto.audioMimetype,
       );
-      const audioUrl = await this.uploadScanAudio(uploadScanAudioInternalDto);
-      this.logger.log('Scan audio url is successfully uploaded');
 
-      const transcribeAudioDto = new TranscribeAudioDto();
-      transcribeAudioDto.file = uploadScanInternalDto.audioFilePath;
+      scan.commentsAudioUrl = await this.uploadScanAudio(scanAudioInternalDto);
 
-      const extractedText = await this.extractTextFromAudio(transcribeAudioDto);
-      this.logger.log('Text extracted from scan audio');
+      if (!uploadScanInternalDto.comments) {
+        const transcribeAudioDto: TranscribeAudioInternalDto = {
+          filePath: uploadScanInternalDto.audioFilePath,
+        };
 
-      let updatedComments = `Original text: ${uploadScanInternalDto.comments}\nExtracted text from audio: ${extractedText}`;
-
-      if (updatedComments.length > 512) {
-        updatedComments = updatedComments.substring(0, 512);
+        scan.comments = await this.extractTextFromAudio(transcribeAudioDto);
+        this.logger.log('Comments are successfully extracted from scan audio');
       }
 
-      await this.scansRepository.update(
-        { id: scan.id },
-        { commentsAudioUrl: audioUrl, comments: updatedComments },
+      await this.deleteCloudStorageTemporaryFile(
+        uploadScanInternalDto.audioFilePath,
       );
-      this.logger.log('Scan audio url and comments successfully updated');
     }
+
+    await this.scansRepository.insert(scan);
+    this.logger.log('Scan is inserted successfully');
   }
 
   async searchForPatientBySocilaSecurityNumber(
@@ -1289,8 +1319,8 @@ export class DoctorService {
     gender: Gender;
     dateOfBirth: Date;
     socialSecurityNumber: string;
-    job: string;
-    address: string;
+    address: string | null;
+    job: string | null;
     createdAt: Date;
   }> {
     const patient =

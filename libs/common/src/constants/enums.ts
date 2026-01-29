@@ -85,7 +85,8 @@ export enum AdminPatterns {
 }
 
 export enum AsrPatterns {
-  TRANSCRIBE_AUDIO = 'transcribe-audio',
+  TRANSCRIBE_AUDIO = 'asr.transcribeAudio',
+  DELETE_TEMPORARY_FILE = 'asr.deleteTemporaryFile',
   IS_UP = 'asr.isUp',
 }
 
@@ -102,4 +103,5 @@ export enum CloudStoragePatterns {
   UPLOAD_SCAN_AUDIO = 'cloud-storage.uploadScanAudio',
   UPLOAD_MEDICATION_AUDIO = 'cloud-storage.uploadMedicationAudio',
   UPLOAD_VISIT_AUDIO = 'cloud-storage.uploadVisitAudio',
+  DELETE_TEMPORARY_FILE = 'cloud-storage.deleteTemporaryFile',
 }

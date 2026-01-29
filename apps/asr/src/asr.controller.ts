@@ -1,8 +1,8 @@
 import { AsrPatterns } from '@app/common';
 import { Controller } from '@nestjs/common';
-import { MessagePattern, Payload } from '@nestjs/microservices';
+import { EventPattern, MessagePattern, Payload } from '@nestjs/microservices';
 import { AsrService } from './asr.service';
-import { TranscribeAudioDto } from './dtos';
+import { TranscribeAudioInternalDto } from './dtos';
 
 @Controller()
 export class AsrController {
@@ -14,9 +14,14 @@ export class AsrController {
   }
 
   @MessagePattern({ cmd: AsrPatterns.TRANSCRIBE_AUDIO })
-  async transcribe(
-    @Payload() data: TranscribeAudioDto,
+  async transcribeAudio(
+    @Payload() transcribeAudioInternalDto: TranscribeAudioInternalDto,
   ): Promise<{ transcription: string }> {
-    return this.asrService.transcribe(data);
+    return this.asrService.transcribeAudio(transcribeAudioInternalDto);
+  }
+
+  @EventPattern({ cmd: AsrPatterns.DELETE_TEMPORARY_FILE })
+  async deleteTemporaryFile(@Payload() filePath: string): Promise<void> {
+    await this.asrService.deleteTemporaryFile(filePath);
   }
 }

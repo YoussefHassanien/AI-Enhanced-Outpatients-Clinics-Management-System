@@ -6,7 +6,7 @@ import { RpcException } from '@nestjs/microservices';
 import FormData from 'form-data';
 import * as fs from 'fs';
 import { firstValueFrom } from 'rxjs';
-import { TranscribeAudioDto } from './dtos';
+import { TranscribeAudioInternalDto } from './dtos';
 
 @Injectable()
 export class AsrService {
@@ -30,37 +30,17 @@ export class AsrService {
     return { message: 'ASR service is up', status: response.status };
   }
 
-  async transcribe(data: TranscribeAudioDto) {
-    const filePath = data.file;
+  async transcribeAudio(
+    transcribeAudioInternalDto: TranscribeAudioInternalDto,
+  ): Promise<{ transcription: string }> {
     try {
-      const result = await this.processFile(filePath);
-      return result;
-    } catch (error) {
-      this.logger.error(`Failed to process file ${filePath}:`, error.stack);
-      throw error; // Re-throw the error to be handled by the controller
-    } finally {
-      // Clean up the file after processing
-      fs.unlink(filePath, (err) => {
-        if (err) {
-          this.logger.error(
-            `Failed to delete temporary file ${filePath}:`,
-            err.stack,
-          );
-        }
-      });
-    }
-  }
+      const fileStream = fs.createReadStream(
+        transcribeAudioInternalDto.filePath,
+      );
+      const formData = new FormData();
+      formData.append('files', fileStream);
+      const apiUrl = this.configService.getOrThrow<string>('API_URL');
 
-  private async processFile(filePath: string) {
-    this.validateFile(filePath);
-
-    const fileStream = fs.createReadStream(filePath);
-    const formData = new FormData();
-    formData.append('files', fileStream);
-
-    const apiUrl = this.configService.getOrThrow<string>('API_URL');
-
-    try {
       const response = await firstValueFrom(
         this.httpService.post<{ transcription: string }>(apiUrl, formData, {
           headers: {
@@ -70,16 +50,34 @@ export class AsrService {
       );
       return response.data;
     } catch (error) {
-      this.logger.error(`Failed to transcribe the file: ${String(error)}`);
+      this.logger.error(
+        `Failed to transcribe audio at path: ${transcribeAudioInternalDto.filePath.toString()}`,
+        error instanceof Error ? error.message : String(error),
+      );
       throw new RpcException(
-        new ErrorResponse('Failed to transcribe the file', 500),
+        new ErrorResponse(
+          'Internal server error during transcribing audio',
+          500,
+        ),
       );
     }
   }
 
-  private validateFile(filePath: string) {
-    if (!fs.existsSync(filePath)) {
-      throw new RpcException(`File not found at path: ${filePath}`);
+  async deleteTemporaryFile(filePath: string): Promise<void> {
+    try {
+      await fs.promises.unlink(filePath);
+      this.logger.log(`Successfully deleted temporary file: ${filePath}`);
+    } catch (error) {
+      this.logger.error(
+        `Failed to delete temporary file: ${filePath}`,
+        error instanceof Error ? error.message : String(error),
+      );
+      throw new RpcException(
+        new ErrorResponse(
+          'Internal server error during deleteing temporary file',
+          500,
+        ),
+      );
     }
   }
 }

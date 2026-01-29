@@ -66,7 +66,7 @@ export class DoctorController {
     @UploadedFile() audio?: Express.Multer.File,
   ): Promise<void> {
     const user = req.user as User;
-    return await this.doctorService.createVisit(createVisitDto, user.id, audio);
+    await this.doctorService.createVisit(createVisitDto, user.id, audio);
   }
 
   @Roles(Role.DOCTOR)
@@ -89,7 +89,7 @@ export class DoctorController {
     @UploadedFile() audio?: Express.Multer.File,
   ): Promise<void> {
     const user = req.user as User;
-    return await this.doctorService.createMedication(
+    await this.doctorService.createMedication(
       createMedicationDto,
       user.id,
       audio,

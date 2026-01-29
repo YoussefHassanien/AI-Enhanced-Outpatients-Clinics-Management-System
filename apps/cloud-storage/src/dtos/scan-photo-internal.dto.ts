@@ -1,5 +1,4 @@
-import { IsEnum, IsNotEmpty, IsString, IsUUID } from 'class-validator';
-import { ScanTypes } from '../../../doctor/src/constants';
+import { IsNotEmpty, IsString, IsUUID } from 'class-validator';
 
 export class ScanPhotoInternalDto {
   @IsUUID()
@@ -7,9 +6,6 @@ export class ScanPhotoInternalDto {
 
   @IsUUID()
   readonly patientGlobalId: string;
-
-  @IsEnum(ScanTypes)
-  readonly type: ScanTypes;
 
   @IsString()
   @IsNotEmpty()
@@ -22,13 +18,11 @@ export class ScanPhotoInternalDto {
   constructor(
     scanGlobalId: string,
     patientGlobalId: string,
-    type: ScanTypes,
     imageFilePath: string,
     imageMimetype: string,
   ) {
     this.scanGlobalId = scanGlobalId;
     this.patientGlobalId = patientGlobalId;
-    this.type = type;
     this.imageFilePath = imageFilePath;
     this.imageMimetype = imageMimetype;
   }

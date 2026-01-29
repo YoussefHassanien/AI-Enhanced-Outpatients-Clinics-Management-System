@@ -6,12 +6,12 @@ export class Lab extends DoctorPatientRelationEntity {
   @Column('varchar', { length: 256 })
   name: string;
 
-  @Column('text', { nullable: true })
-  photoUrl?: string;
+  @Column('text', { nullable: false })
+  photoUrl: string;
 
   @Column('varchar', { length: 512, nullable: true })
-  comments?: string;
+  comments: string | null;
 
   @Column('text', { nullable: true })
-  commentsAudioUrl?: string;
+  commentsAudioUrl: string | null;
 }

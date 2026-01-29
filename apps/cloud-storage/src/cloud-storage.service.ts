@@ -43,7 +43,11 @@ export class CloudStorageService {
     this.logger = logger;
   }
 
-  private async deleteFile(filePath: string): Promise<void> {
+  isUp(): string {
+    return 'Cloud-Storage service is up';
+  }
+
+  async deleteTemporaryFile(filePath: string): Promise<void> {
     try {
       await fs.promises.unlink(filePath);
       this.logger.log(`Successfully deleted temporary file: ${filePath}`);
@@ -52,11 +56,13 @@ export class CloudStorageService {
         `Failed to delete temporary file: ${filePath}`,
         error instanceof Error ? error.message : String(error),
       );
+      throw new RpcException(
+        new ErrorResponse(
+          'Internal server error during deleteing temporary file',
+          500,
+        ),
+      );
     }
-  }
-
-  isUp(): string {
-    return 'Cloud-Storage service is up';
   }
 
   async uploadLabPhoto(
@@ -66,7 +72,7 @@ export class CloudStorageService {
       const uploadResult = await this.cloudinary.uploader.upload(
         labPhotoInternalDto.imageFilePath,
         {
-          asset_folder: `${CloudinaryFolders.BASE_FOLDER}/${CloudinaryFolders.PATIENTS}/${labPhotoInternalDto.patientGlobalId}/${CloudinaryFolders.LABS}`,
+          asset_folder: `${CloudinaryFolders.BASE_FOLDER}/${this.configService.getOrThrow<Environment>('ENVIRONMENT')}/${CloudinaryFolders.PATIENTS}/${labPhotoInternalDto.patientGlobalId}/${CloudinaryFolders.LABS}`,
           public_id: labPhotoInternalDto.labGlobalId,
           display_name: new Date(Date.now()),
         },
@@ -89,8 +95,6 @@ export class CloudStorageService {
           500,
         ),
       );
-    } finally {
-      await this.deleteFile(labPhotoInternalDto.imageFilePath);
     }
   }
 
@@ -101,7 +105,7 @@ export class CloudStorageService {
       const uploadResult = await this.cloudinary.uploader.upload(
         scanPhotoInternalDto.imageFilePath,
         {
-          asset_folder: `${CloudinaryFolders.BASE_FOLDER}/${CloudinaryFolders.PATIENTS}/${scanPhotoInternalDto.patientGlobalId}/${CloudinaryFolders.SCANS}`,
+          asset_folder: `${CloudinaryFolders.BASE_FOLDER}/${this.configService.getOrThrow<Environment>('ENVIRONMENT')}/${CloudinaryFolders.PATIENTS}/${scanPhotoInternalDto.patientGlobalId}/${CloudinaryFolders.SCANS}`,
           public_id: `${scanPhotoInternalDto.scanGlobalId}-image`,
           display_name: new Date(Date.now()),
         },
@@ -124,8 +128,6 @@ export class CloudStorageService {
           500,
         ),
       );
-    } finally {
-      await this.deleteFile(scanPhotoInternalDto.imageFilePath);
     }
   }
 
@@ -136,7 +138,7 @@ export class CloudStorageService {
       const uploadResult = await this.cloudinary.uploader.upload(
         labAudioInternalDto.audioFilePath,
         {
-          asset_folder: `${CloudinaryFolders.BASE_FOLDER}/${CloudinaryFolders.PATIENTS}/${labAudioInternalDto.patientGlobalId}/${CloudinaryFolders.LABS}`,
+          asset_folder: `${CloudinaryFolders.BASE_FOLDER}/${this.configService.getOrThrow<Environment>('ENVIRONMENT')}/${CloudinaryFolders.PATIENTS}/${labAudioInternalDto.patientGlobalId}/${CloudinaryFolders.LABS}`,
           public_id: `${labAudioInternalDto.labGlobalId}-audio`,
           display_name: new Date(Date.now()),
           resource_type: 'video',
@@ -170,7 +172,7 @@ export class CloudStorageService {
       const uploadResult = await this.cloudinary.uploader.upload(
         scanAudioInternalDto.audioFilePath,
         {
-          asset_folder: `${CloudinaryFolders.BASE_FOLDER}/${CloudinaryFolders.PATIENTS}/${scanAudioInternalDto.patientGlobalId}/${CloudinaryFolders.SCANS}`,
+          asset_folder: `${CloudinaryFolders.BASE_FOLDER}/${this.configService.getOrThrow<Environment>('ENVIRONMENT')}/${CloudinaryFolders.PATIENTS}/${scanAudioInternalDto.patientGlobalId}/${CloudinaryFolders.SCANS}`,
           public_id: `${scanAudioInternalDto.scanGlobalId}-audio`,
           display_name: new Date(Date.now()),
           resource_type: 'video',
@@ -204,7 +206,7 @@ export class CloudStorageService {
       const uploadResult = await this.cloudinary.uploader.upload(
         medicationAudioInternalDto.audioFilePath,
         {
-          asset_folder: `${CloudinaryFolders.BASE_FOLDER}/${CloudinaryFolders.PATIENTS}/${medicationAudioInternalDto.patientGlobalId}/${CloudinaryFolders.MEDICATIONS}`,
+          asset_folder: `${CloudinaryFolders.BASE_FOLDER}/${this.configService.getOrThrow<Environment>('ENVIRONMENT')}/${CloudinaryFolders.PATIENTS}/${medicationAudioInternalDto.patientGlobalId}/${CloudinaryFolders.MEDICATIONS}`,
           public_id: `${medicationAudioInternalDto.medicationGlobalId}-audio`,
           display_name: new Date(Date.now()),
           resource_type: 'video',
@@ -238,7 +240,7 @@ export class CloudStorageService {
       const uploadResult = await this.cloudinary.uploader.upload(
         visitAudioInternalDto.audioFilePath,
         {
-          asset_folder: `${CloudinaryFolders.BASE_FOLDER}/${CloudinaryFolders.PATIENTS}/${visitAudioInternalDto.patientGlobalId}/${CloudinaryFolders.VISITS}`,
+          asset_folder: `${CloudinaryFolders.BASE_FOLDER}/${this.configService.getOrThrow<Environment>('ENVIRONMENT')}/${CloudinaryFolders.PATIENTS}/${visitAudioInternalDto.patientGlobalId}/${CloudinaryFolders.VISITS}`,
           public_id: `${visitAudioInternalDto.visitGlobalId}-audio`,
           display_name: new Date(Date.now()),
           resource_type: 'video',
