@@ -1,18 +1,27 @@
-import { Gender, Role, Roles } from '@app/common';
+import { Gender, PaginationResponse, Role, Roles } from '@app/common';
 import {
   Body,
   Controller,
+  DefaultValuePipe,
   Get,
   Param,
-  ParseFilePipeBuilder,
+  ParseIntPipe,
   Post,
+  Query,
   Req,
   UploadedFile,
+  UploadedFiles,
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
+import {
+  FileFieldsInterceptor,
+  FileInterceptor,
+} from '@nestjs/platform-express';
 import { Request } from 'express';
+import { diskStorage } from 'multer';
+import { extname } from 'path';
+import { v4 as uuidv4 } from 'uuid';
 import { User } from '../../../auth/src/entities';
 import {
   MedicationDosage,
@@ -39,26 +48,51 @@ export class DoctorController {
 
   @Roles(Role.DOCTOR)
   @UseGuards(JwtAuthGuard)
+  @UseInterceptors(
+    FileInterceptor('audio', {
+      storage: diskStorage({
+        destination: process.env.ASR_TMP_DIR,
+        filename: (req, file, cb) => {
+          const randomName = uuidv4();
+          cb(null, `${randomName}${extname(file.originalname)}`);
+        },
+      }),
+    }),
+  )
   @Post('visit/create')
   async createVisit(
     @Body() createVisitDto: CreateVisitDto,
     @Req() req: Request,
-  ): Promise<{ message: string }> {
+    @UploadedFile() audio?: Express.Multer.File,
+  ): Promise<void> {
     const user = req.user as User;
-    return await this.doctorService.createVisit(createVisitDto, user.id);
+    await this.doctorService.createVisit(createVisitDto, user.id, audio);
   }
 
   @Roles(Role.DOCTOR)
   @UseGuards(JwtAuthGuard)
+  @UseInterceptors(
+    FileInterceptor('audio', {
+      storage: diskStorage({
+        destination: process.env.ASR_TMP_DIR,
+        filename: (req, file, cb) => {
+          const randomName = uuidv4();
+          cb(null, `${randomName}${extname(file.originalname)}`);
+        },
+      }),
+    }),
+  )
   @Post('medication/create')
   async createMedication(
     @Body() createMedicationDto: CreateMedicationDto,
     @Req() req: Request,
-  ): Promise<{ message: string }> {
+    @UploadedFile() audio?: Express.Multer.File,
+  ): Promise<void> {
     const user = req.user as User;
-    return await this.doctorService.createMedication(
+    await this.doctorService.createMedication(
       createMedicationDto,
       user.id,
+      audio,
     );
   }
 
@@ -185,59 +219,139 @@ export class DoctorController {
 
   @Roles(Role.DOCTOR)
   @UseGuards(JwtAuthGuard)
-  @UseInterceptors(FileInterceptor('image'))
+  @UseInterceptors(
+    FileFieldsInterceptor(
+      [
+        { name: 'image', maxCount: 1 },
+        { name: 'audio', maxCount: 1 },
+      ],
+      {
+        storage: diskStorage({
+          destination: process.env.ASR_TMP_DIR,
+          filename: (req, file, cb) => {
+            const randomName = uuidv4();
+            cb(null, `${randomName}${extname(file.originalname)}`);
+          },
+        }),
+      },
+    ),
+  )
   @Post('lab/:socialSecurityNumber')
   async uploadLab(
     @Param('socialSecurityNumber') socialSecurityNumber: string,
     @Body() uploadLabDto: UploadLabDto,
-    @UploadedFile(
-      new ParseFilePipeBuilder()
-        .addFileTypeValidator({
-          fileType: /(image\/jpeg|image\/jpg|image\/png)$/,
-        })
-        .addMaxSizeValidator({
-          maxSize: 5 * 1024 * 1024, // 5 MB,
-        })
-        .build(),
-    )
-    image: Express.Multer.File,
+    @UploadedFiles()
+    files: { image?: Express.Multer.File[]; audio?: Express.Multer.File[] },
     @Req() req: Request,
   ): Promise<void> {
     const user = req.user as User;
     await this.doctorService.uploadLab(
       uploadLabDto,
       socialSecurityNumber,
-      image,
       user.id,
+      files.image?.[0],
+      files.audio?.[0],
     );
   }
 
   @Roles(Role.DOCTOR)
   @UseGuards(JwtAuthGuard)
-  @UseInterceptors(FileInterceptor('image'))
+  @UseInterceptors(
+    FileFieldsInterceptor(
+      [
+        { name: 'image', maxCount: 1 },
+        { name: 'audio', maxCount: 1 },
+      ],
+      {
+        storage: diskStorage({
+          destination: process.env.ASR_TMP_DIR,
+          filename: (req, file, cb) => {
+            const randomName = uuidv4();
+            cb(null, `${randomName}${extname(file.originalname)}`);
+          },
+        }),
+      },
+    ),
+  )
   @Post('scan/:socialSecurityNumber')
   async uploadScan(
     @Param('socialSecurityNumber') socialSecurityNumber: string,
     @Body() uploadScanDto: UploadScanDto,
-    @UploadedFile(
-      new ParseFilePipeBuilder()
-        .addFileTypeValidator({
-          fileType: /(image\/jpeg|image\/jpg|image\/png)$/,
-        })
-        .addMaxSizeValidator({
-          maxSize: 5 * 1024 * 1024, // 5 MB,
-        })
-        .build(),
-    )
-    image: Express.Multer.File,
+    @UploadedFiles()
+    files: { image?: Express.Multer.File[]; audio?: Express.Multer.File[] },
     @Req() req: Request,
   ): Promise<void> {
     const user = req.user as User;
     await this.doctorService.uploadScan(
       uploadScanDto,
       socialSecurityNumber,
-      image,
       user.id,
+      files.image?.[0],
+      files.audio?.[0],
+    );
+  }
+
+  @Roles(Role.DOCTOR)
+  @UseGuards(JwtAuthGuard)
+  @Get('patients')
+  async getDoctorPatients(
+    @Req() req: Request,
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query('limit', new DefaultValuePipe(30), ParseIntPipe) limit: number,
+  ): Promise<
+    PaginationResponse<{
+      id: string;
+      diagnoses: string;
+      patient: {
+        name: string;
+        id: string;
+      };
+      createdAt: Date;
+    }>
+  > {
+    const user = req.user as User;
+    return await this.doctorService.getDoctorPatients(user.id, page, limit);
+  }
+
+  @Roles(Role.DOCTOR)
+  @UseGuards(JwtAuthGuard)
+  @Get('visits')
+  async getDoctorVisits(
+    @Req() req: Request,
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query('limit', new DefaultValuePipe(30), ParseIntPipe) limit: number,
+  ): Promise<
+    PaginationResponse<{
+      id: string;
+      diagnoses: string;
+      patient: {
+        name: string;
+        id: string;
+      };
+      createdAt: Date;
+    }>
+  > {
+    const user = req.user as User;
+    return await this.doctorService.getDoctorVisits(user.id, page, limit);
+  }
+
+  @Roles(Role.DOCTOR)
+  @UseGuards(JwtAuthGuard)
+  @Get('patient/:socialSecurityNumber')
+  async searchForPatientBySocialSecurityNumber(
+    @Param('socialSecurityNumber') socialSecurityNumber: string,
+  ): Promise<{
+    id: string;
+    name: string;
+    gender: Gender;
+    dateOfBirth: Date;
+    socialSecurityNumber: string;
+    job: string;
+    address: string;
+    createdAt: Date;
+  }> {
+    return await this.doctorService.searchForPatientBySocialSecurityNumber(
+      socialSecurityNumber,
     );
   }
 }

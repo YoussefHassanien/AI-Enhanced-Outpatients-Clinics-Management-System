@@ -10,7 +10,7 @@ export class UpdatePatientDto {
   @IsNotEmpty()
   @MaxLength(128)
   @IsOptional()
-  firstName: string;
+  firstName?: string;
 
   @ApiProperty({
     description: 'User last name',
@@ -20,7 +20,7 @@ export class UpdatePatientDto {
   @IsNotEmpty()
   @MaxLength(128)
   @IsOptional()
-  lastName: string;
+  lastName?: string;
 
   @ApiProperty({
     description: 'User address',
@@ -30,7 +30,7 @@ export class UpdatePatientDto {
   @IsNotEmpty()
   @MaxLength(128)
   @IsOptional()
-  address: string;
+  address?: string;
 
   @ApiProperty({
     description: 'User job',
@@ -40,5 +40,5 @@ export class UpdatePatientDto {
   @IsNotEmpty()
   @MaxLength(128)
   @IsOptional()
-  job: string;
+  job?: string;
 }

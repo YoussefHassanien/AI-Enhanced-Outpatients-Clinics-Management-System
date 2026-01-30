@@ -2,6 +2,7 @@ export * from './create-medication-internal.dto';
 export * from './create-medication.dto';
 export * from './create-visit-internal.dto';
 export * from './create-visit.dto';
+export * from './doctor-internal-pagination-request.dto';
 export * from './upload-lab-internal.dto';
 export * from './upload-lab.dto';
 export * from './upload-scan-internal.dto';

@@ -45,7 +45,7 @@ export class CreateMedicationDto {
   @IsString()
   @IsNotEmpty()
   @MaxLength(512)
-  comments: string;
+  comments?: string;
 
   @ApiProperty({
     description: 'The patient id of this medication',

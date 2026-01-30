@@ -78,6 +78,10 @@ export class EnvironmentVariables {
   @Equals('asr')
   RABBIT_MQ_ASR_QUEUE: string;
 
+  @IsString()
+  @IsNotEmpty()
+  ASR_TMP_DIR: string;
+
   @ValidateIf(
     (environmentVariables: EnvironmentVariables) =>
       environmentVariables.ENVIRONMENT === Environment.PRODUCTION,

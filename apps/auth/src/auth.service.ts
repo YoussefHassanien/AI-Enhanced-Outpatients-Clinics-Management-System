@@ -309,7 +309,7 @@ export class AuthService {
 
   async getUser(id: number): Promise<User | null> {
     return await this.userRepository.findOne({
-      select: { createdAt: false, updatedAt: false, deletedAt: false },
+      select: { updatedAt: false, deletedAt: false },
       where: {
         id,
         deletedAt: IsNull(),
@@ -337,7 +337,7 @@ export class AuthService {
         },
       },
       where: {
-        user: { id: userId },
+        user: { id: userId, deletedAt: IsNull() },
         deletedAt: IsNull(),
         isApproved: true,
       },
@@ -380,7 +380,6 @@ export class AuthService {
     return await this.adminRepository.findOne({
       relations: { user: true },
       select: {
-        createdAt: false,
         updatedAt: false,
         deletedAt: false,
         password: false,
@@ -395,7 +394,7 @@ export class AuthService {
         },
       },
       where: {
-        user: { id: userId },
+        user: { id: userId, deletedAt: IsNull() },
         deletedAt: IsNull(),
       },
     });
@@ -409,7 +408,7 @@ export class AuthService {
     );
 
     if (existingUser) {
-      throw new RpcException(new ErrorResponse('User already exists!', 400));
+      throw new RpcException(new ErrorResponse('Doctor already exists!', 400));
     }
 
     const existingDoctor = await this.checkExistingDoctor(
@@ -418,6 +417,15 @@ export class AuthService {
     );
 
     if (existingDoctor) {
+      throw new RpcException(new ErrorResponse('Doctor already exists!', 400));
+    }
+
+    const existingAdmin = await this.checkExistingAdmin(
+      doctorDto.email,
+      doctorDto.phone,
+    );
+
+    if (existingAdmin) {
       throw new RpcException(new ErrorResponse('Doctor already exists!', 400));
     }
 
@@ -479,7 +487,7 @@ export class AuthService {
     );
 
     if (existingUser) {
-      throw new RpcException(new ErrorResponse('User already exists!', 400));
+      throw new RpcException(new ErrorResponse('Admin already exists!', 400));
     }
 
     const existingAdmin = await this.checkExistingAdmin(
@@ -488,6 +496,15 @@ export class AuthService {
     );
 
     if (existingAdmin) {
+      throw new RpcException(new ErrorResponse('Admin already exists!', 400));
+    }
+
+    const existingDoctor = await this.checkExistingDoctor(
+      adminDto.email,
+      adminDto.phone,
+    );
+
+    if (existingDoctor) {
       throw new RpcException(new ErrorResponse('Admin already exists!', 400));
     }
 
@@ -554,14 +571,11 @@ export class AuthService {
 
         const patientRepository = manager.getRepository(Patient);
 
-        const patient = patientRepository.create({
+        const patient = await patientRepository.save({
           user: createdUser,
-          job: patientDto.job ?? null,
-          address: patientDto.address ?? null,
+          job: patientDto.job,
+          address: patientDto.address,
         });
-        this.logger.log('Successfully created a patient');
-
-        await patientRepository.insert(patient);
         this.logger.log('Successfully inserted a patient');
 
         return patient.globalId;
@@ -671,8 +685,8 @@ export class AuthService {
   async getAllPatients(paginationRequest: PaginationRequest): Promise<
     PaginationResponse<{
       id: string;
-      address: string;
-      job: string;
+      address: string | null;
+      job: string | null;
       user: {
         id: string;
         socialSecurityNumber: bigint;
@@ -727,8 +741,8 @@ export class AuthService {
 
     const response: PaginationResponse<{
       id: string;
-      address: string;
-      job: string;
+      address: string | null;
+      job: string | null;
       user: {
         id: string;
         socialSecurityNumber: bigint;
@@ -765,12 +779,14 @@ export class AuthService {
       where: {
         id,
         deletedAt: IsNull(),
+        user: { deletedAt: IsNull() },
       },
       select: {
         job: true,
         address: true,
         id: true,
         globalId: true,
+        createdAt: true,
         user: {
           id: true,
           globalId: true,
@@ -786,10 +802,14 @@ export class AuthService {
 
   async getDoctorById(id: number): Promise<Doctor | null> {
     return await this.doctorRepository.findOne({
-      where: { id, deletedAt: IsNull(), isApproved: true },
+      where: {
+        id,
+        deletedAt: IsNull(),
+        isApproved: true,
+        user: { deletedAt: IsNull() },
+      },
       relations: { user: true },
       select: {
-        createdAt: false,
         updatedAt: false,
         deletedAt: false,
         password: false,
@@ -895,6 +915,28 @@ export class AuthService {
         job: true,
         id: true,
         globalId: true,
+        createdAt: true,
+      },
+    });
+  }
+
+  async getDoctorByGlobalId(globalId: string): Promise<Doctor | null> {
+    return await this.doctorRepository.findOne({
+      where: { globalId, deletedAt: IsNull() },
+      relations: { user: true },
+      select: {
+        password: false,
+        updatedAt: false,
+        deletedAt: false,
+        user: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          globalId: true,
+          socialSecurityNumber: true,
+          gender: true,
+          dateOfBirth: true,
+        },
       },
     });
   }

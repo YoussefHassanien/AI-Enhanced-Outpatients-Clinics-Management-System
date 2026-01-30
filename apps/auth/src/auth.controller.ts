@@ -151,8 +151,8 @@ export class AuthController {
   ): Promise<
     PaginationResponse<{
       id: string;
-      address: string;
-      job: string;
+      address: string | null;
+      job: string | null;
       user: {
         id: string;
         socialSecurityNumber: bigint;

@@ -1,6 +1,6 @@
 import { IsNotEmpty, IsString, IsUUID } from 'class-validator';
 
-export class LabPhotoInternalDto {
+export class LabAudioInternalDto {
   @IsUUID()
   readonly labGlobalId: string;
 
@@ -9,21 +9,21 @@ export class LabPhotoInternalDto {
 
   @IsString()
   @IsNotEmpty()
-  readonly imageFilePath: string;
+  readonly audioFilePath: string;
 
   @IsString()
   @IsNotEmpty()
-  readonly imageMimetype: string;
+  readonly audioMimetype: string;
 
   constructor(
     labGlobalId: string,
     patientGlobalId: string,
-    imageFilePath: string,
-    imageMimetype: string,
+    audioFilePath: string,
+    audioMimetype: string,
   ) {
     this.labGlobalId = labGlobalId;
     this.patientGlobalId = patientGlobalId;
-    this.imageFilePath = imageFilePath;
-    this.imageMimetype = imageMimetype;
+    this.audioFilePath = audioFilePath;
+    this.audioMimetype = audioMimetype;
   }
 }

@@ -25,7 +25,7 @@ export class UploadScanDto {
   @IsString()
   @MaxLength(512)
   @IsOptional()
-  comments: string;
+  comments?: string;
 
   @ApiProperty({
     enum: ScanTypes,

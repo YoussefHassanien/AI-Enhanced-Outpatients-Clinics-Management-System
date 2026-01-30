@@ -3,4 +3,6 @@ export enum CloudinaryFolders {
   PATIENTS = 'Patients',
   SCANS = 'Scans',
   LABS = 'Labs',
+  MEDICATIONS = 'Medications',
+  VISITS = 'Visits',
 }

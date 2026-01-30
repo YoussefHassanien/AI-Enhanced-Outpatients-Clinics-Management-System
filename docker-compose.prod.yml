@@ -32,6 +32,7 @@ services:
       - ocr
       - asr
       - admin
+      - cloud-storage
     command: node api-gateway/main
     networks:
       - services-network
@@ -49,6 +50,7 @@ services:
       - services-network
     volumes:
       - ./logs:/app/logs
+      - ./tmp/asr_uploads:/app/tmp/asr_uploads
 
   admin:
     image: youssefhassanien1/admin-service:latest
@@ -89,11 +91,9 @@ services:
       - ./tmp/asr_uploads:/app/tmp/asr_uploads
 
   cloud-storage:
-    build:
-      context: .
-      dockerfile: ./apps/cloud-storage/Dockerfile
+    image: youssefhassanien1/cloud-storage-service:latest
     env_file:
-      - ./apps/cloud-storage/.env
+      - ./cloud-storage.env
     depends_on:
       - rabbitmq
     command: node cloud-storage/main
@@ -101,6 +101,7 @@ services:
       - services-network
     volumes:
       - ./logs:/app/logs
+      - ./tmp/asr_uploads:/app/tmp/asr_uploads
 
   nginx:
     image: nginx:latest

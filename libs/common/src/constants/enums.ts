@@ -60,6 +60,9 @@ export enum DoctorPatterns {
   GET_PATIENT_LABS = 'doctor.patient.labs',
   GET_PATIENT_SCANS = 'doctor.patient.scans',
   GET_ALL_VISITS = 'doctor.admin.visits',
+  GET_DOCTOR_PATIENTS = 'doctor.patients',
+  GET_DOCTOR_VISITS = 'doctor.visits',
+  SEARCH_FOR_PATIENT_BY_SOCIAL_SECURITY_NUMBER = 'doctor.searchForPatientBySocilaSecurityNumber',
 }
 
 export enum CommonServices {
@@ -82,9 +85,9 @@ export enum AdminPatterns {
 }
 
 export enum AsrPatterns {
-  TRANSCRIBE_AUDIO = 'transcribe-audio',
+  TRANSCRIBE_AUDIO = 'asr.transcribeAudio',
+  DELETE_TEMPORARY_FILE = 'asr.deleteTemporaryFile',
   IS_UP = 'asr.isUp',
-  IS_READY = 'asr.isReady',
 }
 
 export enum OcrPatterns {
@@ -96,4 +99,9 @@ export enum CloudStoragePatterns {
   IS_UP = 'cloud-storage.isUp',
   UPLOAD_LAB_PHOTO = 'cloud-storage.uploadLabPhoto',
   UPLOAD_SCAN_PHOTO = 'cloud-storage.uploadScanPhoto',
+  UPLOAD_LAB_AUDIO = 'cloud-storage.uploadLabAudio',
+  UPLOAD_SCAN_AUDIO = 'cloud-storage.uploadScanAudio',
+  UPLOAD_MEDICATION_AUDIO = 'cloud-storage.uploadMedicationAudio',
+  UPLOAD_VISIT_AUDIO = 'cloud-storage.uploadVisitAudio',
+  DELETE_TEMPORARY_FILE = 'cloud-storage.deleteTemporaryFile',
 }

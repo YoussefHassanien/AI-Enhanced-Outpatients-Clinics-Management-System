@@ -1,4 +1,4 @@
-import { Environment } from '@app/common';
+import { Environment, Role } from '@app/common';
 import {
   Equals,
   IsAlphanumeric,
@@ -9,6 +9,9 @@ import {
   IsPositive,
   IsString,
   IsUrl,
+  IsUUID,
+  Length,
+  Matches,
 } from 'class-validator';
 
 export class EnvironmentVariables {
@@ -56,4 +59,21 @@ export class EnvironmentVariables {
   @IsString()
   @Equals('admin')
   RABBIT_MQ_ADMIN_QUEUE: string;
+}
+
+export class JwtPayload {
+  @IsInt()
+  @IsPositive()
+  sub: number;
+
+  @IsUUID()
+  globalId: string;
+
+  @IsString()
+  @Length(14, 14)
+  @Matches(/^[23]\d{2}(0[1-9]|1[0-2])(0[1-9]|[12]\d|3[01])\d{7}$/)
+  socialSecurityNumber: string;
+
+  @IsEnum(Role)
+  role: Role;
 }
