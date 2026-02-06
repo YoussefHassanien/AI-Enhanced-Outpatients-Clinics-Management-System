@@ -30,6 +30,7 @@ import {
   LoginDto,
 } from './dtos';
 import { UpdatePatientInternalDto } from './dtos/update-patient-internal.dto';
+import { UpdateDoctorInternalDto } from './dtos/update-doctor-internal.dto';
 import { Admin, Doctor, Patient, User } from './entities';
 
 @Injectable()
@@ -939,5 +940,87 @@ export class AuthService {
         },
       },
     });
+  }
+
+  async updateDoctor(
+    updateDoctorInternalDto: UpdateDoctorInternalDto,
+  ): Promise<{ message: string }> {
+    const doctor = await this.doctorRepository.findOne({
+      where: {
+        globalId: updateDoctorInternalDto.globalId,
+        deletedAt: IsNull(),
+      },
+      relations: {
+        user: true,
+      },
+    });
+
+    if (!doctor) {
+      throw new RpcException(new ErrorResponse('Doctor not found!', 404));
+    }
+
+    let clinicId: number | undefined;
+    if (updateDoctorInternalDto.clinicId) {
+      const clinic = await lastValueFrom<Clinic | null>(
+        this.adminClient.send(
+          { cmd: AdminPatterns.GET_CLINIC_BY_GLOBAL_ID },
+          updateDoctorInternalDto.clinicId,
+        ),
+      );
+
+      if (!clinic) {
+        throw new RpcException(new ErrorResponse('Clinic not found!', 404));
+      }
+      clinicId = clinic.id;
+    }
+
+    await this.doctorRepository.manager.transaction(
+      async (manager: EntityManager) => {
+        // Update User fields if provided
+        if (updateDoctorInternalDto.firstName || updateDoctorInternalDto.lastName) {
+          const userRepository = manager.getRepository(User);
+          const userUpdates: Partial<User> = {};
+
+          if (updateDoctorInternalDto.firstName) {
+            userUpdates.firstName = updateDoctorInternalDto.firstName;
+          }
+          if (updateDoctorInternalDto.lastName) {
+            userUpdates.lastName = updateDoctorInternalDto.lastName;
+          }
+
+          await userRepository.update(doctor.user.id, userUpdates);
+          this.logger.log('Successfully updated user data for doctor');
+        }
+
+        // Update Doctor fields if provided
+        if (
+          updateDoctorInternalDto.email ||
+          updateDoctorInternalDto.phone ||
+          updateDoctorInternalDto.speciality ||
+          clinicId
+        ) {
+          const doctorRepository = manager.getRepository(Doctor);
+          const doctorUpdates: Partial<Doctor> = {};
+
+          if (updateDoctorInternalDto.email) {
+            doctorUpdates.email = updateDoctorInternalDto.email.trim().toLowerCase();
+          }
+          if (updateDoctorInternalDto.phone) {
+            doctorUpdates.phone = updateDoctorInternalDto.phone;
+          }
+          if (updateDoctorInternalDto.speciality) {
+            doctorUpdates.speciality = updateDoctorInternalDto.speciality;
+          }
+          if (clinicId) {
+            doctorUpdates.clinicId = clinicId;
+          }
+
+          await doctorRepository.update(doctor.id, doctorUpdates);
+          this.logger.log('Successfully updated doctor data');
+        }
+      },
+    );
+
+    return { message: 'Doctor data is successfully updated' };
   }
 }

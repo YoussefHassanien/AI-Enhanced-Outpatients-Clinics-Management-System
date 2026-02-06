@@ -8,3 +8,5 @@ export * from './credentials-response.dto';
 export * from './login.dto';
 export * from './update-patient-internal.dto';
 export * from './update-patient.dto';
+export * from './update-doctor-internal.dto';
+export * from './update-doctor.dto';

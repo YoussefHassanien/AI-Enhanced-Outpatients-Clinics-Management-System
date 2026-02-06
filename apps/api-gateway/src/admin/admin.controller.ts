@@ -22,14 +22,14 @@ import {
 } from '@nestjs/common';
 import { Request } from 'express';
 import { CreateClinicDto } from '../../../admin/src/dtos';
-import { UpdatePatientDto } from '../../../auth/src/dtos';
+import { UpdatePatientDto, UpdateDoctorDto } from '../../../auth/src/dtos';
 import { User } from '../../../auth/src/entities';
 import { JwtAuthGuard } from '../auth/guards';
 import { AdminService } from './admin.service';
 
 @Controller('admin')
 export class AdminController {
-  constructor(private readonly adminService: AdminService) {}
+  constructor(private readonly adminService: AdminService) { }
 
   @Get()
   async isUp(): Promise<string> {
@@ -179,4 +179,22 @@ export class AdminController {
   ) {
     return await this.adminService.getDoctorByGlobalId(globalId);
   }
+
+
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @UseGuards(JwtAuthGuard)
+  @Patch('doctor/:id')
+  async updateDoctor(
+    @Param(
+      'id',
+      new ParseUUIDPipe({
+        exceptionFactory: () => new BadRequestException('Invalid doctor ID'),
+      }),
+    )
+    globalId: string,
+    @Body() updateDoctorDto: UpdateDoctorDto,
+  ): Promise<{ message: string }> {
+    return await this.adminService.updateDoctor(globalId, updateDoctorDto);
+  }
+
 }

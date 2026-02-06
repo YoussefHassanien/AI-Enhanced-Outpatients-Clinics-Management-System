@@ -17,11 +17,12 @@ import {
   LoginDto,
 } from './dtos';
 import { UpdatePatientInternalDto } from './dtos/update-patient-internal.dto';
+import { UpdateDoctorInternalDto } from './dtos/update-doctor-internal.dto';
 import { Admin, Doctor, Patient, User } from './entities';
 
 @Controller()
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(private readonly authService: AuthService) { }
 
   @MessagePattern({ cmd: AuthPatterns.IS_UP })
   isUp(): string {
@@ -220,5 +221,12 @@ export class AuthController {
     doctorGlobalId: string,
   ): Promise<Doctor | null> {
     return await this.authService.getDoctorByGlobalId(doctorGlobalId);
+  }
+
+  @MessagePattern({ cmd: AuthPatterns.DOCTOR_UPDATE })
+  async doctorUpdate(
+    @Payload() updateDoctorInternalDto: UpdateDoctorInternalDto,
+  ): Promise<{ message: string }> {
+    return await this.authService.updateDoctor(updateDoctorInternalDto);
   }
 }

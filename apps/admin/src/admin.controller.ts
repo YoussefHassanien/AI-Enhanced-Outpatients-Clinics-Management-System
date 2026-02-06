@@ -1,14 +1,14 @@
 import { AdminPatterns, PaginationRequest } from '@app/common';
 import { Controller } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
-import { UpdatePatientInternalDto } from '../../auth/src/dtos';
+import { UpdatePatientInternalDto, UpdateDoctorInternalDto } from '../../auth/src/dtos';
 import { AdminService } from './admin.service';
 import { CreateClinicInternalDto } from './dtos';
 import { Clinic } from './entities';
 
 @Controller()
 export class AdminController {
-  constructor(private readonly adminService: AdminService) {}
+  constructor(private readonly adminService: AdminService) { }
 
   @MessagePattern({ cmd: AdminPatterns.IS_UP })
   isUp(): string {
@@ -77,4 +77,12 @@ export class AdminController {
   async getDoctorByGlobalId(@Payload() globalId: string) {
     return await this.adminService.getDoctorByGlobalId(globalId);
   }
+
+  @MessagePattern({ cmd: AdminPatterns.UPDATE_DOCTOR })
+  async updateDoctor(
+    @Payload() updateDoctorInternalDto: UpdateDoctorInternalDto,
+  ) {
+    return await this.adminService.updateDoctor(updateDoctorInternalDto);
+  }
+
 }

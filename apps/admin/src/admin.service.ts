@@ -14,7 +14,7 @@ import { ClientProxy, RpcException } from '@nestjs/microservices';
 import { InjectRepository } from '@nestjs/typeorm';
 import { lastValueFrom } from 'rxjs';
 import { IsNull, Repository } from 'typeorm';
-import { UpdatePatientInternalDto } from '../../auth/src/dtos';
+import { UpdatePatientInternalDto, UpdateDoctorInternalDto } from '../../auth/src/dtos';
 import { Admin, Doctor, Patient } from '../../auth/src/entities';
 import {
   CreateClinicInternalDto,
@@ -353,4 +353,27 @@ export class AdminService {
 
     return response;
   }
+
+  async updateDoctor(
+    updateDoctorInternalDto: UpdateDoctorInternalDto,
+  ): Promise<{ message: string }> {
+    const doctor = await lastValueFrom<Doctor | null>(
+      this.authClient.send(
+        { cmd: AuthPatterns.GET_DOCTOR_BY_GLOBAL_ID },
+        updateDoctorInternalDto.globalId,
+      ),
+    );
+
+    if (!doctor) {
+      throw new RpcException(new ErrorResponse('Doctor not found!', 404));
+    }
+
+    return await lastValueFrom<{ message: string }>(
+      this.authClient.send(
+        { cmd: AuthPatterns.DOCTOR_UPDATE },
+        updateDoctorInternalDto,
+      ),
+    );
+  }
+
 }

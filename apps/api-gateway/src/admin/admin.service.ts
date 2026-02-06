@@ -13,15 +13,17 @@ import {
   CreateClinicInternalDto,
 } from '../../../admin/src/dtos';
 import {
+  UpdateDoctorDto,
   UpdatePatientDto,
   UpdatePatientInternalDto,
+  UpdateDoctorInternalDto,
 } from '../../../auth/src/dtos';
 import { Doctor, Patient } from '../../../auth/src/entities';
 
 export class AdminService {
   constructor(
     @Inject(Microservices.ADMIN) private readonly adminClient: ClientProxy,
-  ) {}
+  ) { }
 
   async isUp(): Promise<string> {
     return await lastValueFrom<string>(
@@ -201,6 +203,23 @@ export class AdminService {
       this.adminClient.send(
         { cmd: AdminPatterns.GET_DOCTOR_BY_GLOBAL_ID },
         globalId,
+      ),
+    );
+  }
+
+  async updateDoctor(
+    globalId: string,
+    updateDoctorDto: UpdateDoctorDto,
+  ): Promise<{ message: string }> {
+    const updateDoctorInternalDto = new UpdateDoctorInternalDto(
+      updateDoctorDto,
+      globalId,
+    );
+
+    return await lastValueFrom<{ message: string }>(
+      this.adminClient.send(
+        { cmd: AdminPatterns.UPDATE_DOCTOR },
+        updateDoctorInternalDto,
       ),
     );
   }
