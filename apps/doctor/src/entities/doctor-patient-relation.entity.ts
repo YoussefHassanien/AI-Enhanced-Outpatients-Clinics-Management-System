@@ -8,5 +8,5 @@ export abstract class DoctorPatientRelationEntity extends BaseEntity {
 
   @Column()
   @Index()
-  doctorId: number;
+  userId: number;
 }
