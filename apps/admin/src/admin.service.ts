@@ -21,6 +21,7 @@ import {
   DoctorResponseDTO,
   PatientResponseDTO,
 } from './dtos';
+import { CreateVisitInternalDto, DoctorInternalPaginationRequestDto } from '../../doctor/src/dtos';
 import { Clinic } from './entities';
 
 @Injectable()
@@ -139,6 +140,7 @@ export class AdminService {
         name: string;
         id: string;
       };
+      //can be doctor or admin
       doctor: {
         name: string;
         id: string;
@@ -376,4 +378,138 @@ export class AdminService {
     );
   }
 
+  async createVisit(
+    createVisitInternalDto: CreateVisitInternalDto,
+  ): Promise<void> {
+    this.doctorClient.emit(
+      { cmd: DoctorPatterns.VISIT_CREATE },
+      createVisitInternalDto,
+    );
+  }
+
+  async getPatientVisits(socialSecurityNumber: string): Promise<{
+    patient: {
+      id: string;
+      name: string;
+      gender: Gender;
+      dateOfBirth: Date;
+      socialSecurityNumber: string;
+      address: string | null;
+      job: string | null;
+    };
+    clinics: {
+      id: string;
+      name: string;
+      visits: {
+        doctor: {
+          name: string;
+          speciality: string;
+        };
+        diagnosesAudioUrl: string | null;
+        diagnoses: string;
+        createdAt: Date;
+      }[];
+    }[];
+  }> {
+    return await lastValueFrom(
+      this.doctorClient.send(
+        { cmd: DoctorPatterns.GET_PATIENT_VISITS },
+        socialSecurityNumber,
+      ),
+    );
+  }
+
+  async getAdminVisits(
+    doctorInternalPaginationRequestDto: DoctorInternalPaginationRequestDto,
+  ): Promise<
+  PaginationResponse<{
+    id: string;
+    diagnoses: string;
+    diagnosesAudioUrl: string | null;
+    patient: {
+      name: string;
+      id: string;
+    };
+    admin: {
+      name: string;
+      id: string;
+    };
+    createdAt: Date;
+  }>
+  > {
+    if (
+      doctorInternalPaginationRequestDto.limit <= 0 ||
+      doctorInternalPaginationRequestDto.page <= 0
+    ) {
+      throw new RpcException(
+        new ErrorResponse('Page and limit must be positive integers', 400),
+      );
+    }
+
+  const response = await lastValueFrom<
+    PaginationResponse<{
+      id: string;
+      diagnoses: string;
+      diagnosesAudioUrl: string | null;
+      patient: {
+        name: string;
+        id: string;
+      };
+      doctor: {
+        name: string;
+        id: string;
+      };
+      createdAt: Date;
+    }>
+  >(
+    this.doctorClient.send(
+      { cmd: DoctorPatterns.GET_DOCTOR_VISITS },
+      doctorInternalPaginationRequestDto,
+    ),
+  );
+
+  return {
+    ...response,
+    items: response.items.map(({ doctor, ...rest }) => ({
+      ...rest,
+      admin: {
+        id: doctor.id,
+        name: doctor.name,
+      },
+    })),
+  };
+}
+
+  async getAdminPatients(doctorInternalPaginationRequestDto: DoctorInternalPaginationRequestDto): Promise<
+    PaginationResponse<{
+      id: string;
+      name: string;
+      gender: Gender;
+      dateOfBirth: Date;
+      socialSecurityNumber: string;
+      address: string | null;
+      job: string | null;
+    }>
+  > { 
+    if (doctorInternalPaginationRequestDto.limit <= 0 || doctorInternalPaginationRequestDto.page <= 0) {
+      throw new RpcException(
+        new ErrorResponse('Page and limit must be positive integers', 400),
+      );
+    }
+    return await lastValueFrom< PaginationResponse<{
+      id: string;
+      name: string;
+      gender: Gender;
+      dateOfBirth: Date;
+      socialSecurityNumber: string;
+      address: string | null;
+      job: string | null;
+    }>    
+    >(
+      this.doctorClient.send(
+        { cmd: DoctorPatterns.GET_DOCTOR_PATIENTS },
+        doctorInternalPaginationRequestDto,
+      ),
+    );
+  }
 }

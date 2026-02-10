@@ -1023,4 +1023,13 @@ export class AuthService {
 
     return { message: 'Doctor data is successfully updated' };
   }
+
+  async getClinicalStaffByUserId(userId: number): Promise<Doctor | Admin | null> {
+    const doctor = await this.getDoctorByUserId(userId);
+    if (doctor) {
+      return doctor;
+    } else {
+      return await this.getAdminByUserId(userId);
+    }
+  }
 }

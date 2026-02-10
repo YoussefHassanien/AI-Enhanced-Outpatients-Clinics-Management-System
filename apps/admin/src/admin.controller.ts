@@ -1,11 +1,11 @@
 import { AdminPatterns, PaginationRequest } from '@app/common';
 import { Controller } from '@nestjs/common';
-import { MessagePattern, Payload } from '@nestjs/microservices';
+import { MessagePattern, Payload, EventPattern } from '@nestjs/microservices';
 import { UpdatePatientInternalDto, UpdateDoctorInternalDto } from '../../auth/src/dtos';
 import { AdminService } from './admin.service';
 import { CreateClinicInternalDto } from './dtos';
 import { Clinic } from './entities';
-
+import { CreateVisitInternalDto, DoctorInternalPaginationRequestDto } from '../../doctor/src/dtos';
 @Controller()
 export class AdminController {
   constructor(private readonly adminService: AdminService) { }
@@ -85,4 +85,25 @@ export class AdminController {
     return await this.adminService.updateDoctor(updateDoctorInternalDto);
   }
 
+  @EventPattern({ cmd: AdminPatterns.VISIT_CREATE })
+  async visitCreate(
+    @Payload() createVisitInternalDto: CreateVisitInternalDto,
+  ): Promise<void> {
+    await this.adminService.createVisit(createVisitInternalDto);
+  }
+
+  @MessagePattern({ cmd: AdminPatterns.GET_PATIENT_VISITS })
+  async getPatientVisits(@Payload() socialSecurityNumber: string) {
+    return await this.adminService.getPatientVisits(socialSecurityNumber);
+  }
+
+  @MessagePattern({ cmd: AdminPatterns.GET_ADMIN_PATIENTS })
+  async getAdminPatients(@Payload() doctorInternalPaginationRequestDto: DoctorInternalPaginationRequestDto) {
+    return await this.adminService.getAdminPatients(doctorInternalPaginationRequestDto);
+  }
+
+  @MessagePattern({ cmd: AdminPatterns.GET_ADMIN_VISITS })
+  async getAdminVisits(@Payload() doctorInternalPaginationRequestDto: DoctorInternalPaginationRequestDto) {
+    return await this.adminService.getAdminVisits(doctorInternalPaginationRequestDto);
+  }
 }

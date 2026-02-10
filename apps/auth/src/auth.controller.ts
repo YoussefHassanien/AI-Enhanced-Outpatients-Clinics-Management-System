@@ -229,4 +229,17 @@ export class AuthController {
   ): Promise<{ message: string }> {
     return await this.authService.updateDoctor(updateDoctorInternalDto);
   }
+
+  @MessagePattern({ cmd: AuthPatterns.GET_CLINICAL_STAFF_BY_USER_ID })
+  async getClinicalStaffByUserId(
+    @Payload(
+      new ParseIntPipe({
+        exceptionFactory: () =>
+          new RpcException(new ErrorResponse('Invalid id', 400)),
+      }),
+    )
+    clinicalStaffUserId: number,
+  ): Promise<Doctor | Admin | null> {
+    return await this.authService.getClinicalStaffByUserId(clinicalStaffUserId);
+  }
 }
