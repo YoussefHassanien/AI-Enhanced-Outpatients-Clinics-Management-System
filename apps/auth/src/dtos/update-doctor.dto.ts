@@ -52,13 +52,4 @@ export class UpdateDoctorDto {
   @IsOptional()
   speciality?: string;
 
-  @ApiProperty({
-    description: 'The global ID of the clinic the doctor belongs to',
-    example: 'a1b2c3d4-e5f6-7890-1234-567890abcdef',
-  })
-  @IsUUID()
-  @IsNotEmpty()
-  @IsOptional()
-  clinicId?: string;
-
 }
