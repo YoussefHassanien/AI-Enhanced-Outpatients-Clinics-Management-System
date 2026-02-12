@@ -19,7 +19,7 @@ import { IsNull, Repository } from 'typeorm';
 import { v4 as uuidv4 } from 'uuid';
 import { Clinic } from '../../admin/src/entities';
 import { TranscribeAudioInternalDto } from '../../asr/src/dtos';
-import { Doctor, Patient } from '../../auth/src/entities';
+import { Admin, Doctor, Patient } from '../../auth/src/entities';
 import {
   LabAudioInternalDto,
   LabPhotoInternalDto,
@@ -298,6 +298,25 @@ export class DoctorService {
     return 'Doctor service is up';
   }
 
+    private async getClinicalStaffByUserId(
+    doctorUserId: number,
+  ): Promise<Doctor | Admin | null> {
+    const doctor = await lastValueFrom<Doctor | Admin | null>(
+      this.authClient.send(
+        { cmd: AuthPatterns.GET_CLINICAL_STAFF_BY_USER_ID },
+        doctorUserId,
+      ),
+    );
+
+    if (!doctor) {
+      this.logger.log(`Clinical staff member of user id: ${doctorUserId} not found`);
+      return null;
+    }
+
+    this.logger.log('Clinical staff member is found');
+    return doctor;
+  }
+
   async getAllVisits(paginationRequest: PaginationRequest): Promise<
     PaginationResponse<{
       id: string;
@@ -313,7 +332,7 @@ export class DoctorService {
         globalId: true,
         diagnoses: true,
         patientId: true,
-        doctorId: true,
+        userId: true,
         createdAt: true,
       },
       where: {
@@ -330,9 +349,9 @@ export class DoctorService {
     // Fetch patient and doctor global IDs via RPC
     const items = await Promise.all(
       visits.map(async (visit) => {
-        const [patient, doctor] = await Promise.all([
+        const [patient, clinicalStaff] = await Promise.all([
           this.getPatientById(visit.patientId),
-          this.getDoctorById(visit.doctorId),
+          this.getClinicalStaffByUserId(visit.userId),
         ]);
 
         return {
@@ -340,7 +359,7 @@ export class DoctorService {
           diagnoses: visit.diagnoses,
           diagnosesAudioUrl: visit.diagnosesAudioUrl,
           patientId: patient?.globalId ?? 'UNKNOWN',
-          doctorId: doctor?.globalId ?? 'UNKNOWN',
+          doctorId: clinicalStaff?.globalId ?? 'UNKNOWN',
           createdAt: visit.createdAt,
         };
       }),
@@ -376,17 +395,17 @@ export class DoctorService {
       job: string | null;
     }>
   > {
-    const doctor = await this.getDoctorByUserId(
+    const doctor = await this.getClinicalStaffByUserId(
       doctorInternalPaginationRequestDto.doctorUserId,
     );
 
     if (!doctor) {
-      throw new RpcException(new ErrorResponse('Doctor not found!', 404));
+      throw new RpcException(new ErrorResponse('There is no doctor or admin associated with this userId', 404));
     }
 
     const visits = await this.visitsRepository.find({
       where: {
-        doctorId: doctor.id,
+        userId: doctor.user.id,
         deletedAt: IsNull(),
       },
       select: {
@@ -469,17 +488,17 @@ export class DoctorService {
       createdAt: Date;
     }>
   > {
-    const doctor = await this.getDoctorByUserId(
+    const doctor = await this.getClinicalStaffByUserId(
       doctorInternalPaginationRequestDto.doctorUserId,
     );
 
     if (!doctor) {
-      throw new RpcException(new ErrorResponse('Doctor not found!', 404));
+      throw new RpcException(new ErrorResponse('There is no doctor or admin associated with this userId', 404));
     }
 
     const [visits, totalItems] = await this.visitsRepository.findAndCount({
       where: {
-        doctorId: doctor.id,
+        userId: doctor.user.id,
         deletedAt: IsNull(),
       },
       order: {
@@ -507,9 +526,9 @@ export class DoctorService {
         patientIds[index],
         patient
           ? {
-              name: `${patient.user.firstName} ${patient.user.lastName}`,
-              id: patient.globalId,
-            }
+            name: `${patient.user.firstName} ${patient.user.lastName}`,
+            id: patient.globalId,
+          }
           : { name: 'UNKNOWN', id: 'UNKNOWN' },
       ]),
     );
@@ -610,22 +629,22 @@ export class DoctorService {
     ]);
 
     // Extract unique doctor IDs
-    const doctorsIds = [...new Set(patientVisits.map((v) => v.doctorId))];
+    const doctorsUserId = [...new Set(patientVisits.map((v) => v.userId))];
 
     // Fetch all doctors in parallel (batch request)
     const doctors = await Promise.all(
-      doctorsIds.map((id) => this.getDoctorById(id)),
+      doctorsUserId.map((id) => this.getClinicalStaffByUserId(id)),
     );
 
     // Create lookup maps
     const doctorsMap = new Map(
       doctors.map((doctor, index) => [
-        doctorsIds[index],
+        doctorsUserId[index],
         doctor
           ? {
-              name: `${doctor.user.firstName} ${doctor.user.lastName}`,
-              speciality: doctor.speciality,
-            }
+            name: `${doctor.user.firstName} ${doctor.user.lastName}`,
+            speciality: doctor?.speciality ?? 'UNKNOWN',
+          }
           : { name: 'UNKNOWN', speciality: 'UNKNOWN' },
       ]),
     );
@@ -673,7 +692,7 @@ export class DoctorService {
       const clinic = clinicsMap.get(visit.clinicId);
       if (!clinic) return acc;
 
-      const doctor = doctorsMap.get(visit.doctorId);
+      const doctor = doctorsMap.get(visit.userId);
 
       if (!acc[visit.clinicId]) {
         acc[visit.clinicId] = {
@@ -755,9 +774,9 @@ export class DoctorService {
         doctorsIds[index],
         doctor
           ? {
-              name: `${doctor.user.firstName} ${doctor.user.lastName}`,
-              speciality: doctor.speciality,
-            }
+            name: `${doctor.user.firstName} ${doctor.user.lastName}`,
+            speciality: doctor.speciality,
+          }
           : { name: 'UNKNOWN', speciality: 'UNKNOWN' },
       ]),
     );
@@ -856,9 +875,9 @@ export class DoctorService {
         doctorsIds[index],
         doctor
           ? {
-              name: `${doctor.user.firstName} ${doctor.user.lastName}`,
-              speciality: doctor.speciality,
-            }
+            name: `${doctor.user.firstName} ${doctor.user.lastName}`,
+            speciality: doctor.speciality,
+          }
           : { name: 'UNKNOWN', speciality: 'UNKNOWN' },
       ]),
     );
@@ -1003,12 +1022,12 @@ export class DoctorService {
   async createVisit(
     createVisitInternalDto: CreateVisitInternalDto,
   ): Promise<void> {
-    const doctor = await this.getDoctorByUserId(
+    const doctor = await this.getClinicalStaffByUserId(
       createVisitInternalDto.doctorUserId,
     );
 
     if (!doctor) {
-      throw new RpcException(new ErrorResponse('Doctor not found!', 404));
+      throw new RpcException(new ErrorResponse('There is no doctor or admin associated with this userId', 404));
     }
 
     const patient = await this.getPatientByGlobalId(
@@ -1045,7 +1064,7 @@ export class DoctorService {
       diagnoses: '',
       diagnosesAudioUrl: null,
       patientId: patient.id,
-      doctorId: doctor.id,
+      userId: doctor.user.id,
       clinicId: doctor.clinicId,
     });
 

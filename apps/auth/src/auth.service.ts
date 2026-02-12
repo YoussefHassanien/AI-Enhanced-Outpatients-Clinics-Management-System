@@ -30,6 +30,7 @@ import {
   LoginDto,
 } from './dtos';
 import { UpdatePatientInternalDto } from './dtos/update-patient-internal.dto';
+import { UpdateDoctorInternalDto } from './dtos/update-doctor-internal.dto';
 import { Admin, Doctor, Patient, User } from './entities';
 
 @Injectable()
@@ -231,47 +232,61 @@ export class AuthService {
   }
 
   private async checkExistingDoctor(
-    email: string,
-    phone: string,
+    email?: string,
+    phone?: string,
+    excludeId?: number,
   ): Promise<Doctor | null> {
-    email = email.trim().toLowerCase();
+    if (!email && !phone) return null;
 
-    const doctor = await this.doctorRepository.findOne({
-      where: [
-        { email, deletedAt: IsNull(), isApproved: true },
-        { phone, deletedAt: IsNull(), isApproved: true },
-      ],
-    });
+    const where: any[] = [];
 
-    if (!doctor) {
-      this.logger.log('Doctor does not exist');
-      return null;
+    if (email) {
+      where.push({
+        email: email.trim().toLowerCase(),
+        deletedAt: IsNull(),
+        isApproved: true,
+        ...(excludeId && { id: Not(excludeId) }),
+      });
     }
 
-    this.logger.log('Doctor already exists');
-    return doctor;
+    if (phone) {
+      where.push({
+        phone,
+        deletedAt: IsNull(),
+        isApproved: true,
+        ...(excludeId && { id: Not(excludeId) }),
+      });
+    }
+
+    return this.doctorRepository.findOne({ where });
   }
 
   private async checkExistingAdmin(
-    email: string,
-    phone: string,
+    email?: string,
+    phone?: string,
+    excludeId?: number,
   ): Promise<Admin | null> {
-    email = email.trim().toLowerCase();
+    if (!email && !phone) return null;
 
-    const admin = await this.adminRepository.findOne({
-      where: [
-        { email, deletedAt: IsNull() },
-        { phone, deletedAt: IsNull() },
-      ],
-    });
+    const where: any[] = [];
 
-    if (!admin) {
-      this.logger.log('Admin does not exist');
-      return null;
+    if (email) {
+      where.push({
+        email: email.trim().toLowerCase(),
+        deletedAt: IsNull(),
+        ...(excludeId && { id: Not(excludeId) }),
+      });
     }
 
-    this.logger.log('Admin already exists');
-    return admin;
+    if (phone) {
+      where.push({
+        phone,
+        deletedAt: IsNull(),
+        ...(excludeId && { id: Not(excludeId) }),
+      });
+    }
+
+    return this.adminRepository.findOne({ where });
   }
 
   private validateSocialSecurityNumber(socialSecurityNumber: string): void {
@@ -921,27 +936,6 @@ export class AuthService {
   }
 
   async getDoctorByGlobalId(globalId: string): Promise<Doctor | null> {
-    return await this.doctorRepository.findOne({
-      where: { globalId, deletedAt: IsNull() },
-      relations: { user: true },
-      select: {
-        password: false,
-        updatedAt: false,
-        deletedAt: false,
-        user: {
-          id: true,
-          firstName: true,
-          lastName: true,
-          globalId: true,
-          socialSecurityNumber: true,
-          gender: true,
-          dateOfBirth: true,
-        },
-      },
-    });
-  }
-
-  async getDoctorByGlobalId(globalId: string): Promise<Doctor | null> {
     const doctor = await this.doctorRepository.findOne({
       where: { globalId, deletedAt: IsNull() },
       relations: { user: true },
@@ -975,5 +969,100 @@ export class AuthService {
       (doctor as any).clinic = doctorClinc;
     }
     return doctor;
+  }
+
+  async updateDoctor(
+    updateDoctorInternalDto: UpdateDoctorInternalDto,
+  ): Promise<{ message: string }> {
+    const doctor = await this.doctorRepository.findOne({
+      where: {
+        globalId: updateDoctorInternalDto.globalId,
+        deletedAt: IsNull(),
+      },
+      relations: {
+        user: true,
+      },
+    });
+
+    if (!doctor) {
+      throw new RpcException(new ErrorResponse('Doctor not found!', 404));
+    }
+
+    // Email uniqueness check
+    if (updateDoctorInternalDto.email && updateDoctorInternalDto.email.trim().toLowerCase() !== doctor.email) {
+      const email = updateDoctorInternalDto.email.trim().toLowerCase();
+
+      const doctorConflict = await this.checkExistingDoctor(email, undefined, doctor.id);
+      const adminConflict = await this.checkExistingAdmin(email);
+
+      if (doctorConflict || adminConflict) {
+        throw new RpcException(new ErrorResponse('Email already exists!', 400));
+      }
+    }
+
+    // Phone uniqueness check
+    if (updateDoctorInternalDto.phone && updateDoctorInternalDto.phone !== doctor.phone) {
+      const phone = updateDoctorInternalDto.phone;
+
+      const doctorConflict = await this.checkExistingDoctor(undefined, phone, doctor.id);
+      const adminConflict = await this.checkExistingAdmin(undefined, phone);
+
+      if (doctorConflict || adminConflict) {
+        throw new RpcException(new ErrorResponse('Phone already exists!', 400));
+      }
+    }
+
+    await this.doctorRepository.manager.transaction(
+      async (manager: EntityManager) => {
+        // Update User fields if provided
+        if (updateDoctorInternalDto.firstName || updateDoctorInternalDto.lastName) {
+          const userRepository = manager.getRepository(User);
+          const userUpdates: Partial<User> = {};
+
+          if (updateDoctorInternalDto.firstName) {
+            userUpdates.firstName = updateDoctorInternalDto.firstName;
+          }
+          if (updateDoctorInternalDto.lastName) {
+            userUpdates.lastName = updateDoctorInternalDto.lastName;
+          }
+
+          await userRepository.update(doctor.user.id, userUpdates);
+          this.logger.log('Successfully updated user data for doctor');
+        }
+
+        // Update Doctor fields if provided
+        if (
+          updateDoctorInternalDto.email ||
+          updateDoctorInternalDto.phone ||
+          updateDoctorInternalDto.speciality
+        ) {
+          const doctorRepository = manager.getRepository(Doctor);
+          const doctorUpdates: Partial<Doctor> = {};
+
+          if (updateDoctorInternalDto.email) {
+            doctorUpdates.email = updateDoctorInternalDto.email.trim().toLowerCase();
+          }
+          if (updateDoctorInternalDto.phone) {
+            doctorUpdates.phone = updateDoctorInternalDto.phone;
+          }
+          if (updateDoctorInternalDto.speciality) {
+            doctorUpdates.speciality = updateDoctorInternalDto.speciality;
+          }
+          await doctorRepository.update(doctor.id, doctorUpdates);
+          this.logger.log('Successfully updated doctor data');
+        }
+      },
+    );
+
+    return { message: 'Doctor data is successfully updated' };
+  }
+
+  async getClinicalStaffByUserId(userId: number): Promise<Doctor | Admin | null> {
+    const doctor = await this.getDoctorByUserId(userId);
+    if (doctor) {
+      return doctor;
+    } else {
+      return await this.getAdminByUserId(userId);
+    }
   }
 }
