@@ -19,17 +19,24 @@ import {
   Query,
   Req,
   UseGuards,
+  UseInterceptors,
+  UploadedFile,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { Request } from 'express';
+import { diskStorage } from 'multer';
+import { extname } from 'path';
+import { v4 as uuidv4 } from 'uuid';
 import { CreateClinicDto } from '../../../admin/src/dtos';
-import { UpdatePatientDto } from '../../../auth/src/dtos';
+import { UpdatePatientDto, UpdateDoctorDto } from '../../../auth/src/dtos';
+import { CreateVisitDto } from '../../../doctor/src/dtos';
 import { User } from '../../../auth/src/entities';
 import { JwtAuthGuard } from '../auth/guards';
 import { AdminService } from './admin.service';
 
 @Controller('admin')
 export class AdminController {
-  constructor(private readonly adminService: AdminService) {}
+  constructor(private readonly adminService: AdminService) { }
 
   @Get()
   async isUp(): Promise<string> {
@@ -178,5 +185,127 @@ export class AdminController {
     globalId: string,
   ) {
     return await this.adminService.getDoctorByGlobalId(globalId);
+  }
+
+
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @UseGuards(JwtAuthGuard)
+  @Patch('doctor/:id')
+  async updateDoctor(
+    @Param(
+      'id',
+      new ParseUUIDPipe({
+        exceptionFactory: () => new BadRequestException('Invalid doctor ID'),
+      }),
+    )
+    globalId: string,
+    @Body() updateDoctorDto: UpdateDoctorDto,
+  ): Promise<{ message: string }> {
+    return await this.adminService.updateDoctor(globalId, updateDoctorDto);
+  }
+
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @UseGuards(JwtAuthGuard)
+  @UseInterceptors(
+    FileInterceptor('audio', {
+      storage: diskStorage({
+        destination: process.env.ASR_TMP_DIR,
+        filename: (req, file, cb) => {
+          const randomName = uuidv4();
+          cb(null, `${randomName}${extname(file.originalname)}`);
+        },
+      }),
+    }),
+  )
+  @Post('visit/create')
+  async createVisit(
+    @Body() createVisitDto: CreateVisitDto,
+    @Req() req: Request,
+    @UploadedFile() audio?: Express.Multer.File,
+  ): Promise<void> {
+    const user = req.user as User;
+    await this.adminService.createVisit(createVisitDto, user.id, audio);
+  }
+
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @UseGuards(JwtAuthGuard)
+  @Get('patient/:socialSecurityNumber/visits')
+  async getPatientVisits(
+    @Param('socialSecurityNumber') socialSecurityNumber: string,
+  ): Promise<
+    {
+      patient: {
+        id: string;
+        name: string;
+        gender: Gender;
+        dateOfBirth: Date;
+        socialSecurityNumber: string;
+        address: string;
+        job: string;
+      };
+      clinic: {
+        id: string;
+        name: string;
+        visits: {
+          doctor: {
+            name: string;
+            speciality: string;
+          };
+          diagnoses: string;
+        }[];
+      };
+    }[]
+  > {
+    return await this.adminService.getPatientVisits(socialSecurityNumber);
+  }
+
+  
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @UseGuards(JwtAuthGuard)
+  @Get('my-patients')
+  async getAdminPatients(
+    @Req() req: Request,
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query('limit', new DefaultValuePipe(30), ParseIntPipe) limit: number,
+  ): Promise<
+    PaginationResponse<{
+      id: string;
+      name: string;
+      gender: Gender;
+      dateOfBirth: Date;
+      socialSecurityNumber: string;
+      address: string | null;
+      job: string | null;
+    }>
+  > {
+    const user = req.user as User;
+    return await this.adminService.getAdminPatients(user.id, page, limit);
+  }
+
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @UseGuards(JwtAuthGuard)
+  @Get('my-visits')
+  async getAdminVisits(
+    @Req() req: Request,
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query('limit', new DefaultValuePipe(30), ParseIntPipe) limit: number,
+  ): Promise<
+    PaginationResponse<{
+      id: string;
+      diagnoses: string;
+      diagnosesAudioUrl: string | null;
+      patient: {
+        name: string;
+        id: string;
+      };
+      admin: {
+        name: string;
+        id: string;
+      };
+      createdAt: Date;
+    }>
+  > {
+    const user = req.user as User;
+    return await this.adminService.getAdminVisits(user.id, page, limit);
   }
 }

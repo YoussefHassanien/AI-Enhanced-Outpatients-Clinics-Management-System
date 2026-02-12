@@ -5,7 +5,7 @@ import {
   PaginationRequest,
   PaginationResponse,
 } from '@app/common';
-import { Inject } from '@nestjs/common';
+import { Inject, BadRequestException } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { lastValueFrom } from 'rxjs';
 import {
@@ -13,15 +13,18 @@ import {
   CreateClinicInternalDto,
 } from '../../../admin/src/dtos';
 import {
+  UpdateDoctorDto,
   UpdatePatientDto,
   UpdatePatientInternalDto,
+  UpdateDoctorInternalDto,
 } from '../../../auth/src/dtos';
+import { CreateVisitDto,CreateVisitInternalDto,DoctorInternalPaginationRequestDto } from '../../../doctor/src/dtos';
 import { Doctor, Patient } from '../../../auth/src/entities';
 
 export class AdminService {
   constructor(
     @Inject(Microservices.ADMIN) private readonly adminClient: ClientProxy,
-  ) {}
+  ) { }
 
   async isUp(): Promise<string> {
     return await lastValueFrom<string>(
@@ -201,6 +204,186 @@ export class AdminService {
       this.adminClient.send(
         { cmd: AdminPatterns.GET_DOCTOR_BY_GLOBAL_ID },
         globalId,
+      ),
+    );
+  }
+
+  async updateDoctor(
+    globalId: string,
+    updateDoctorDto: UpdateDoctorDto,
+  ): Promise<{ message: string }> {
+    const updateDoctorInternalDto = new UpdateDoctorInternalDto(
+      updateDoctorDto,
+      globalId,
+    );
+
+    return await lastValueFrom<{ message: string }>(
+      this.adminClient.send(
+        { cmd: AdminPatterns.UPDATE_DOCTOR },
+        updateDoctorInternalDto,
+      ),
+    );
+  }
+
+  private validateAudioFile(audio?: Express.Multer.File) {
+    const audioTypeRegExp: RegExp =
+      /(audio\/mpeg|audio\/wave|audio\/mp3|audio\/ogg|audio\/wav)$/;
+    const audioSize: number = 10 * 1024 * 1024; // 10 MB
+
+    if (audio) {
+      console.log('Audio mimetype:', audio.mimetype);
+      if (!audioTypeRegExp.test(audio.mimetype)) {
+        throw new BadRequestException('Invalid audio file type');
+      }
+
+      if (audio.size > audioSize) {
+        throw new BadRequestException('Audio file too large');
+      }
+    }
+  }
+
+  async createVisit(
+    createVisitDto: CreateVisitDto,
+    userId: number,
+    audio?: Express.Multer.File,
+  ): Promise<void> {
+    this.validateAudioFile(audio);
+
+    const createVisitInternalDto = new CreateVisitInternalDto(
+      createVisitDto,
+      userId,
+      audio?.path,
+      audio?.mimetype,
+    );
+
+    await lastValueFrom<void>(
+      this.adminClient.emit(
+        { cmd: AdminPatterns.VISIT_CREATE },
+        createVisitInternalDto,
+      ),
+    );
+  }
+
+  private validateSocialSecurityNumber(socialSecurityNumber: string): void {
+    const regex = /^[23]\d{2}(0[1-9]|1[0-2])(0[1-9]|[12]\d|3[01])\d{7}$/;
+    if (!regex.test(socialSecurityNumber)) {
+      throw new BadRequestException('Invalid social security number format');
+    }
+  }
+
+  async getPatientVisits(socialSecurityNumber: string): Promise<
+    {
+      patient: {
+        id: string;
+        name: string;
+        gender: Gender;
+        dateOfBirth: Date;
+        socialSecurityNumber: string;
+        address: string;
+        job: string;
+      };
+      clinic: {
+        id: string;
+        name: string;
+        visits: {
+          doctor: {
+            name: string;
+            speciality: string;
+          };
+          diagnoses: string;
+        }[];
+      };
+    }[]
+  > {
+    this.validateSocialSecurityNumber(socialSecurityNumber);
+    return await lastValueFrom<
+      {
+        patient: {
+          id: string;
+          name: string;
+          gender: Gender;
+          dateOfBirth: Date;
+          socialSecurityNumber: string;
+          address: string;
+          job: string;
+        };
+        clinic: {
+          id: string;
+          name: string;
+          visits: {
+            doctor: {
+              name: string;
+              speciality: string;
+            };
+            diagnoses: string;
+          }[];
+        };
+      }[]
+    >(
+      this.adminClient.send(
+        { cmd: AdminPatterns.GET_PATIENT_VISITS },
+        socialSecurityNumber,
+      ),
+    );
+  }
+
+  async getAdminPatients(
+    adminUserId: number,
+    page: number,
+    limit: number,
+  ): Promise<
+    PaginationResponse<{
+      id: string;
+      name: string;
+      gender: Gender;
+      dateOfBirth: Date;
+      socialSecurityNumber: string;
+      address: string | null;
+      job: string | null;
+    }>
+  > {
+    const paginationRequest: PaginationRequest = { page, limit };
+
+    const doctorInternalPaginationRequestDto =
+      new DoctorInternalPaginationRequestDto(paginationRequest, adminUserId);
+
+    return await lastValueFrom(
+      this.adminClient.send(
+        { cmd: AdminPatterns.GET_ADMIN_PATIENTS },
+        doctorInternalPaginationRequestDto,
+      ),
+    );
+  }
+
+  async getAdminVisits(
+    adminUserId: number,
+    page: number,
+    limit: number,
+  ): Promise<
+    PaginationResponse<{
+      id: string;
+      diagnoses: string;
+      diagnosesAudioUrl: string | null;
+      patient: {
+        name: string;
+        id: string;
+      };
+      admin: {
+        name: string;
+        id: string;
+      };
+      createdAt: Date;
+    }>
+  > {
+    const paginationRequest: PaginationRequest = { page, limit };
+  
+    const doctorInternalPaginationRequestDto =
+      new DoctorInternalPaginationRequestDto(paginationRequest, adminUserId);
+  
+    return await lastValueFrom(
+      this.adminClient.send(
+        { cmd: AdminPatterns.GET_ADMIN_VISITS },
+        doctorInternalPaginationRequestDto,
       ),
     );
   }
