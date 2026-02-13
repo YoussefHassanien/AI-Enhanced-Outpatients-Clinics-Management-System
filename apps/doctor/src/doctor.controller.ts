@@ -32,10 +32,10 @@ export class DoctorController {
     return await this.doctorService.createVisit(createVisitInternalDto);
   }
 
-  @EventPattern({ cmd: DoctorPatterns.MEDICATION_CREATE })
+  @MessagePattern({ cmd: DoctorPatterns.MEDICATION_CREATE })
   async medicationCreate(
     @Payload() createMedicationInternalDto: CreateMedicationInternalDto,
-  ): Promise<void> {
+  ): Promise<{ success: boolean }> {
     return await this.doctorService.createMedication(
       createMedicationInternalDto,
     );
@@ -209,18 +209,18 @@ export class DoctorController {
     );
   }
 
-  @EventPattern({ cmd: DoctorPatterns.LAB_UPLOAD })
+  @MessagePattern({ cmd: DoctorPatterns.LAB_UPLOAD })
   async uploadLab(
     @Payload() uploadLabInternalDto: UploadLabInternalDto,
-  ): Promise<void> {
-    await this.doctorService.uploadLab(uploadLabInternalDto);
+  ): Promise<{ success: boolean }> {
+    return await this.doctorService.uploadLab(uploadLabInternalDto);
   }
 
-  @EventPattern({ cmd: DoctorPatterns.SCAN_UPLOAD })
+  @MessagePattern({ cmd: DoctorPatterns.SCAN_UPLOAD })
   async uploadScan(
     @Payload() uploadScanInternalDto: UploadScanInternalDto,
-  ): Promise<void> {
-    await this.doctorService.uploadScan(uploadScanInternalDto);
+  ): Promise<{ success: boolean }> {
+    return await this.doctorService.uploadScan(uploadScanInternalDto);
   }
 
   @MessagePattern({

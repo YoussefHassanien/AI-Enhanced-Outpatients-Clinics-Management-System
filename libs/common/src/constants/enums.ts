@@ -89,6 +89,9 @@ export enum AdminPatterns {
   GET_PATIENT_VISITS = 'admin.patient.visits',
   GET_ADMIN_PATIENTS = 'admin.patients',
   GET_ADMIN_VISITS='admin.visits',
+  MEDICATION_CREATE = 'admin.medication.create',
+  LAB_UPLOAD = 'admin.lab.upload',
+  SCAN_UPLOAD = 'admin.scan.upload',
 }
 
 export enum AsrPatterns {

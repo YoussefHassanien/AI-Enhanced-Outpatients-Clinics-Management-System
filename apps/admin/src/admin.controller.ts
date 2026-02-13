@@ -1,14 +1,22 @@
-import { AdminPatterns, PaginationRequest } from '@app/common';
-import { Controller } from '@nestjs/common';
+import { AdminPatterns, CommonServices, LoggingService, PaginationRequest } from '@app/common';
+import { Controller, Inject } from '@nestjs/common';
 import { MessagePattern, Payload, EventPattern } from '@nestjs/microservices';
 import { UpdatePatientInternalDto, UpdateDoctorInternalDto } from '../../auth/src/dtos';
 import { AdminService } from './admin.service';
-import { CreateClinicInternalDto } from './dtos';
+import { CreateClinicInternalDto, CreateMedicationAdminInternalDto, UploadLabAdminInternalDto, UploadScanAdminInternalDto } from './dtos';
 import { Clinic } from './entities';
 import { CreateVisitInternalDto, DoctorInternalPaginationRequestDto } from '../../doctor/src/dtos';
+
 @Controller()
 export class AdminController {
-  constructor(private readonly adminService: AdminService) { }
+  private readonly logger: LoggingService;
+
+  constructor(
+    private readonly adminService: AdminService,
+    @Inject(CommonServices.LOGGING) logger: LoggingService,
+  ) {
+    this.logger = logger;
+  }
 
   @MessagePattern({ cmd: AdminPatterns.IS_UP })
   isUp(): string {
@@ -105,5 +113,20 @@ export class AdminController {
   @MessagePattern({ cmd: AdminPatterns.GET_ADMIN_VISITS })
   async getAdminVisits(@Payload() doctorInternalPaginationRequestDto: DoctorInternalPaginationRequestDto) {
     return await this.adminService.getAdminVisits(doctorInternalPaginationRequestDto);
+  }
+
+  @MessagePattern({ cmd: AdminPatterns.MEDICATION_CREATE })
+  async createMedication(@Payload() createMedicationAdminInternalDto: CreateMedicationAdminInternalDto) {
+    return await this.adminService.createMedication(createMedicationAdminInternalDto);
+  }
+
+  @MessagePattern({ cmd: AdminPatterns.LAB_UPLOAD })
+  async uploadLab(@Payload() uploadLabAdminInternalDto: UploadLabAdminInternalDto) {
+    return await this.adminService.uploadLab(uploadLabAdminInternalDto);
+  }
+
+  @MessagePattern({ cmd: AdminPatterns.SCAN_UPLOAD })
+  async uploadScan(@Payload() uploadScanAdminInternalDto: UploadScanAdminInternalDto) {
+    return await this.adminService.uploadScan(uploadScanAdminInternalDto);
   }
 }

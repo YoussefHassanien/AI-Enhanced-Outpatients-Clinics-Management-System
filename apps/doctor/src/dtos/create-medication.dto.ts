@@ -7,6 +7,7 @@ import {
   IsUUID,
   MaxLength,
 } from 'class-validator';
+import { Transform } from 'class-transformer';
 import { MedicationDosage, MedicationPeriod } from '../constants';
 
 export class CreateMedicationDto {
@@ -25,6 +26,7 @@ export class CreateMedicationDto {
     enum: MedicationDosage,
     enumName: 'MedicationDosage',
   })
+  @Transform(({ value }) => String(value))
   @IsEnum(MedicationDosage)
   dosage: MedicationDosage;
 
@@ -34,6 +36,7 @@ export class CreateMedicationDto {
     enum: MedicationPeriod,
     enumName: 'MedicationPeriod',
   })
+  @Transform(({ value }) => String(value))
   @IsEnum(MedicationPeriod)
   period: MedicationPeriod;
 

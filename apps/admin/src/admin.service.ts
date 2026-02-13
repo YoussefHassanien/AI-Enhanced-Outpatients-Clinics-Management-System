@@ -17,6 +17,11 @@ import { IsNull, Repository } from 'typeorm';
 import { UpdatePatientInternalDto, UpdateDoctorInternalDto } from '../../auth/src/dtos';
 import { Admin, Doctor, Patient } from '../../auth/src/entities';
 import {
+  CreateMedicationInternalDto,
+  UploadLabInternalDto,
+  UploadScanInternalDto,
+} from '../../doctor/src/dtos';
+import {
   CreateClinicInternalDto,
   DoctorResponseDTO,
   PatientResponseDTO,
@@ -421,20 +426,20 @@ export class AdminService {
   async getAdminVisits(
     doctorInternalPaginationRequestDto: DoctorInternalPaginationRequestDto,
   ): Promise<
-  PaginationResponse<{
-    id: string;
-    diagnoses: string;
-    diagnosesAudioUrl: string | null;
-    patient: {
-      name: string;
+    PaginationResponse<{
       id: string;
-    };
-    admin: {
-      name: string;
-      id: string;
-    };
-    createdAt: Date;
-  }>
+      diagnoses: string;
+      diagnosesAudioUrl: string | null;
+      patient: {
+        name: string;
+        id: string;
+      };
+      admin: {
+        name: string;
+        id: string;
+      };
+      createdAt: Date;
+    }>
   > {
     if (
       doctorInternalPaginationRequestDto.limit <= 0 ||
@@ -445,39 +450,39 @@ export class AdminService {
       );
     }
 
-  const response = await lastValueFrom<
-    PaginationResponse<{
-      id: string;
-      diagnoses: string;
-      diagnosesAudioUrl: string | null;
-      patient: {
-        name: string;
+    const response = await lastValueFrom<
+      PaginationResponse<{
         id: string;
-      };
-      doctor: {
-        name: string;
-        id: string;
-      };
-      createdAt: Date;
-    }>
-  >(
-    this.doctorClient.send(
-      { cmd: DoctorPatterns.GET_DOCTOR_VISITS },
-      doctorInternalPaginationRequestDto,
-    ),
-  );
+        diagnoses: string;
+        diagnosesAudioUrl: string | null;
+        patient: {
+          name: string;
+          id: string;
+        };
+        doctor: {
+          name: string;
+          id: string;
+        };
+        createdAt: Date;
+      }>
+    >(
+      this.doctorClient.send(
+        { cmd: DoctorPatterns.GET_DOCTOR_VISITS },
+        doctorInternalPaginationRequestDto,
+      ),
+    );
 
-  return {
-    ...response,
-    items: response.items.map(({ doctor, ...rest }) => ({
-      ...rest,
-      admin: {
-        id: doctor.id,
-        name: doctor.name,
-      },
-    })),
-  };
-}
+    return {
+      ...response,
+      items: response.items.map(({ doctor, ...rest }) => ({
+        ...rest,
+        admin: {
+          id: doctor.id,
+          name: doctor.name,
+        },
+      })),
+    };
+  }
 
   async getAdminPatients(doctorInternalPaginationRequestDto: DoctorInternalPaginationRequestDto): Promise<
     PaginationResponse<{
@@ -489,13 +494,13 @@ export class AdminService {
       address: string | null;
       job: string | null;
     }>
-  > { 
+  > {
     if (doctorInternalPaginationRequestDto.limit <= 0 || doctorInternalPaginationRequestDto.page <= 0) {
       throw new RpcException(
         new ErrorResponse('Page and limit must be positive integers', 400),
       );
     }
-    return await lastValueFrom< PaginationResponse<{
+    return await lastValueFrom<PaginationResponse<{
       id: string;
       name: string;
       gender: Gender;
@@ -503,11 +508,134 @@ export class AdminService {
       socialSecurityNumber: string;
       address: string | null;
       job: string | null;
-    }>    
+    }>
     >(
       this.doctorClient.send(
         { cmd: DoctorPatterns.GET_DOCTOR_PATIENTS },
         doctorInternalPaginationRequestDto,
+      ),
+    );
+  }
+
+  async createMedication(payload: {
+    createMedicationDto: any;
+    patientGlobalId: string;
+    adminUserId: number;
+    audioFilePath?: string;
+    audioMimetype?: string;
+  }): Promise<{ success: boolean }> {
+    // Get patient by global ID to get SSN
+    const patient = await lastValueFrom<Patient | null>(
+      this.authClient.send(
+        { cmd: AuthPatterns.GET_PATIENT_BY_GLOBAL_ID },
+        payload.patientGlobalId,
+      ),
+    );
+
+    if (!patient) {
+      throw new RpcException(new ErrorResponse('Patient not found', 404));
+    }
+
+    // Transform to doctor service format (using SSN and patientId from doctor's DTO)
+    const createMedicationInternalDto = new CreateMedicationInternalDto(
+      {
+        ...payload.createMedicationDto,
+        dosage: String(payload.createMedicationDto.dosage), // Convert to string for enum
+        period: String(payload.createMedicationDto.period), // Convert to string for enum
+        patientId: patient.globalId, // Doctor's DTO expects patientId (global ID)
+      },
+      payload.adminUserId, // Admin's user.id becomes userId
+      payload.audioFilePath,
+      payload.audioMimetype,
+    );
+
+    // Forward to doctor service
+    return await lastValueFrom(
+      this.doctorClient.send(
+        { cmd: DoctorPatterns.MEDICATION_CREATE },
+        createMedicationInternalDto,
+      ),
+    );
+  }
+
+  async uploadLab(payload: {
+    uploadLabDto: any;
+    patientGlobalId: string;
+    adminUserId: number;
+    imageFilePath: string;
+    imageMimetype: string;
+    audioFilePath?: string;
+    audioMimetype?: string;
+  }): Promise<{ success: boolean }> {
+    // Get patient by global ID to get SSN
+    const patient = await lastValueFrom<Patient | null>(
+      this.authClient.send(
+        { cmd: AuthPatterns.GET_PATIENT_BY_GLOBAL_ID },
+        payload.patientGlobalId,
+      ),
+    );
+
+    if (!patient) {
+      throw new RpcException(new ErrorResponse('Patient not found', 404));
+    }
+
+    // Transform to doctor service format (doctor service expects SSN as param)
+    const uploadLabInternalDto = new UploadLabInternalDto(
+      payload.uploadLabDto,
+      patient.user.socialSecurityNumber.toString(), // Doctor's service expects SSN
+      payload.adminUserId,
+      payload.imageFilePath,
+      payload.imageMimetype,
+      payload.audioFilePath,
+      payload.audioMimetype,
+    );
+
+    // Forward to doctor service
+    return await lastValueFrom(
+      this.doctorClient.send(
+        { cmd: DoctorPatterns.LAB_UPLOAD },
+        uploadLabInternalDto,
+      ),
+    );
+  }
+
+  async uploadScan(payload: {
+    uploadScanDto: any;
+    patientGlobalId: string;
+    adminUserId: number;
+    imageFilePath: string;
+    imageMimetype: string;
+    audioFilePath?: string;
+    audioMimetype?: string;
+  }): Promise<{ success: boolean }> {
+    // Get patient by global ID to get SSN
+    const patient = await lastValueFrom<Patient | null>(
+      this.authClient.send(
+        { cmd: AuthPatterns.GET_PATIENT_BY_GLOBAL_ID },
+        payload.patientGlobalId,
+      ),
+    );
+
+    if (!patient) {
+      throw new RpcException(new ErrorResponse('Patient not found', 404));
+    }
+
+    // Transform to doctor service format (doctor service expects SSN as param)
+    const uploadScanInternalDto = new UploadScanInternalDto(
+      payload.uploadScanDto,
+      patient.user.socialSecurityNumber.toString(), // Doctor's service expects SSN
+      payload.adminUserId,
+      payload.imageFilePath,
+      payload.imageMimetype,
+      payload.audioFilePath,
+      payload.audioMimetype,
+    );
+
+    // Forward to doctor service
+    return await lastValueFrom(
+      this.doctorClient.send(
+        { cmd: DoctorPatterns.SCAN_UPLOAD },
+        uploadScanInternalDto,
       ),
     );
   }

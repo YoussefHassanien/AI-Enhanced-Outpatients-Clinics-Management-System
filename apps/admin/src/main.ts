@@ -41,8 +41,17 @@ async function bootstrap() {
     new ValidationPipe({
       transform: true,
       forbidUnknownValues: true,
-      exceptionFactory: () =>
-        new RpcException(new ErrorResponse('Invalid payload', 400)),
+      exceptionFactory: (errors) => {
+        const messages = errors.map((error) => {
+          const constraints = error.constraints
+            ? Object.values(error.constraints).join(', ')
+            : 'Invalid value';
+          return `${error.property}: ${constraints}`;
+        });
+        return new RpcException(
+          new ErrorResponse(`Validation failed: ${messages.join('; ')}`, 400),
+        );
+      },
     }),
   );
   app.useGlobalInterceptors(LoggingInterceptor(configService, 'admin'));

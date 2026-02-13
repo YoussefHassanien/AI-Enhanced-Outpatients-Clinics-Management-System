@@ -18,8 +18,9 @@ import {
   UpdatePatientInternalDto,
   UpdateDoctorInternalDto,
 } from '../../../auth/src/dtos';
-import { CreateVisitDto,CreateVisitInternalDto,DoctorInternalPaginationRequestDto } from '../../../doctor/src/dtos';
+import { CreateVisitDto, CreateVisitInternalDto, DoctorInternalPaginationRequestDto, UploadLabDto, UploadScanDto } from '../../../doctor/src/dtos';
 import { Doctor, Patient } from '../../../auth/src/entities';
+import { CreateMedicationAdminDto } from './dtos';
 
 export class AdminService {
   constructor(
@@ -231,7 +232,6 @@ export class AdminService {
     const audioSize: number = 10 * 1024 * 1024; // 10 MB
 
     if (audio) {
-      console.log('Audio mimetype:', audio.mimetype);
       if (!audioTypeRegExp.test(audio.mimetype)) {
         throw new BadRequestException('Invalid audio file type');
       }
@@ -376,15 +376,73 @@ export class AdminService {
     }>
   > {
     const paginationRequest: PaginationRequest = { page, limit };
-  
+
     const doctorInternalPaginationRequestDto =
       new DoctorInternalPaginationRequestDto(paginationRequest, adminUserId);
-  
+
     return await lastValueFrom(
       this.adminClient.send(
         { cmd: AdminPatterns.GET_ADMIN_VISITS },
         doctorInternalPaginationRequestDto,
       ),
+    );
+  }
+
+  async createMedication(
+    createMedicationDto: CreateMedicationAdminDto,
+    patientGlobalId: string,
+    adminUserId: number,
+    audio?: Express.Multer.File,
+  ): Promise<void> {
+    // Forward directly to admin microservice which handles the transformation
+    await lastValueFrom(
+      this.adminClient.send({ cmd: AdminPatterns.MEDICATION_CREATE }, {
+        createMedicationDto,
+        patientGlobalId,
+        adminUserId,
+        audioFilePath: audio?.path,
+        audioMimetype: audio?.mimetype,
+      }),
+    );
+  }
+
+  async uploadLab(
+    uploadLabDto: UploadLabDto,
+    patientGlobalId: string,
+    adminUserId: number,
+    image: Express.Multer.File,
+    audio?: Express.Multer.File,
+  ): Promise<void> {
+    await lastValueFrom(
+      this.adminClient.send({ cmd: AdminPatterns.LAB_UPLOAD }, {
+        uploadLabDto,
+        patientGlobalId,
+        adminUserId,
+        imageFilePath: image.path,
+        imageMimetype: image.mimetype,
+        audioFilePath: audio?.path,
+        audioMimetype: audio?.mimetype,
+      }),
+    );
+  }
+
+  async uploadScan(
+    uploadScanDto: UploadScanDto,
+    patientGlobalId: string,
+    adminUserId: number,
+    image: Express.Multer.File,
+    audio?: Express.Multer.File,
+  ): Promise<void> {
+    await lastValueFrom(
+      this.adminClient.send({ cmd: AdminPatterns.SCAN_UPLOAD }, {
+        uploadScanDto,
+        patientGlobalId,
+        adminUserId,
+        imageFilePath: image.path,
+        imageMimetype: image.mimetype,
+        audioFilePath: audio?.path,
+        audioMimetype: audio?.mimetype,
+      }),
     );
   }
 }

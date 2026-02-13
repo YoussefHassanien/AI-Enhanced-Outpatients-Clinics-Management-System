@@ -18,18 +18,24 @@ import {
   Post,
   Query,
   Req,
+  UploadedFile,
+  UploadedFiles,
   UseGuards,
   UseInterceptors,
-  UploadedFile,
 } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
-import { Request } from 'express';
+import { FileFieldsInterceptor, FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
+import { Request } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import { CreateClinicDto } from '../../../admin/src/dtos';
+import {
+  UploadLabDto,
+  UploadScanDto,
+  CreateVisitDto
+} from '../../../doctor/src/dtos';
+import { CreateMedicationAdminDto } from './dtos';
 import { UpdatePatientDto, UpdateDoctorDto } from '../../../auth/src/dtos';
-import { CreateVisitDto } from '../../../doctor/src/dtos';
 import { User } from '../../../auth/src/entities';
 import { JwtAuthGuard } from '../auth/guards';
 import { AdminService } from './admin.service';
@@ -259,7 +265,7 @@ export class AdminController {
     return await this.adminService.getPatientVisits(socialSecurityNumber);
   }
 
-  
+
   @Roles(Role.ADMIN, Role.SUPER_ADMIN)
   @UseGuards(JwtAuthGuard)
   @Get('my-patients')
@@ -307,5 +313,132 @@ export class AdminController {
   > {
     const user = req.user as User;
     return await this.adminService.getAdminVisits(user.id, page, limit);
+  }
+
+  @Post('patient/:id/medication')
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @UseGuards(JwtAuthGuard)
+  @UseInterceptors(
+    FileInterceptor('audio', {
+      storage: diskStorage({
+        destination: process.env.ASR_TMP_DIR,
+        filename: (req, file, cb) => {
+          const randomName = uuidv4();
+          cb(null, `${randomName}${extname(file.originalname)}`);
+        },
+      }),
+    }),
+  )
+  async createMedication(
+    @Param(
+      'id',
+      new ParseUUIDPipe({
+        exceptionFactory: () => new BadRequestException('Invalid patient ID'),
+      }),
+    )
+    patientGlobalId: string,
+    @Body() createMedicationDto: CreateMedicationAdminDto,
+    @Req() req: Request,
+    @UploadedFile() audio?: Express.Multer.File,
+  ): Promise<void> {
+    const user = req.user as User;
+    await this.adminService.createMedication(
+      createMedicationDto,
+      patientGlobalId,
+      user.id,
+      audio,
+    );
+  }
+
+  @Post('patient/:id/lab')
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @UseGuards(JwtAuthGuard)
+  @UseInterceptors(
+    FileFieldsInterceptor(
+      [
+        { name: 'image', maxCount: 1 },
+        { name: 'audio', maxCount: 1 },
+      ],
+      {
+        storage: diskStorage({
+          destination: process.env.ASR_TMP_DIR,
+          filename: (req, file, cb) => {
+            const randomName = uuidv4();
+            cb(null, `${randomName}${extname(file.originalname)}`);
+          },
+        }),
+      },
+    ),
+  )
+  async uploadLab(
+    @Param(
+      'id',
+      new ParseUUIDPipe({
+        exceptionFactory: () => new BadRequestException('Invalid patient ID'),
+      }),
+    )
+    patientGlobalId: string,
+    @Body() uploadLabDto: UploadLabDto,
+    @UploadedFiles()
+    files: { image?: Express.Multer.File[]; audio?: Express.Multer.File[] },
+    @Req() req: Request,
+  ): Promise<void> {
+    if (!files.image?.[0]) {
+      throw new BadRequestException('Image file is required');
+    }
+    const user = req.user as User;
+    await this.adminService.uploadLab(
+      uploadLabDto,
+      patientGlobalId,
+      user.id,
+      files.image[0],
+      files.audio?.[0],
+    );
+  }
+
+  @Post('patient/:id/scan')
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @UseGuards(JwtAuthGuard)
+  @UseInterceptors(
+    FileFieldsInterceptor(
+      [
+        { name: 'image', maxCount: 1 },
+        { name: 'audio', maxCount: 1 },
+      ],
+      {
+        storage: diskStorage({
+          destination: process.env.ASR_TMP_DIR,
+          filename: (req, file, cb) => {
+            const randomName = uuidv4();
+            cb(null, `${randomName}${extname(file.originalname)}`);
+          },
+        }),
+      },
+    ),
+  )
+  async uploadScan(
+    @Param(
+      'id',
+      new ParseUUIDPipe({
+        exceptionFactory: () => new BadRequestException('Invalid patient ID'),
+      }),
+    )
+    patientGlobalId: string,
+    @Body() uploadScanDto: UploadScanDto,
+    @UploadedFiles()
+    files: { image?: Express.Multer.File[]; audio?: Express.Multer.File[] },
+    @Req() req: Request,
+  ): Promise<void> {
+    if (!files.image?.[0]) {
+      throw new BadRequestException('Image file is required');
+    }
+    const user = req.user as User;
+    await this.adminService.uploadScan(
+      uploadScanDto,
+      patientGlobalId,
+      user.id,
+      files.image[0],
+      files.audio?.[0],
+    );
   }
 }
