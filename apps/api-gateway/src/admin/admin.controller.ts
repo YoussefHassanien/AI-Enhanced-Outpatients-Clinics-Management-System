@@ -316,7 +316,7 @@ export class AdminController {
   }
 
   @Post('patient/:id/medication')
-  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @Roles(Role.ADMIN)
   @UseGuards(JwtAuthGuard)
   @UseInterceptors(
     FileInterceptor('audio', {
@@ -351,7 +351,7 @@ export class AdminController {
   }
 
   @Post('patient/:id/lab')
-  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @Roles(Role.ADMIN)
   @UseGuards(JwtAuthGuard)
   @UseInterceptors(
     FileFieldsInterceptor(
@@ -383,21 +383,18 @@ export class AdminController {
     files: { image?: Express.Multer.File[]; audio?: Express.Multer.File[] },
     @Req() req: Request,
   ): Promise<void> {
-    if (!files.image?.[0]) {
-      throw new BadRequestException('Image file is required');
-    }
     const user = req.user as User;
     await this.adminService.uploadLab(
       uploadLabDto,
       patientGlobalId,
       user.id,
-      files.image[0],
+      files.image?.[0],
       files.audio?.[0],
     );
   }
 
   @Post('patient/:id/scan')
-  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @Roles(Role.ADMIN)
   @UseGuards(JwtAuthGuard)
   @UseInterceptors(
     FileFieldsInterceptor(
@@ -429,15 +426,12 @@ export class AdminController {
     files: { image?: Express.Multer.File[]; audio?: Express.Multer.File[] },
     @Req() req: Request,
   ): Promise<void> {
-    if (!files.image?.[0]) {
-      throw new BadRequestException('Image file is required');
-    }
     const user = req.user as User;
     await this.adminService.uploadScan(
       uploadScanDto,
       patientGlobalId,
       user.id,
-      files.image[0],
+      files.image?.[0],
       files.audio?.[0],
     );
   }

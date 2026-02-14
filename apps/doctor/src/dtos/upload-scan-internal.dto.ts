@@ -4,13 +4,20 @@ import {
   IsNotEmpty,
   IsOptional,
   IsString,
+  IsUUID,
+  ValidateIf,
 } from 'class-validator';
 import { UploadScanDto } from './upload-scan.dto';
 
 export class UploadScanInternalDto extends UploadScanDto {
+  @ValidateIf((o) => !o.patientGlobalId)
   @IsString()
   @IsNotEmpty()
-  readonly patientSocialSecurityNumber: string;
+  readonly patientSocialSecurityNumber?: string;
+
+  @ValidateIf((o) => !o.patientSocialSecurityNumber)
+  @IsUUID()
+  readonly patientGlobalId?: string;
 
   @IsString()
   @IsNotEmpty()

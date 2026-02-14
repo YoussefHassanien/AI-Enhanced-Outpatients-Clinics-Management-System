@@ -1,27 +1,44 @@
-import { IsInt, IsOptional, IsPositive, IsString, IsUUID, IsMimeType, IsObject } from 'class-validator';
+import {
+    IsInt,
+    IsMimeType,
+    IsNotEmpty,
+    IsOptional,
+    IsPositive,
+    IsString,
+    IsUUID,
+    MaxLength,
+} from 'class-validator';
 
 export class UploadLabAdminInternalDto {
-    @IsObject()
-    uploadLabDto: any;
+    @IsString()
+    @IsNotEmpty()
+    @MaxLength(256)
+    readonly name: string;
+
+    @IsString()
+    @MaxLength(512)
+    @IsOptional()
+    readonly comments?: string;
 
     @IsUUID()
-    patientGlobalId: string;
+    readonly patientGlobalId: string;
 
     @IsInt()
     @IsPositive()
-    adminUserId: number;
+    readonly adminUserId: number;
 
     @IsString()
-    imageFilePath: string;
+    @IsNotEmpty()
+    readonly imageFilePath: string;
 
     @IsMimeType()
-    imageMimetype: string;
+    readonly imageMimetype: string;
 
     @IsString()
     @IsOptional()
-    audioFilePath?: string;
+    readonly audioFilePath?: string;
 
     @IsMimeType()
     @IsOptional()
-    audioMimetype?: string;
+    readonly audioMimetype?: string;
 }

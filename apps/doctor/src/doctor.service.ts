@@ -1115,7 +1115,9 @@ export class DoctorService {
       throw new RpcException(new ErrorResponse('Patient not found!', 404));
     }
 
+    const medicationGlobalId = uuidv4();
     const medication = this.medicationsRepository.create({
+      globalId: medicationGlobalId,
       name: createMedicationInternalDto.name,
       comments: null,
       userId: createMedicationInternalDto.doctorUserId,
@@ -1172,15 +1174,19 @@ export class DoctorService {
   }
 
   async uploadLab(uploadLabInternalDto: UploadLabInternalDto): Promise<{ success: boolean }> {
-    const patient = await this.getPatientBySocialSecurityNumber(
-      uploadLabInternalDto.patientSocialSecurityNumber,
-    );
+    const patient = uploadLabInternalDto.patientGlobalId
+      ? await this.getPatientByGlobalId(uploadLabInternalDto.patientGlobalId)
+      : await this.getPatientBySocialSecurityNumber(
+        uploadLabInternalDto.patientSocialSecurityNumber!,
+      );
 
     if (!patient) {
       throw new RpcException(new ErrorResponse('Patient not found!', 404));
     }
 
+    const labGlobalId = uuidv4();
     const lab = this.labsRepository.create({
+      globalId: labGlobalId,
       name: uploadLabInternalDto.name,
       comments: null,
       userId: uploadLabInternalDto.doctorUserId,
@@ -1246,15 +1252,19 @@ export class DoctorService {
   async uploadScan(
     uploadScanInternalDto: UploadScanInternalDto,
   ): Promise<{ success: boolean }> {
-    const patient = await this.getPatientBySocialSecurityNumber(
-      uploadScanInternalDto.patientSocialSecurityNumber,
-    );
+    const patient = uploadScanInternalDto.patientGlobalId
+      ? await this.getPatientByGlobalId(uploadScanInternalDto.patientGlobalId)
+      : await this.getPatientBySocialSecurityNumber(
+        uploadScanInternalDto.patientSocialSecurityNumber!,
+      );
 
     if (!patient) {
       throw new RpcException(new ErrorResponse('Patient not found!', 404));
     }
 
+    const scanGlobalId = uuidv4();
     const scan = this.scansRepository.create({
+      globalId: scanGlobalId,
       name: uploadScanInternalDto.name,
       type: uploadScanInternalDto.type,
       comments: null,

@@ -18,15 +18,17 @@ import { UpdatePatientInternalDto, UpdateDoctorInternalDto } from '../../auth/sr
 import { Admin, Doctor, Patient } from '../../auth/src/entities';
 import {
   CreateMedicationInternalDto,
-  UploadLabInternalDto,
-  UploadScanInternalDto,
+  CreateVisitInternalDto,
+  DoctorInternalPaginationRequestDto,
 } from '../../doctor/src/dtos';
 import {
   CreateClinicInternalDto,
+  CreateMedicationAdminInternalDto,
   DoctorResponseDTO,
   PatientResponseDTO,
+  UploadLabAdminInternalDto,
+  UploadScanAdminInternalDto,
 } from './dtos';
-import { CreateVisitInternalDto, DoctorInternalPaginationRequestDto } from '../../doctor/src/dtos';
 import { Clinic } from './entities';
 
 @Injectable()
@@ -517,125 +519,67 @@ export class AdminService {
     );
   }
 
-  async createMedication(payload: {
-    createMedicationDto: any;
-    patientGlobalId: string;
-    adminUserId: number;
-    audioFilePath?: string;
-    audioMimetype?: string;
-  }): Promise<{ success: boolean }> {
-    // Get patient by global ID to get SSN
-    const patient = await lastValueFrom<Patient | null>(
-      this.authClient.send(
-        { cmd: AuthPatterns.GET_PATIENT_BY_GLOBAL_ID },
-        payload.patientGlobalId,
-      ),
-    );
-
-    if (!patient) {
-      throw new RpcException(new ErrorResponse('Patient not found', 404));
-    }
-
-    // Transform to doctor service format (using SSN and patientId from doctor's DTO)
+  async createMedication(
+    createMedicationAdminInternalDto: CreateMedicationAdminInternalDto,
+  ): Promise<void> {
     const createMedicationInternalDto = new CreateMedicationInternalDto(
       {
-        ...payload.createMedicationDto,
-        dosage: String(payload.createMedicationDto.dosage), // Convert to string for enum
-        period: String(payload.createMedicationDto.period), // Convert to string for enum
-        patientId: patient.globalId, // Doctor's DTO expects patientId (global ID)
+        name: createMedicationAdminInternalDto.name,
+        dosage: createMedicationAdminInternalDto.dosage,
+        period: createMedicationAdminInternalDto.period,
+        comments: createMedicationAdminInternalDto.comments,
+        patientId: createMedicationAdminInternalDto.patientGlobalId,
       },
-      payload.adminUserId, // Admin's user.id becomes userId
-      payload.audioFilePath,
-      payload.audioMimetype,
+      createMedicationAdminInternalDto.adminUserId,
+      createMedicationAdminInternalDto.audioFilePath,
+      createMedicationAdminInternalDto.audioMimetype,
     );
 
-    // Forward to doctor service
-    return await lastValueFrom(
-      this.doctorClient.send(
+    await lastValueFrom<void>(
+      this.doctorClient.emit(
         { cmd: DoctorPatterns.MEDICATION_CREATE },
         createMedicationInternalDto,
       ),
     );
   }
 
-  async uploadLab(payload: {
-    uploadLabDto: any;
-    patientGlobalId: string;
-    adminUserId: number;
-    imageFilePath: string;
-    imageMimetype: string;
-    audioFilePath?: string;
-    audioMimetype?: string;
-  }): Promise<{ success: boolean }> {
-    // Get patient by global ID to get SSN
-    const patient = await lastValueFrom<Patient | null>(
-      this.authClient.send(
-        { cmd: AuthPatterns.GET_PATIENT_BY_GLOBAL_ID },
-        payload.patientGlobalId,
-      ),
-    );
-
-    if (!patient) {
-      throw new RpcException(new ErrorResponse('Patient not found', 404));
-    }
-
-    // Transform to doctor service format (doctor service expects SSN as param)
-    const uploadLabInternalDto = new UploadLabInternalDto(
-      payload.uploadLabDto,
-      patient.user.socialSecurityNumber.toString(), // Doctor's service expects SSN
-      payload.adminUserId,
-      payload.imageFilePath,
-      payload.imageMimetype,
-      payload.audioFilePath,
-      payload.audioMimetype,
-    );
-
-    // Forward to doctor service
-    return await lastValueFrom(
-      this.doctorClient.send(
+  async uploadLab(
+    uploadLabAdminInternalDto: UploadLabAdminInternalDto,
+  ): Promise<void> {
+    await lastValueFrom<void>(
+      this.doctorClient.emit(
         { cmd: DoctorPatterns.LAB_UPLOAD },
-        uploadLabInternalDto,
+        {
+          name: uploadLabAdminInternalDto.name,
+          comments: uploadLabAdminInternalDto.comments,
+          patientGlobalId: uploadLabAdminInternalDto.patientGlobalId,
+          doctorUserId: uploadLabAdminInternalDto.adminUserId,
+          imageFilePath: uploadLabAdminInternalDto.imageFilePath,
+          imageMimetype: uploadLabAdminInternalDto.imageMimetype,
+          audioFilePath: uploadLabAdminInternalDto.audioFilePath,
+          audioMimetype: uploadLabAdminInternalDto.audioMimetype,
+        },
       ),
     );
   }
 
-  async uploadScan(payload: {
-    uploadScanDto: any;
-    patientGlobalId: string;
-    adminUserId: number;
-    imageFilePath: string;
-    imageMimetype: string;
-    audioFilePath?: string;
-    audioMimetype?: string;
-  }): Promise<{ success: boolean }> {
-    // Get patient by global ID to get SSN
-    const patient = await lastValueFrom<Patient | null>(
-      this.authClient.send(
-        { cmd: AuthPatterns.GET_PATIENT_BY_GLOBAL_ID },
-        payload.patientGlobalId,
-      ),
-    );
-
-    if (!patient) {
-      throw new RpcException(new ErrorResponse('Patient not found', 404));
-    }
-
-    // Transform to doctor service format (doctor service expects SSN as param)
-    const uploadScanInternalDto = new UploadScanInternalDto(
-      payload.uploadScanDto,
-      patient.user.socialSecurityNumber.toString(), // Doctor's service expects SSN
-      payload.adminUserId,
-      payload.imageFilePath,
-      payload.imageMimetype,
-      payload.audioFilePath,
-      payload.audioMimetype,
-    );
-
-    // Forward to doctor service
-    return await lastValueFrom(
-      this.doctorClient.send(
+  async uploadScan(
+    uploadScanAdminInternalDto: UploadScanAdminInternalDto,
+  ): Promise<void> {
+    await lastValueFrom<void>(
+      this.doctorClient.emit(
         { cmd: DoctorPatterns.SCAN_UPLOAD },
-        uploadScanInternalDto,
+        {
+          name: uploadScanAdminInternalDto.name,
+          comments: uploadScanAdminInternalDto.comments,
+          type: uploadScanAdminInternalDto.type,
+          patientGlobalId: uploadScanAdminInternalDto.patientGlobalId,
+          doctorUserId: uploadScanAdminInternalDto.adminUserId,
+          imageFilePath: uploadScanAdminInternalDto.imageFilePath,
+          imageMimetype: uploadScanAdminInternalDto.imageMimetype,
+          audioFilePath: uploadScanAdminInternalDto.audioFilePath,
+          audioMimetype: uploadScanAdminInternalDto.audioMimetype,
+        },
       ),
     );
   }

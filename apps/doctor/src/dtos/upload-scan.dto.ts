@@ -6,7 +6,6 @@ import {
   IsString,
   MaxLength,
 } from 'class-validator';
-import { Transform } from 'class-transformer';
 import { ScanTypes } from '../constants';
 
 export class UploadScanDto {
@@ -33,7 +32,6 @@ export class UploadScanDto {
     description: 'Scans types',
     example: ScanTypes.MRI,
   })
-  @Transform(({ value }) => String(value))
   @IsEnum(ScanTypes)
   type: ScanTypes;
 }

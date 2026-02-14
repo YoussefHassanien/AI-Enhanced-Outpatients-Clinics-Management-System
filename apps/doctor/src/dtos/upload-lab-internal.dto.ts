@@ -4,13 +4,20 @@ import {
   IsNotEmpty,
   IsOptional,
   IsString,
+  IsUUID,
+  ValidateIf,
 } from 'class-validator';
 import { UploadLabDto } from './upload-lab.dto';
 
 export class UploadLabInternalDto extends UploadLabDto {
+  @ValidateIf((o) => !o.patientGlobalId)
   @IsString()
   @IsNotEmpty()
-  readonly patientSocialSecurityNumber: string;
+  readonly patientSocialSecurityNumber?: string;
+
+  @ValidateIf((o) => !o.patientSocialSecurityNumber)
+  @IsUUID()
+  readonly patientGlobalId?: string;
 
   @IsString()
   @IsNotEmpty()

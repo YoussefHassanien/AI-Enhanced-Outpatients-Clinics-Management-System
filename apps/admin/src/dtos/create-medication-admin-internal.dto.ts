@@ -1,21 +1,46 @@
-import { IsInt, IsOptional, IsPositive, IsString, IsUUID, IsMimeType, IsObject } from 'class-validator';
+import {
+    IsEnum,
+    IsInt,
+    IsMimeType,
+    IsNotEmpty,
+    IsOptional,
+    IsPositive,
+    IsString,
+    IsUUID,
+    MaxLength,
+} from 'class-validator';
+import { MedicationDosage, MedicationPeriod } from '../../../doctor/src/constants';
 
 export class CreateMedicationAdminInternalDto {
-    @IsObject()
-    createMedicationDto: any;
+    @IsString()
+    @IsNotEmpty()
+    @MaxLength(256)
+    readonly name: string;
+
+    @IsEnum(MedicationDosage)
+    readonly dosage: MedicationDosage;
+
+    @IsEnum(MedicationPeriod)
+    readonly period: MedicationPeriod;
+
+    @IsOptional()
+    @IsString()
+    @IsNotEmpty()
+    @MaxLength(512)
+    readonly comments?: string;
 
     @IsUUID()
-    patientGlobalId: string;
+    readonly patientGlobalId: string;
 
     @IsInt()
     @IsPositive()
-    adminUserId: number;
+    readonly adminUserId: number;
 
     @IsString()
     @IsOptional()
-    audioFilePath?: string;
+    readonly audioFilePath?: string;
 
     @IsMimeType()
     @IsOptional()
-    audioMimetype?: string;
+    readonly audioMimetype?: string;
 }

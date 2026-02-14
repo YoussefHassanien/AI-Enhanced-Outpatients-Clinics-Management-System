@@ -115,18 +115,24 @@ export class AdminController {
     return await this.adminService.getAdminVisits(doctorInternalPaginationRequestDto);
   }
 
-  @MessagePattern({ cmd: AdminPatterns.MEDICATION_CREATE })
-  async createMedication(@Payload() createMedicationAdminInternalDto: CreateMedicationAdminInternalDto) {
-    return await this.adminService.createMedication(createMedicationAdminInternalDto);
+  @EventPattern({ cmd: AdminPatterns.MEDICATION_CREATE })
+  async createMedication(
+    @Payload() createMedicationAdminInternalDto: CreateMedicationAdminInternalDto,
+  ): Promise<void> {
+    await this.adminService.createMedication(createMedicationAdminInternalDto);
   }
 
-  @MessagePattern({ cmd: AdminPatterns.LAB_UPLOAD })
-  async uploadLab(@Payload() uploadLabAdminInternalDto: UploadLabAdminInternalDto) {
-    return await this.adminService.uploadLab(uploadLabAdminInternalDto);
+  @EventPattern({ cmd: AdminPatterns.LAB_UPLOAD })
+  async uploadLab(
+    @Payload() uploadLabAdminInternalDto: UploadLabAdminInternalDto,
+  ): Promise<void> {
+    await this.adminService.uploadLab(uploadLabAdminInternalDto);
   }
 
-  @MessagePattern({ cmd: AdminPatterns.SCAN_UPLOAD })
-  async uploadScan(@Payload() uploadScanAdminInternalDto: UploadScanAdminInternalDto) {
-    return await this.adminService.uploadScan(uploadScanAdminInternalDto);
+  @EventPattern({ cmd: AdminPatterns.SCAN_UPLOAD })
+  async uploadScan(
+    @Payload() uploadScanAdminInternalDto: UploadScanAdminInternalDto,
+  ): Promise<void> {
+    await this.adminService.uploadScan(uploadScanAdminInternalDto);
   }
 }
