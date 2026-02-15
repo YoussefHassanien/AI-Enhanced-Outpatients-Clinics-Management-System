@@ -1,5 +1,4 @@
 import {
-  AdminPatterns,
   CommonServices,
   ErrorResponse,
   Gender,
@@ -9,6 +8,7 @@ import {
   PaginationRequest,
   PaginationResponse,
   Role,
+  SuperAdminPatterns,
 } from '@app/common';
 import { Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -19,7 +19,7 @@ import * as bcrypt from 'bcrypt';
 import { Algorithm } from 'jsonwebtoken';
 import { lastValueFrom } from 'rxjs';
 import { EntityManager, IsNull, Not, Repository } from 'typeorm';
-import { Clinic } from '../../admin/src/entities';
+import { Clinic } from '../../super-admin/src/entities';
 import { JwtPayload } from './constants';
 import {
   CreateAdminDto,
@@ -28,10 +28,10 @@ import {
   CreateUserDto,
   CredentialsResponseDto,
   LoginDto,
+  UpdateDoctorInternalDto,
+  UpdatePatientInternalDto,
 } from './dtos';
-import { UpdatePatientInternalDto } from './dtos/update-patient-internal.dto';
-import { UpdateDoctorInternalDto } from './dtos/update-doctor-internal.dto';
-import { Admin, Doctor, Patient, User } from './entities';
+import { Admin, Doctor, Patient, SuperAdmin, User } from './entities';
 
 @Injectable()
 export class AuthService {
@@ -53,6 +53,8 @@ export class AuthService {
     private readonly doctorRepository: Repository<Doctor>,
     @InjectRepository(Admin)
     private readonly adminRepository: Repository<Admin>,
+    @InjectRepository(SuperAdmin)
+    private readonly superAdminRepository: Repository<SuperAdmin>,
     @Inject(CommonServices.LOGGING) logger: LoggingService,
     @Inject(Microservices.ADMIN) private readonly adminClient: ClientProxy,
   ) {
@@ -232,61 +234,69 @@ export class AuthService {
   }
 
   private async checkExistingDoctor(
-    email?: string,
-    phone?: string,
-    excludeId?: number,
+    email: string,
+    phone: string,
   ): Promise<Doctor | null> {
-    if (!email && !phone) return null;
+    email = email.trim().toLowerCase();
 
-    const where: any[] = [];
+    const doctor = await this.doctorRepository.findOne({
+      where: [
+        { email, deletedAt: IsNull(), isApproved: true },
+        { phone, deletedAt: IsNull(), isApproved: true },
+      ],
+    });
 
-    if (email) {
-      where.push({
-        email: email.trim().toLowerCase(),
-        deletedAt: IsNull(),
-        isApproved: true,
-        ...(excludeId && { id: Not(excludeId) }),
-      });
+    if (!doctor) {
+      this.logger.log('Doctor does not exist');
+      return null;
     }
 
-    if (phone) {
-      where.push({
-        phone,
-        deletedAt: IsNull(),
-        isApproved: true,
-        ...(excludeId && { id: Not(excludeId) }),
-      });
-    }
-
-    return this.doctorRepository.findOne({ where });
+    this.logger.log('Doctor already exists');
+    return doctor;
   }
 
   private async checkExistingAdmin(
-    email?: string,
-    phone?: string,
-    excludeId?: number,
+    email: string,
+    phone: string,
   ): Promise<Admin | null> {
-    if (!email && !phone) return null;
+    email = email.trim().toLowerCase();
 
-    const where: any[] = [];
+    const admin = await this.adminRepository.findOne({
+      where: [
+        { email, deletedAt: IsNull() },
+        { phone, deletedAt: IsNull() },
+      ],
+    });
 
-    if (email) {
-      where.push({
-        email: email.trim().toLowerCase(),
-        deletedAt: IsNull(),
-        ...(excludeId && { id: Not(excludeId) }),
-      });
+    if (!admin) {
+      this.logger.log('Admin does not exist');
+      return null;
     }
 
-    if (phone) {
-      where.push({
-        phone,
-        deletedAt: IsNull(),
-        ...(excludeId && { id: Not(excludeId) }),
-      });
+    this.logger.log('Admin already exists');
+    return admin;
+  }
+
+  private async checkExistingSuperAdmin(
+    email: string,
+    phone: string,
+  ): Promise<SuperAdmin | null> {
+    email = email.trim().toLowerCase();
+
+    const superAdmin = await this.superAdminRepository.findOne({
+      where: [
+        { email, deletedAt: IsNull() },
+        { phone, deletedAt: IsNull() },
+      ],
+    });
+
+    if (!superAdmin) {
+      this.logger.log('Super Admin does not exist');
+      return null;
     }
 
-    return this.adminRepository.findOne({ where });
+    this.logger.log('Super Admin already exists');
+    return superAdmin;
   }
 
   private validateSocialSecurityNumber(socialSecurityNumber: string): void {
@@ -444,9 +454,18 @@ export class AuthService {
       throw new RpcException(new ErrorResponse('Doctor already exists!', 400));
     }
 
+    const existingSuperAdmin = await this.checkExistingSuperAdmin(
+      doctorDto.email,
+      doctorDto.phone,
+    );
+
+    if (existingSuperAdmin) {
+      throw new RpcException(new ErrorResponse('Doctor already exists!', 400));
+    }
+
     const clinic = await lastValueFrom<Clinic | null>(
       this.adminClient.send(
-        { cmd: AdminPatterns.GET_CLINIC_BY_GLOBAL_ID },
+        { cmd: SuperAdminPatterns.GET_CLINIC_BY_GLOBAL_ID },
         doctorDto.clinicId,
       ),
     );
@@ -511,6 +530,15 @@ export class AuthService {
     );
 
     if (existingAdmin) {
+      throw new RpcException(new ErrorResponse('Admin already exists!', 400));
+    }
+
+    const existingSuperAdmin = await this.checkExistingSuperAdmin(
+      adminDto.email,
+      adminDto.phone,
+    );
+
+    if (existingSuperAdmin) {
       throw new RpcException(new ErrorResponse('Admin already exists!', 400));
     }
 
@@ -974,25 +1002,47 @@ export class AuthService {
     }
 
     // Email uniqueness check
-    if (updateDoctorInternalDto.email && updateDoctorInternalDto.email.trim().toLowerCase() !== doctor.email) {
+    if (
+      updateDoctorInternalDto.email &&
+      updateDoctorInternalDto.email.trim().toLowerCase() !== doctor.email
+    ) {
       const email = updateDoctorInternalDto.email.trim().toLowerCase();
 
-      const doctorConflict = await this.checkExistingDoctor(email, undefined, doctor.id);
-      const adminConflict = await this.checkExistingAdmin(email);
+      const doctorConflict = await this.doctorRepository.findOneBy({
+        email,
+      });
 
-      if (doctorConflict || adminConflict) {
+      const adminConflict = await this.adminRepository.findOneBy({
+        email,
+      });
+      const superAdminConflict = await this.superAdminRepository.findOneBy({
+        email,
+      });
+
+      if (doctorConflict || adminConflict || superAdminConflict) {
         throw new RpcException(new ErrorResponse('Email already exists!', 400));
       }
     }
 
     // Phone uniqueness check
-    if (updateDoctorInternalDto.phone && updateDoctorInternalDto.phone !== doctor.phone) {
+    if (
+      updateDoctorInternalDto.phone &&
+      updateDoctorInternalDto.phone !== doctor.phone
+    ) {
       const phone = updateDoctorInternalDto.phone;
 
-      const doctorConflict = await this.checkExistingDoctor(undefined, phone, doctor.id);
-      const adminConflict = await this.checkExistingAdmin(undefined, phone);
+      const doctorConflict = await this.doctorRepository.findOneBy({
+        phone,
+      });
 
-      if (doctorConflict || adminConflict) {
+      const adminConflict = await this.adminRepository.findOneBy({
+        phone,
+      });
+      const superAdminConflict = await this.superAdminRepository.findOneBy({
+        phone,
+      });
+
+      if (doctorConflict || adminConflict || superAdminConflict) {
         throw new RpcException(new ErrorResponse('Phone already exists!', 400));
       }
     }
@@ -1000,7 +1050,10 @@ export class AuthService {
     await this.doctorRepository.manager.transaction(
       async (manager: EntityManager) => {
         // Update User fields if provided
-        if (updateDoctorInternalDto.firstName || updateDoctorInternalDto.lastName) {
+        if (
+          updateDoctorInternalDto.firstName ||
+          updateDoctorInternalDto.lastName
+        ) {
           const userRepository = manager.getRepository(User);
           const userUpdates: Partial<User> = {};
 
@@ -1025,7 +1078,9 @@ export class AuthService {
           const doctorUpdates: Partial<Doctor> = {};
 
           if (updateDoctorInternalDto.email) {
-            doctorUpdates.email = updateDoctorInternalDto.email.trim().toLowerCase();
+            doctorUpdates.email = updateDoctorInternalDto.email
+              .trim()
+              .toLowerCase();
           }
           if (updateDoctorInternalDto.phone) {
             doctorUpdates.phone = updateDoctorInternalDto.phone;
@@ -1042,12 +1097,11 @@ export class AuthService {
     return { message: 'Doctor data is successfully updated' };
   }
 
-  async getClinicalStaffByUserId(userId: number): Promise<Doctor | Admin | null> {
+  async getClinicalStaffByUserId(
+    userId: number,
+  ): Promise<Doctor | Admin | null> {
     const doctor = await this.getDoctorByUserId(userId);
-    if (doctor) {
-      return doctor;
-    } else {
-      return await this.getAdminByUserId(userId);
-    }
+
+    return doctor ? doctor : await this.getAdminByUserId(userId);
   }
 }

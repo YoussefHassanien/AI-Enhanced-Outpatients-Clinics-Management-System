@@ -5,232 +5,32 @@ import {
   PaginationRequest,
   PaginationResponse,
 } from '@app/common';
-import { Inject, BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { lastValueFrom } from 'rxjs';
 import {
-  CreateClinicDto,
-  CreateClinicInternalDto,
-} from '../../../admin/src/dtos';
-import {
-  UpdateDoctorDto,
-  UpdatePatientDto,
-  UpdatePatientInternalDto,
-  UpdateDoctorInternalDto,
-} from '../../../auth/src/dtos';
-import {
+  CreateMedicationDto,
+  CreateMedicationInternalDto,
   CreateVisitDto,
   CreateVisitInternalDto,
   DoctorInternalPaginationRequestDto,
   UploadLabDto,
+  UploadLabInternalDto,
   UploadScanDto,
+  UploadScanInternalDto,
 } from '../../../doctor/src/dtos';
-import { Doctor } from '../../../auth/src/entities';
-import { CreateMedicationAdminDto } from './dtos';
 
 @Injectable()
 export class AdminService {
   constructor(
     @Inject(Microservices.ADMIN) private readonly adminClient: ClientProxy,
-  ) { }
+  ) {}
 
-  async isUp(): Promise<string> {
-    return await lastValueFrom<string>(
-      this.adminClient.send({ cmd: AdminPatterns.IS_UP }, {}),
-    );
-  }
-
-  async getAllDoctors(paginationRequest: PaginationRequest): Promise<
-    PaginationResponse<{
-      id: string;
-      phone: string;
-      email: string;
-      speciality: string;
-      isApproved: boolean;
-      user: {
-        id: string;
-        socialSecurityNumber: bigint;
-        gender: Gender;
-        firstName: string;
-        lastName: string;
-        dateOfBirth: Date;
-      };
-    }>
-  > {
-    return await lastValueFrom<
-      PaginationResponse<{
-        id: string;
-        phone: string;
-        email: string;
-        speciality: string;
-        isApproved: boolean;
-        user: {
-          id: string;
-          socialSecurityNumber: bigint;
-          gender: Gender;
-          firstName: string;
-          lastName: string;
-          dateOfBirth: Date;
-        };
-      }>
-    >(
-      this.adminClient.send(
-        { cmd: AdminPatterns.GET_ALL_DOCTORS },
-        paginationRequest,
-      ),
-    );
-  }
-
-  async getAllPatients(paginationRequest: PaginationRequest): Promise<
-    PaginationResponse<{
-      id: string;
-      address: string;
-      job: string;
-      user: {
-        id: string;
-        socialSecurityNumber: bigint;
-        gender: Gender;
-        firstName: string;
-        lastName: string;
-        dateOfBirth: Date;
-      };
-    }>
-  > {
-    return await lastValueFrom<
-      PaginationResponse<{
-        id: string;
-        address: string;
-        job: string;
-        user: {
-          id: string;
-          socialSecurityNumber: bigint;
-          gender: Gender;
-          firstName: string;
-          lastName: string;
-          dateOfBirth: Date;
-        };
-      }>
-    >(
-      this.adminClient.send(
-        { cmd: AdminPatterns.GET_ALL_PATIENTS },
-        paginationRequest,
-      ),
-    );
-  }
-
-  async getAllVisits(paginationRequest: PaginationRequest): Promise<
-    PaginationResponse<{
-      id: string;
-      diagnoses: string;
-      patientId: string;
-      doctorId: string;
-      createdAt: Date;
-    }>
-  > {
-    return await lastValueFrom<
-      PaginationResponse<{
-        id: string;
-        diagnoses: string;
-        patientId: string;
-        doctorId: string;
-        createdAt: Date;
-      }>
-    >(
-      this.adminClient.send(
-        { cmd: AdminPatterns.GET_ALL_VISITS },
-        paginationRequest,
-      ),
-    );
-  }
-
-  async updatePatient(
-    globalId: string,
-    updatePatientDto: UpdatePatientDto,
-  ): Promise<{ message: string }> {
-    const updatePatientInternalDto = new UpdatePatientInternalDto(
-      updatePatientDto,
-      globalId,
-    );
-
-    return await lastValueFrom<{ message: string }>(
-      this.adminClient.send(
-        { cmd: AdminPatterns.UPDATE_PATIENT },
-        updatePatientInternalDto,
-      ),
-    );
-  }
-
-  async createClinic(
-    adminUserId: number,
-    createClinicDto: CreateClinicDto,
-  ): Promise<{
-    id: string;
-    name: string;
-    speciality: string;
-  }> {
-    const createClinicInternalDto = new CreateClinicInternalDto(
-      createClinicDto,
-      adminUserId,
-    );
-
-    return await lastValueFrom<{
-      id: string;
-      name: string;
-      speciality: string;
-    }>(
-      this.adminClient.send(
-        { cmd: AdminPatterns.CREATE_CLINIC },
-        createClinicInternalDto,
-      ),
-    );
-  }
-
-  async getAllClinics(): Promise<
-    { id: string; name: string; speciality: string; createdAt: Date }[]
-  > {
-    return await lastValueFrom<
-      { id: string; name: string; speciality: string; createdAt: Date }[]
-    >(
-      this.adminClient.send(
-        { cmd: AdminPatterns.GET_ALL_CLINICS_WITH_GLOBAL_ID },
-        {},
-      ),
-    );
-  }
-
-  async getPatientByGlobalId(globalId: string) {
-    return await lastValueFrom(
-      this.adminClient.send(
-        { cmd: AdminPatterns.GET_PATIENT_BY_GLOBAL_ID },
-        globalId,
-      ),
-    );
-  }
-
-  async getDoctorByGlobalId(globalId: string): Promise<Doctor | null> {
-    return await lastValueFrom<Doctor | null>(
-      this.adminClient.send(
-        { cmd: AdminPatterns.GET_DOCTOR_BY_GLOBAL_ID },
-        globalId,
-      ),
-    );
-  }
-
-  async updateDoctor(
-    globalId: string,
-    updateDoctorDto: UpdateDoctorDto,
-  ): Promise<{ message: string }> {
-    const updateDoctorInternalDto = new UpdateDoctorInternalDto(
-      updateDoctorDto,
-      globalId,
-    );
-
-    return await lastValueFrom<{ message: string }>(
-      this.adminClient.send(
-        { cmd: AdminPatterns.UPDATE_DOCTOR },
-        updateDoctorInternalDto,
-      ),
-    );
+  private validateSocialSecurityNumber(socialSecurityNumber: string): void {
+    const regex = /^[23]\d{2}(0[1-9]|1[0-2])(0[1-9]|[12]\d|3[01])\d{7}$/;
+    if (!regex.test(socialSecurityNumber)) {
+      throw new BadRequestException('Invalid social security number format');
+    }
   }
 
   private validateImageFile(image?: Express.Multer.File) {
@@ -266,36 +66,13 @@ export class AdminService {
     }
   }
 
-  async createVisit(
-    createVisitDto: CreateVisitDto,
-    userId: number,
-    audio?: Express.Multer.File,
-  ): Promise<void> {
-    this.validateAudioFile(audio);
-
-    const createVisitInternalDto = new CreateVisitInternalDto(
-      createVisitDto,
-      userId,
-      audio?.path,
-      audio?.mimetype,
-    );
-
-    await lastValueFrom<void>(
-      this.adminClient.emit(
-        { cmd: AdminPatterns.VISIT_CREATE },
-        createVisitInternalDto,
-      ),
+  async isUp(): Promise<string> {
+    return await lastValueFrom<string>(
+      this.adminClient.send({ cmd: AdminPatterns.IS_UP }, {}),
     );
   }
 
-  private validateSocialSecurityNumber(socialSecurityNumber: string): void {
-    const regex = /^[23]\d{2}(0[1-9]|1[0-2])(0[1-9]|[12]\d|3[01])\d{7}$/;
-    if (!regex.test(socialSecurityNumber)) {
-      throw new BadRequestException('Invalid social security number format');
-    }
-  }
-
-  async getPatientVisits(socialSecurityNumber: string): Promise<
+  async getPatientVisits(patientGlobalId: string): Promise<
     {
       patient: {
         id: string;
@@ -319,7 +96,6 @@ export class AdminService {
       };
     }[]
   > {
-    this.validateSocialSecurityNumber(socialSecurityNumber);
     return await lastValueFrom<
       {
         patient: {
@@ -346,7 +122,7 @@ export class AdminService {
     >(
       this.adminClient.send(
         { cmd: AdminPatterns.GET_PATIENT_VISITS },
-        socialSecurityNumber,
+        patientGlobalId,
       ),
     );
   }
@@ -412,82 +188,119 @@ export class AdminService {
     );
   }
 
-  async createMedication(
-    createMedicationDto: CreateMedicationAdminDto,
-    patientGlobalId: string,
+  createVisit(
+    createVisitDto: CreateVisitDto,
     userId: number,
     audio?: Express.Multer.File,
-  ): Promise<void> {
+  ): void {
     this.validateAudioFile(audio);
 
-    await lastValueFrom<void>(
-      this.adminClient.emit(
-        { cmd: AdminPatterns.MEDICATION_CREATE },
-        {
-          name: createMedicationDto.name,
-          dosage: createMedicationDto.dosage,
-          period: createMedicationDto.period,
-          comments: createMedicationDto.comments,
-          patientGlobalId,
-          adminUserId: userId,
-          audioFilePath: audio?.path,
-          audioMimetype: audio?.mimetype,
-        },
-      ),
+    const createVisitInternalDto = new CreateVisitInternalDto(
+      createVisitDto,
+      userId,
+      audio?.path,
+      audio?.mimetype,
+    );
+
+    this.adminClient.emit(
+      { cmd: AdminPatterns.VISIT_CREATE },
+      createVisitInternalDto,
     );
   }
 
-  async uploadLab(
+  createMedication(
+    createMedicationDto: CreateMedicationDto,
+    adminUserId: number,
+    audio?: Express.Multer.File,
+  ): void {
+    this.validateAudioFile(audio);
+
+    const createMedicationInternalDto = new CreateMedicationInternalDto(
+      createMedicationDto,
+      adminUserId,
+      audio?.path,
+      audio?.mimetype,
+    );
+
+    this.adminClient.emit(
+      { cmd: AdminPatterns.MEDICATION_CREATE },
+      createMedicationInternalDto,
+    );
+  }
+
+  uploadLab(
     uploadLabDto: UploadLabDto,
-    patientGlobalId: string,
-    userId: number,
+    adminUserId: number,
     image?: Express.Multer.File,
     audio?: Express.Multer.File,
-  ): Promise<void> {
+  ): void {
     this.validateImageFile(image);
     this.validateAudioFile(audio);
 
-    await lastValueFrom<void>(
-      this.adminClient.emit(
-        { cmd: AdminPatterns.LAB_UPLOAD },
-        {
-          name: uploadLabDto.name,
-          comments: uploadLabDto.comments,
-          patientGlobalId,
-          adminUserId: userId,
-          imageFilePath: image!.path,
-          imageMimetype: image!.mimetype,
-          audioFilePath: audio?.path,
-          audioMimetype: audio?.mimetype,
-        },
-      ),
+    const uploadLabInternalDto = new UploadLabInternalDto(
+      uploadLabDto,
+      adminUserId,
+      image!.path,
+      image!.mimetype,
+      audio?.path,
+      audio?.mimetype,
+    );
+
+    this.adminClient.emit(
+      { cmd: AdminPatterns.LAB_UPLOAD },
+      uploadLabInternalDto,
     );
   }
 
-  async uploadScan(
+  uploadScan(
     uploadScanDto: UploadScanDto,
-    patientGlobalId: string,
-    userId: number,
+    adminUserId: number,
     image?: Express.Multer.File,
     audio?: Express.Multer.File,
-  ): Promise<void> {
+  ): void {
     this.validateImageFile(image);
     this.validateAudioFile(audio);
 
-    await lastValueFrom<void>(
-      this.adminClient.emit(
-        { cmd: AdminPatterns.SCAN_UPLOAD },
-        {
-          name: uploadScanDto.name,
-          comments: uploadScanDto.comments,
-          type: uploadScanDto.type,
-          patientGlobalId,
-          adminUserId: userId,
-          imageFilePath: image!.path,
-          imageMimetype: image!.mimetype,
-          audioFilePath: audio?.path,
-          audioMimetype: audio?.mimetype,
-        },
+    const uploadScanInternalDto = new UploadScanInternalDto(
+      uploadScanDto,
+      adminUserId,
+      image!.path,
+      image!.mimetype,
+      audio?.path,
+      audio?.mimetype,
+    );
+
+    this.adminClient.emit(
+      { cmd: AdminPatterns.SCAN_UPLOAD },
+      uploadScanInternalDto,
+    );
+  }
+
+  async searchForPatientBySocialSecurityNumber(
+    socialSecurityNumber: string,
+  ): Promise<{
+    id: string;
+    name: string;
+    gender: Gender;
+    dateOfBirth: Date;
+    socialSecurityNumber: string;
+    job: string;
+    address: string;
+    createdAt: Date;
+  }> {
+    return await lastValueFrom<{
+      id: string;
+      name: string;
+      gender: Gender;
+      dateOfBirth: Date;
+      socialSecurityNumber: string;
+      job: string;
+      address: string;
+      createdAt: Date;
+    }>(
+      this.adminClient.send(
+        { cmd: AdminPatterns.SEARCH_FOR_PATIENT_BY_SOCIAL_SECURITY_NUMBER },
+        socialSecurityNumber,
       ),
     );
   }

@@ -18,7 +18,7 @@ import {
 
 @Controller()
 export class DoctorController {
-  constructor(private readonly doctorService: DoctorService) { }
+  constructor(private readonly doctorService: DoctorService) {}
 
   @MessagePattern({ cmd: DoctorPatterns.IS_UP })
   isUp(): string {
@@ -29,16 +29,14 @@ export class DoctorController {
   async visitCreate(
     @Payload() createVisitInternalDto: CreateVisitInternalDto,
   ): Promise<void> {
-    return await this.doctorService.createVisit(createVisitInternalDto);
+    await this.doctorService.createVisit(createVisitInternalDto);
   }
 
-  @MessagePattern({ cmd: DoctorPatterns.MEDICATION_CREATE })
+  @EventPattern({ cmd: DoctorPatterns.MEDICATION_CREATE })
   async medicationCreate(
     @Payload() createMedicationInternalDto: CreateMedicationInternalDto,
-  ): Promise<{ success: boolean }> {
-    return await this.doctorService.createMedication(
-      createMedicationInternalDto,
-    );
+  ): Promise<void> {
+    await this.doctorService.createMedication(createMedicationInternalDto);
   }
 
   @MessagePattern({ cmd: DoctorPatterns.GET_ALL_VISITS })
@@ -55,7 +53,7 @@ export class DoctorController {
   }
 
   @MessagePattern({ cmd: DoctorPatterns.GET_PATIENT_VISITS })
-  async getPatientVisits(@Payload() socialSecurityNumber: string): Promise<{
+  async getPatientVisits(@Payload() patientGlobalId: string): Promise<{
     patient: {
       id: string;
       name: string;
@@ -79,13 +77,11 @@ export class DoctorController {
       }[];
     }[];
   }> {
-    return await this.doctorService.getPatientVisits(socialSecurityNumber);
+    return await this.doctorService.getPatientVisits(patientGlobalId);
   }
 
   @MessagePattern({ cmd: DoctorPatterns.GET_PATIENT_MEDICATIONS })
-  async getPatientMedications(
-    @Payload() socialSecurityNumber: string,
-  ): Promise<{
+  async getPatientMedications(@Payload() patientGlobalId: string): Promise<{
     patient: {
       id: string;
       name: string;
@@ -108,11 +104,11 @@ export class DoctorController {
       createdAt: Date;
     }[];
   }> {
-    return await this.doctorService.getPatientMedications(socialSecurityNumber);
+    return await this.doctorService.getPatientMedications(patientGlobalId);
   }
 
   @MessagePattern({ cmd: DoctorPatterns.GET_PATIENT_SCANS })
-  async getPatientScans(@Payload() socialSecurityNumber: string): Promise<{
+  async getPatientScans(@Payload() patientGlobalId: string): Promise<{
     patient: {
       id: string;
       name: string;
@@ -135,11 +131,11 @@ export class DoctorController {
       createdAt: Date;
     }[];
   }> {
-    return await this.doctorService.getPatientScans(socialSecurityNumber);
+    return await this.doctorService.getPatientScans(patientGlobalId);
   }
 
   @MessagePattern({ cmd: DoctorPatterns.GET_PATIENT_LABS })
-  async getPatientLabs(@Payload() socialSecurityNumber: string): Promise<{
+  async getPatientLabs(@Payload() patientGlobalId: string): Promise<{
     patient: {
       id: string;
       name: string;
@@ -161,7 +157,7 @@ export class DoctorController {
       createdAt: Date;
     }[];
   }> {
-    return await this.doctorService.getPatientLabs(socialSecurityNumber);
+    return await this.doctorService.getPatientLabs(patientGlobalId);
   }
 
   @MessagePattern({ cmd: DoctorPatterns.GET_DOCTOR_PATIENTS })
@@ -209,18 +205,18 @@ export class DoctorController {
     );
   }
 
-  @MessagePattern({ cmd: DoctorPatterns.LAB_UPLOAD })
+  @EventPattern({ cmd: DoctorPatterns.LAB_UPLOAD })
   async uploadLab(
     @Payload() uploadLabInternalDto: UploadLabInternalDto,
-  ): Promise<{ success: boolean }> {
-    return await this.doctorService.uploadLab(uploadLabInternalDto);
+  ): Promise<void> {
+    await this.doctorService.uploadLab(uploadLabInternalDto);
   }
 
-  @MessagePattern({ cmd: DoctorPatterns.SCAN_UPLOAD })
+  @EventPattern({ cmd: DoctorPatterns.SCAN_UPLOAD })
   async uploadScan(
     @Payload() uploadScanInternalDto: UploadScanInternalDto,
-  ): Promise<{ success: boolean }> {
-    return await this.doctorService.uploadScan(uploadScanInternalDto);
+  ): Promise<void> {
+    await this.doctorService.uploadScan(uploadScanInternalDto);
   }
 
   @MessagePattern({

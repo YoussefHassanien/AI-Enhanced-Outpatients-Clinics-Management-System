@@ -34,6 +34,7 @@ services:
       - ocr
       - asr
       - admin
+      - super-admin
       - cloud-storage
     command: node api-gateway/main
     networks:
@@ -66,6 +67,20 @@ services:
     depends_on:
       - rabbitmq
     command: node admin/main
+    networks:
+      - services-network
+    volumes:
+      - ./logs:/app/logs
+
+  super-admin:
+    build:
+      context: .
+      dockerfile: ./apps/super-admin/Dockerfile
+    env_file:
+      - ./apps/super-admin/.env
+    depends_on:
+      - rabbitmq
+    command: node super-admin/main
     networks:
       - services-network
     volumes:
