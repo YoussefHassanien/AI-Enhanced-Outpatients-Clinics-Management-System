@@ -5,7 +5,7 @@ import {
   PaginationRequest,
   PaginationResponse,
 } from '@app/common';
-import { Inject, BadRequestException } from '@nestjs/common';
+import { Inject, BadRequestException, Injectable } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { lastValueFrom } from 'rxjs';
 import {
@@ -18,9 +18,17 @@ import {
   UpdatePatientInternalDto,
   UpdateDoctorInternalDto,
 } from '../../../auth/src/dtos';
-import { CreateVisitDto,CreateVisitInternalDto,DoctorInternalPaginationRequestDto } from '../../../doctor/src/dtos';
-import { Doctor, Patient } from '../../../auth/src/entities';
+import {
+  CreateVisitDto,
+  CreateVisitInternalDto,
+  DoctorInternalPaginationRequestDto,
+  UploadLabDto,
+  UploadScanDto,
+} from '../../../doctor/src/dtos';
+import { Doctor } from '../../../auth/src/entities';
+import { CreateMedicationAdminDto } from './dtos';
 
+@Injectable()
 export class AdminService {
   constructor(
     @Inject(Microservices.ADMIN) private readonly adminClient: ClientProxy,
@@ -190,8 +198,8 @@ export class AdminService {
     );
   }
 
-  async getPatientByGlobalId(globalId: string): Promise<Patient | null> {
-    return await lastValueFrom<Patient | null>(
+  async getPatientByGlobalId(globalId: string) {
+    return await lastValueFrom(
       this.adminClient.send(
         { cmd: AdminPatterns.GET_PATIENT_BY_GLOBAL_ID },
         globalId,
@@ -225,13 +233,29 @@ export class AdminService {
     );
   }
 
+  private validateImageFile(image?: Express.Multer.File) {
+    const imageTypeRegExp: RegExp = /(image\/jpeg|image\/jpg|image\/png)$/;
+    const imageSize: number = 5 * 1024 * 1024; // 5 MB
+
+    if (!image) {
+      throw new BadRequestException('Image file is required');
+    }
+
+    if (!imageTypeRegExp.test(image.mimetype)) {
+      throw new BadRequestException('Invalid image file type');
+    }
+
+    if (image.size > imageSize) {
+      throw new BadRequestException('Image file too large');
+    }
+  }
+
   private validateAudioFile(audio?: Express.Multer.File) {
     const audioTypeRegExp: RegExp =
       /(audio\/mpeg|audio\/wave|audio\/mp3|audio\/ogg|audio\/wav)$/;
     const audioSize: number = 10 * 1024 * 1024; // 10 MB
 
     if (audio) {
-      console.log('Audio mimetype:', audio.mimetype);
       if (!audioTypeRegExp.test(audio.mimetype)) {
         throw new BadRequestException('Invalid audio file type');
       }
@@ -376,14 +400,94 @@ export class AdminService {
     }>
   > {
     const paginationRequest: PaginationRequest = { page, limit };
-  
+
     const doctorInternalPaginationRequestDto =
       new DoctorInternalPaginationRequestDto(paginationRequest, adminUserId);
-  
+
     return await lastValueFrom(
       this.adminClient.send(
         { cmd: AdminPatterns.GET_ADMIN_VISITS },
         doctorInternalPaginationRequestDto,
+      ),
+    );
+  }
+
+  async createMedication(
+    createMedicationDto: CreateMedicationAdminDto,
+    patientGlobalId: string,
+    userId: number,
+    audio?: Express.Multer.File,
+  ): Promise<void> {
+    this.validateAudioFile(audio);
+
+    await lastValueFrom<void>(
+      this.adminClient.emit(
+        { cmd: AdminPatterns.MEDICATION_CREATE },
+        {
+          name: createMedicationDto.name,
+          dosage: createMedicationDto.dosage,
+          period: createMedicationDto.period,
+          comments: createMedicationDto.comments,
+          patientGlobalId,
+          adminUserId: userId,
+          audioFilePath: audio?.path,
+          audioMimetype: audio?.mimetype,
+        },
+      ),
+    );
+  }
+
+  async uploadLab(
+    uploadLabDto: UploadLabDto,
+    patientGlobalId: string,
+    userId: number,
+    image?: Express.Multer.File,
+    audio?: Express.Multer.File,
+  ): Promise<void> {
+    this.validateImageFile(image);
+    this.validateAudioFile(audio);
+
+    await lastValueFrom<void>(
+      this.adminClient.emit(
+        { cmd: AdminPatterns.LAB_UPLOAD },
+        {
+          name: uploadLabDto.name,
+          comments: uploadLabDto.comments,
+          patientGlobalId,
+          adminUserId: userId,
+          imageFilePath: image!.path,
+          imageMimetype: image!.mimetype,
+          audioFilePath: audio?.path,
+          audioMimetype: audio?.mimetype,
+        },
+      ),
+    );
+  }
+
+  async uploadScan(
+    uploadScanDto: UploadScanDto,
+    patientGlobalId: string,
+    userId: number,
+    image?: Express.Multer.File,
+    audio?: Express.Multer.File,
+  ): Promise<void> {
+    this.validateImageFile(image);
+    this.validateAudioFile(audio);
+
+    await lastValueFrom<void>(
+      this.adminClient.emit(
+        { cmd: AdminPatterns.SCAN_UPLOAD },
+        {
+          name: uploadScanDto.name,
+          comments: uploadScanDto.comments,
+          type: uploadScanDto.type,
+          patientGlobalId,
+          adminUserId: userId,
+          imageFilePath: image!.path,
+          imageMimetype: image!.mimetype,
+          audioFilePath: audio?.path,
+          audioMimetype: audio?.mimetype,
+        },
       ),
     );
   }

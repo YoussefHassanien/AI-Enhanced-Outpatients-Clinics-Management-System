@@ -17,11 +17,18 @@ import { IsNull, Repository } from 'typeorm';
 import { UpdatePatientInternalDto, UpdateDoctorInternalDto } from '../../auth/src/dtos';
 import { Admin, Doctor, Patient } from '../../auth/src/entities';
 import {
+  CreateMedicationInternalDto,
+  CreateVisitInternalDto,
+  DoctorInternalPaginationRequestDto,
+} from '../../doctor/src/dtos';
+import {
   CreateClinicInternalDto,
+  CreateMedicationAdminInternalDto,
   DoctorResponseDTO,
   PatientResponseDTO,
+  UploadLabAdminInternalDto,
+  UploadScanAdminInternalDto,
 } from './dtos';
-import { CreateVisitInternalDto, DoctorInternalPaginationRequestDto } from '../../doctor/src/dtos';
 import { Clinic } from './entities';
 
 @Injectable()
@@ -291,7 +298,6 @@ export class AdminService {
         globalId,
       ),
     );
-
     if (!patient) {
       throw new RpcException(new ErrorResponse('Patient not found', 404));
     }
@@ -422,20 +428,20 @@ export class AdminService {
   async getAdminVisits(
     doctorInternalPaginationRequestDto: DoctorInternalPaginationRequestDto,
   ): Promise<
-  PaginationResponse<{
-    id: string;
-    diagnoses: string;
-    diagnosesAudioUrl: string | null;
-    patient: {
-      name: string;
+    PaginationResponse<{
       id: string;
-    };
-    admin: {
-      name: string;
-      id: string;
-    };
-    createdAt: Date;
-  }>
+      diagnoses: string;
+      diagnosesAudioUrl: string | null;
+      patient: {
+        name: string;
+        id: string;
+      };
+      admin: {
+        name: string;
+        id: string;
+      };
+      createdAt: Date;
+    }>
   > {
     if (
       doctorInternalPaginationRequestDto.limit <= 0 ||
@@ -446,39 +452,39 @@ export class AdminService {
       );
     }
 
-  const response = await lastValueFrom<
-    PaginationResponse<{
-      id: string;
-      diagnoses: string;
-      diagnosesAudioUrl: string | null;
-      patient: {
-        name: string;
+    const response = await lastValueFrom<
+      PaginationResponse<{
         id: string;
-      };
-      doctor: {
-        name: string;
-        id: string;
-      };
-      createdAt: Date;
-    }>
-  >(
-    this.doctorClient.send(
-      { cmd: DoctorPatterns.GET_DOCTOR_VISITS },
-      doctorInternalPaginationRequestDto,
-    ),
-  );
+        diagnoses: string;
+        diagnosesAudioUrl: string | null;
+        patient: {
+          name: string;
+          id: string;
+        };
+        doctor: {
+          name: string;
+          id: string;
+        };
+        createdAt: Date;
+      }>
+    >(
+      this.doctorClient.send(
+        { cmd: DoctorPatterns.GET_DOCTOR_VISITS },
+        doctorInternalPaginationRequestDto,
+      ),
+    );
 
-  return {
-    ...response,
-    items: response.items.map(({ doctor, ...rest }) => ({
-      ...rest,
-      admin: {
-        id: doctor.id,
-        name: doctor.name,
-      },
-    })),
-  };
-}
+    return {
+      ...response,
+      items: response.items.map(({ doctor, ...rest }) => ({
+        ...rest,
+        admin: {
+          id: doctor.id,
+          name: doctor.name,
+        },
+      })),
+    };
+  }
 
   async getAdminPatients(doctorInternalPaginationRequestDto: DoctorInternalPaginationRequestDto): Promise<
     PaginationResponse<{
@@ -490,13 +496,13 @@ export class AdminService {
       address: string | null;
       job: string | null;
     }>
-  > { 
+  > {
     if (doctorInternalPaginationRequestDto.limit <= 0 || doctorInternalPaginationRequestDto.page <= 0) {
       throw new RpcException(
         new ErrorResponse('Page and limit must be positive integers', 400),
       );
     }
-    return await lastValueFrom< PaginationResponse<{
+    return await lastValueFrom<PaginationResponse<{
       id: string;
       name: string;
       gender: Gender;
@@ -504,11 +510,76 @@ export class AdminService {
       socialSecurityNumber: string;
       address: string | null;
       job: string | null;
-    }>    
+    }>
     >(
       this.doctorClient.send(
         { cmd: DoctorPatterns.GET_DOCTOR_PATIENTS },
         doctorInternalPaginationRequestDto,
+      ),
+    );
+  }
+
+  async createMedication(
+    createMedicationAdminInternalDto: CreateMedicationAdminInternalDto,
+  ): Promise<void> {
+    const createMedicationInternalDto = new CreateMedicationInternalDto(
+      {
+        name: createMedicationAdminInternalDto.name,
+        dosage: createMedicationAdminInternalDto.dosage,
+        period: createMedicationAdminInternalDto.period,
+        comments: createMedicationAdminInternalDto.comments,
+        patientId: createMedicationAdminInternalDto.patientGlobalId,
+      },
+      createMedicationAdminInternalDto.adminUserId,
+      createMedicationAdminInternalDto.audioFilePath,
+      createMedicationAdminInternalDto.audioMimetype,
+    );
+
+    await lastValueFrom<void>(
+      this.doctorClient.emit(
+        { cmd: DoctorPatterns.MEDICATION_CREATE },
+        createMedicationInternalDto,
+      ),
+    );
+  }
+
+  async uploadLab(
+    uploadLabAdminInternalDto: UploadLabAdminInternalDto,
+  ): Promise<void> {
+    await lastValueFrom<void>(
+      this.doctorClient.emit(
+        { cmd: DoctorPatterns.LAB_UPLOAD },
+        {
+          name: uploadLabAdminInternalDto.name,
+          comments: uploadLabAdminInternalDto.comments,
+          patientGlobalId: uploadLabAdminInternalDto.patientGlobalId,
+          doctorUserId: uploadLabAdminInternalDto.adminUserId,
+          imageFilePath: uploadLabAdminInternalDto.imageFilePath,
+          imageMimetype: uploadLabAdminInternalDto.imageMimetype,
+          audioFilePath: uploadLabAdminInternalDto.audioFilePath,
+          audioMimetype: uploadLabAdminInternalDto.audioMimetype,
+        },
+      ),
+    );
+  }
+
+  async uploadScan(
+    uploadScanAdminInternalDto: UploadScanAdminInternalDto,
+  ): Promise<void> {
+    await lastValueFrom<void>(
+      this.doctorClient.emit(
+        { cmd: DoctorPatterns.SCAN_UPLOAD },
+        {
+          name: uploadScanAdminInternalDto.name,
+          comments: uploadScanAdminInternalDto.comments,
+          type: uploadScanAdminInternalDto.type,
+          patientGlobalId: uploadScanAdminInternalDto.patientGlobalId,
+          doctorUserId: uploadScanAdminInternalDto.adminUserId,
+          imageFilePath: uploadScanAdminInternalDto.imageFilePath,
+          imageMimetype: uploadScanAdminInternalDto.imageMimetype,
+          audioFilePath: uploadScanAdminInternalDto.audioFilePath,
+          audioMimetype: uploadScanAdminInternalDto.audioMimetype,
+        },
       ),
     );
   }

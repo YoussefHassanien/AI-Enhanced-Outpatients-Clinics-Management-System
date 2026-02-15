@@ -4,7 +4,7 @@ import {
   LoggingMiddleware,
   LoggingService,
 } from '@app/common';
-import { Logger, ValidationPipe, VersioningType } from '@nestjs/common';
+import { BadRequestException, Logger, ValidationPipe, VersioningType } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
@@ -34,7 +34,19 @@ async function bootstrap() {
   app.useGlobalPipes(
     new ValidationPipe({
       transform: true,
+      whitelist: true,
       forbidUnknownValues: true,
+      exceptionFactory: (errors) => {
+        const messages = errors.map((error) => {
+          const constraints = error.constraints
+            ? Object.values(error.constraints).join(', ')
+            : 'Invalid value';
+          return `${error.property}: ${constraints}`;
+        });
+        return new BadRequestException(
+          `Validation failed: ${messages.join('; ')}`,
+        );
+      },
     }),
   );
   app.useLogger(logger);
