@@ -246,8 +246,9 @@ export class SuperAdminService {
       createdAt: Date;
     }[]
   > {
-    const clinics = await this.clinicRepository.find({
+    return await this.clinicRepository.find({
       select: {
+        id: true,
         name: true,
         speciality: true,
         globalId: true,
@@ -256,16 +257,6 @@ export class SuperAdminService {
       where: {
         deletedAt: IsNull(),
       },
-    });
-
-    return clinics.map((clinic) => {
-      return {
-        id: clinic.id,
-        globalId: clinic.globalId,
-        name: clinic.name,
-        speciality: clinic.speciality,
-        createdAt: clinic.createdAt,
-      };
     });
   }
 

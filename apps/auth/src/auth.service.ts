@@ -109,6 +109,21 @@ export class AuthService {
       return admin.user;
     }
 
+    const superAdmin = await this.superAdminRepository.findOne({
+      relations: { user: true },
+      where: {
+        email,
+        deletedAt: IsNull(),
+        user: Not(IsNull()),
+      },
+    });
+
+    if (superAdmin && (await bcrypt.compare(password, superAdmin.password))) {
+      this.logger.log('Validated a Super Admin');
+
+      return superAdmin.user;
+    }
+
     this.logger.log('User is not validated');
     return null;
   }
@@ -370,7 +385,7 @@ export class AuthService {
   }
 
   async getPatientByGlobalId(globalId: string): Promise<Patient | null> {
-    const patient = await this.patientRepository.findOne({
+    return await this.patientRepository.findOne({
       relations: {
         user: true,
       },
@@ -397,8 +412,6 @@ export class AuthService {
         },
       },
     });
-
-    return patient;
   }
 
   async getAdminByUserId(userId: number): Promise<Admin | null> {
