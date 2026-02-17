@@ -19,12 +19,17 @@ import {
   UploadScanDto,
   UploadScanInternalDto,
 } from '../../../doctor/src/dtos';
+import {
+  MedicationDosage,
+  MedicationPeriod,
+  ScanTypes,
+} from '../../../doctor/src/constants';
 
 @Injectable()
 export class AdminService {
   constructor(
     @Inject(Microservices.ADMIN) private readonly adminClient: ClientProxy,
-  ) {}
+  ) { }
 
   private validateImageFile(image?: Express.Multer.File) {
     const imageTypeRegExp: RegExp = /(image\/jpeg|image\/jpg|image\/png)$/;
@@ -297,4 +302,53 @@ export class AdminService {
       ),
     );
   }
+
+  async getPatientMedications(patientGlobalId: string): Promise<{
+    patient: {
+      id: string;
+      name: string;
+      gender: Gender;
+      dateOfBirth: Date;
+      socialSecurityNumber: string;
+      address: string;
+      job: string;
+    };
+    medications: {
+      name: string;
+      dosage: MedicationDosage;
+      period: MedicationPeriod;
+      comments: string;
+      doctor: {
+        name: string;
+        speciality: string;
+      };
+      createdAt: Date;
+    }[];
+  }> {
+    return await lastValueFrom(
+      this.adminClient.send<{
+        patient: {
+          id: string;
+          name: string;
+          gender: Gender;
+          dateOfBirth: Date;
+          socialSecurityNumber: string;
+          address: string;
+          job: string;
+        };
+        medications: {
+          name: string;
+          dosage: MedicationDosage;
+          period: MedicationPeriod;
+          comments: string;
+          doctor: {
+            name: string;
+            speciality: string;
+          };
+          createdAt: Date;
+        }[];
+      }>({ cmd: AdminPatterns.GET_PATIENT_MEDICATIONS }, patientGlobalId),
+    );
+  }
+
 }

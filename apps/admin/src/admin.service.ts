@@ -22,6 +22,8 @@ import {
 } from '../../doctor/src/dtos';
 import { Clinic } from '../../super-admin/src/entities';
 import { DoctorResponseDTO, PatientResponseDTO } from './dtos';
+import { MedicationDosage, MedicationPeriod, ScanTypes } from '../../doctor/src/constants';
+
 
 @Injectable()
 export class AdminService {
@@ -304,5 +306,36 @@ export class AdminService {
       address: patient.address,
       createdAt: patient.createdAt,
     };
+  }
+
+  async getPatientMedications(patientGlobalId: string): Promise<{
+    patient: {
+      id: string;
+      name: string;
+      gender: Gender;
+      dateOfBirth: Date;
+      socialSecurityNumber: string;
+      address: string | null;
+      job: string | null;
+    };
+    medications: {
+      name: string;
+      dosage: MedicationDosage;
+      period: MedicationPeriod;
+      comments: string | null;
+      commentsAudioUrl: string | null;
+      doctor: {
+        name: string;
+        speciality: string;
+      };
+      createdAt: Date;
+    }[];
+  }> {
+    return await lastValueFrom(
+      this.doctorClient.send(
+        { cmd: DoctorPatterns.GET_PATIENT_MEDICATIONS },
+        patientGlobalId,
+      ),
+    );
   }
 }
