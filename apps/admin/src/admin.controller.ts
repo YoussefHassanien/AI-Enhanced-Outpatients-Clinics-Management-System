@@ -12,7 +12,7 @@ import { AdminService } from './admin.service';
 
 @Controller()
 export class AdminController {
-  constructor(private readonly adminService: AdminService) {}
+  constructor(private readonly adminService: AdminService) { }
 
   @MessagePattern({ cmd: AdminPatterns.IS_UP })
   isUp(): string {
@@ -95,5 +95,17 @@ export class AdminController {
     return await this.adminService.searchForPatientBySocilaSecurityNumber(
       socialSecurityNumber,
     );
+  }
+
+  @MessagePattern({ cmd: AdminPatterns.GET_PATIENT_MEDICATIONS })
+  async getPatientMedications(@Payload() patientGlobalId: string) {
+    return await this.adminService.getPatientMedications(patientGlobalId);
+  }
+
+  @MessagePattern({ cmd: AdminPatterns.GET_CLINIC_VISITS })
+  async getClinicVisits(
+    @Payload() getClinicVisitsRequest: { userId: number; page: number; limit: number },
+  ) {
+    return await this.adminService.getClinicVisits(getClinicVisitsRequest);
   }
 }

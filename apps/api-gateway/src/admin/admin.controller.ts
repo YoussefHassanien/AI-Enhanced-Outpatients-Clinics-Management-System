@@ -33,12 +33,17 @@ import {
 } from '../../../doctor/src/dtos';
 import { JwtAuthGuard } from '../auth/guards';
 import { AdminService } from './admin.service';
+import {
+  MedicationDosage,
+  MedicationPeriod,
+  ScanTypes,
+} from '../../../doctor/src/constants';
 
 @Roles(Role.ADMIN)
 @UseGuards(JwtAuthGuard)
 @Controller('admin')
 export class AdminController {
-  constructor(private readonly adminService: AdminService) {}
+  constructor(private readonly adminService: AdminService) { }
 
   @Get()
   async isUp(): Promise<string> {
@@ -250,5 +255,65 @@ export class AdminController {
     return await this.adminService.searchForPatientBySocialSecurityNumber(
       socialSecurityNumber,
     );
+  }
+
+  @Get('patient/:id/medications')
+  async getPatientMedications(
+    @Param(
+      'id',
+      new ParseUUIDPipe({
+        exceptionFactory: () => new BadRequestException('Invalid patient ID'),
+      }),
+    )
+    patientGlobalId: string,
+  ): Promise<{
+    patient: {
+      id: string;
+      name: string;
+      gender: Gender;
+      dateOfBirth: Date;
+      socialSecurityNumber: string;
+      address: string;
+      job: string;
+    };
+    medications: {
+      name: string;
+      dosage: MedicationDosage;
+      period: MedicationPeriod;
+      comments: string;
+      doctor: {
+        name: string;
+        speciality: string;
+      };
+      createdAt: Date;
+    }[];
+  }> {
+    return await this.adminService.getPatientMedications(patientGlobalId);
+  }
+
+  @Get('clinic/visits')
+  async getClinicVisits(
+    @Req() req: Request,
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query('limit', new DefaultValuePipe(30), ParseIntPipe) limit: number,
+  ): Promise<
+    PaginationResponse<{
+      id: string;
+      diagnoses: string;
+      diagnosesAudioUrl: string | null;
+      patient: {
+        name: string;
+        id: string;
+      };
+      doctor: {
+        name: string;
+        speciality: string;
+        id: string;
+      };
+      createdAt: string;
+    }>
+  > {
+    const user = req.user as User;
+    return await this.adminService.getClinicVisits(user.id, page, limit);
   }
 }

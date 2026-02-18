@@ -9,6 +9,7 @@ import { EventPattern, MessagePattern, Payload } from '@nestjs/microservices';
 import { MedicationDosage, MedicationPeriod, ScanTypes } from './constants';
 import { DoctorService } from './doctor.service';
 import {
+  ClinicInternalPaginationRequestDto,
   CreateMedicationInternalDto,
   CreateVisitInternalDto,
   DoctorInternalPaginationRequestDto,
@@ -18,7 +19,7 @@ import {
 
 @Controller()
 export class DoctorController {
-  constructor(private readonly doctorService: DoctorService) {}
+  constructor(private readonly doctorService: DoctorService) { }
 
   @MessagePattern({ cmd: DoctorPatterns.IS_UP })
   isUp(): string {
@@ -236,6 +237,32 @@ export class DoctorController {
   }> {
     return await this.doctorService.searchForPatientBySocilaSecurityNumber(
       socialSecurityNumber,
+    );
+  }
+
+  @MessagePattern({ cmd: DoctorPatterns.GET_CLINIC_VISITS })
+  async getClinicVisits(
+    @Payload()
+    clinicInternalPaginationRequestDto: ClinicInternalPaginationRequestDto,
+  ): Promise<
+    PaginationResponse<{
+      id: string;
+      diagnoses: string;
+      diagnosesAudioUrl: string | null;
+      patient: {
+        name: string;
+        id: string;
+      };
+      doctor: {
+        name: string;
+        speciality: string;
+        id: string;
+      };
+      createdAt: string;
+    }>
+  > {
+    return await this.doctorService.getClinicVisits(
+      clinicInternalPaginationRequestDto,
     );
   }
 }
