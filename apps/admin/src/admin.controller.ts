@@ -22,7 +22,7 @@ import {
 
 @Controller()
 export class AdminController {
-  constructor(private readonly adminService: AdminService) {}
+  constructor(private readonly adminService: AdminService) { }
 
   @MessagePattern({ cmd: AdminPatterns.IS_UP })
   isUp(): string {
@@ -260,5 +260,51 @@ export class AdminController {
     return await this.adminService.getClinicDoctors(
       adminInternalPaginationRequestDto,
     );
+  }
+
+  @MessagePattern({ cmd: AdminPatterns.GET_CLINIC_Patients })
+  async getClinicPatients(
+    @Payload()
+    adminInternalPaginationRequestDto: AdminInternalPaginationRequestDto,
+  ): Promise<
+    PaginationResponse<{
+      id: string;
+      name: string;
+      gender: Gender;
+      dateOfBirth: Date;
+      socialSecurityNumber: string;
+      address: string | null;
+      job: string | null;
+    }>
+  > {
+    return await this.adminService.getClinicPatients(
+      adminInternalPaginationRequestDto,
+    );
+  }
+
+  @MessagePattern({ cmd: AdminPatterns.GET_PATIENT_LABS })
+  async getPatientLabs(@Payload() patientGlobalId: string): Promise<{
+    patient: {
+      id: string;
+      name: string;
+      gender: Gender;
+      dateOfBirth: Date;
+      socialSecurityNumber: string;
+      address: string | null;
+      job: string | null;
+    };
+    labs: {
+      name: string;
+      photoUrl: string;
+      comments: string | null;
+      commentsAudioUrl: string | null;
+      doctor: {
+        name: string;
+        speciality: string;
+      };
+      createdAt: Date;
+    }[];
+  }> {
+    return await this.adminService.getPatientLabs(patientGlobalId);
   }
 }

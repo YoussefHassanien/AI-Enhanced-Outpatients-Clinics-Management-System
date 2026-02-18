@@ -577,4 +577,107 @@ export class AdminService {
       })),
     };
   }
+
+  async getClinicPatients(
+    adminInternalPaginationRequestDto: AdminInternalPaginationRequestDto,
+  ): Promise<
+    PaginationResponse<{
+      id: string;
+      name: string;
+      gender: Gender;
+      dateOfBirth: Date;
+      socialSecurityNumber: string;
+      address: string | null;
+      job: string | null;
+    }>
+  > {
+    const admin = await this.getAdminByUserId(
+      adminInternalPaginationRequestDto.adminUserId,
+    );
+    if (!admin) {
+      throw new RpcException(
+        new ErrorResponse('Admin not found for this user.', 404),
+      );
+    }
+
+    const clinic = await this.getClinicById(admin.clinicId);
+
+    if (!clinic) {
+      throw new RpcException(new ErrorResponse('Clinic not found!', 404));
+    }
+
+    const clinicInternalPaginationRequestDto =
+      new ClinicInternalPaginationRequestDto(
+        adminInternalPaginationRequestDto.paginationRequest,
+        admin.clinicId,
+      );
+
+    return lastValueFrom(
+      this.doctorClient.send<
+        PaginationResponse<{
+          id: string;
+          name: string;
+          gender: Gender;
+          dateOfBirth: Date;
+          socialSecurityNumber: string;
+          address: string | null;
+          job: string | null;
+        }>
+      >(
+        { cmd: DoctorPatterns.GET_CLINIC_PATIENTS },
+        clinicInternalPaginationRequestDto,
+      ),
+    );
+  }
+
+  async getPatientLabs(patientGlobalId: string): Promise<{
+    patient: {
+      id: string;
+      name: string;
+      gender: Gender;
+      dateOfBirth: Date;
+      socialSecurityNumber: string;
+      address: string | null;
+      job: string | null;
+    };
+    labs: {
+      name: string;
+      photoUrl: string;
+      comments: string | null;
+      commentsAudioUrl: string | null;
+      doctor: {
+        name: string;
+        speciality: string;
+      };
+      createdAt: Date;
+    }[];
+  }> {
+    return await lastValueFrom<{
+      patient: {
+        id: string;
+        name: string;
+        gender: Gender;
+        dateOfBirth: Date;
+        socialSecurityNumber: string;
+        address: string | null;
+        job: string | null;
+      };
+      labs: {
+        name: string;
+        photoUrl: string;
+        comments: string | null;
+        commentsAudioUrl: string | null;
+        doctor: {
+          name: string;
+          speciality: string;
+        };
+        createdAt: Date;
+      }[];
+    }>(
+      this.doctorClient.send(
+        { cmd: DoctorPatterns.GET_PATIENT_LABS },
+        patientGlobalId,
+      ),
+    );
+  }
 }
