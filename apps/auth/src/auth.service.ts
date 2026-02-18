@@ -19,6 +19,7 @@ import * as bcrypt from 'bcrypt';
 import { Algorithm } from 'jsonwebtoken';
 import { lastValueFrom } from 'rxjs';
 import { EntityManager, IsNull, Not, Repository } from 'typeorm';
+import { ClinicInternalPaginationRequestDto } from '../../admin/src/dtos';
 import { Clinic } from '../../super-admin/src/entities';
 import { JwtPayload } from './constants';
 import {
@@ -1116,5 +1117,52 @@ export class AuthService {
     const doctor = await this.getDoctorByUserId(userId);
 
     return doctor ? doctor : await this.getAdminByUserId(userId);
+  }
+
+  async getClinicDoctors(
+    clinicInternalPaginationRequestDto: ClinicInternalPaginationRequestDto,
+  ): Promise<PaginationResponse<Doctor>> {
+    const [doctors, totalItems] = await this.doctorRepository.findAndCount({
+      select: {
+        user: {
+          id: true,
+          globalId: true,
+          gender: true,
+          socialSecurityNumber: true,
+          firstName: true,
+          lastName: true,
+          dateOfBirth: true,
+        },
+        id: true,
+        globalId: true,
+        speciality: true,
+        isApproved: true,
+        phone: true,
+        email: true,
+        createdAt: true,
+      },
+      relations: {
+        user: true,
+      },
+      where: {
+        clinicId: clinicInternalPaginationRequestDto.clinicId,
+        deletedAt: IsNull(),
+      },
+      skip:
+        (clinicInternalPaginationRequestDto.page - 1) *
+        clinicInternalPaginationRequestDto.limit,
+      take: clinicInternalPaginationRequestDto.limit,
+    });
+
+    const response: PaginationResponse<Doctor> = {
+      items: doctors,
+      totalItems,
+      totalPages: Math.ceil(
+        totalItems / clinicInternalPaginationRequestDto.limit,
+      ),
+      page: clinicInternalPaginationRequestDto.page,
+    };
+
+    return response;
   }
 }

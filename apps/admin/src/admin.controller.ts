@@ -14,7 +14,11 @@ import {
   UploadScanInternalDto,
 } from '../../doctor/src/dtos';
 import { AdminService } from './admin.service';
-import { DoctorResponseDTO, PatientResponseDTO } from './dtos';
+import {
+  AdminInternalPaginationRequestDto,
+  DoctorResponseDTO,
+  PatientResponseDTO,
+} from './dtos';
 
 @Controller()
 export class AdminController {
@@ -212,12 +216,49 @@ export class AdminController {
   @MessagePattern({ cmd: AdminPatterns.GET_CLINIC_VISITS })
   async getClinicVisits(
     @Payload()
-    getClinicVisitsRequest: {
-      userId: number;
-      page: number;
-      limit: number;
-    },
-  ) {
-    return await this.adminService.getClinicVisits(getClinicVisitsRequest);
+    adminInternalPaginationRequestDto: AdminInternalPaginationRequestDto,
+  ): Promise<
+    PaginationResponse<{
+      id: string;
+      diagnoses: string;
+      diagnosesAudioUrl: string | null;
+      patient: {
+        name: string;
+        id: string;
+      };
+      doctor: {
+        name: string;
+        speciality: string;
+        id: string;
+      };
+      createdAt: string;
+    }>
+  > {
+    return await this.adminService.getClinicVisits(
+      adminInternalPaginationRequestDto,
+    );
+  }
+
+  @MessagePattern({ cmd: AdminPatterns.GET_CLINIC_DOCTORS })
+  async getClinicDoctors(
+    @Payload()
+    adminInternalPaginationRequestDto: AdminInternalPaginationRequestDto,
+  ): Promise<
+    PaginationResponse<{
+      id: string;
+      phone: string;
+      email: string;
+      speciality: string;
+      isApproved: boolean;
+      socialSecurityNumber: string;
+      gender: Gender;
+      name: string;
+      dateOfBirth: Date;
+      createdAt: Date;
+    }>
+  > {
+    return await this.adminService.getClinicDoctors(
+      adminInternalPaginationRequestDto,
+    );
   }
 }

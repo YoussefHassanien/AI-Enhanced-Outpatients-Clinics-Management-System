@@ -1,8 +1,9 @@
 import { PaginationRequest } from '@app/common';
-import { IsNumber } from 'class-validator';
+import { IsInt, IsPositive } from 'class-validator';
 
 export class ClinicInternalPaginationRequestDto extends PaginationRequest {
-  @IsNumber()
+  @IsInt()
+  @IsPositive()
   clinicId: number;
 
   constructor(paginationRequest: PaginationRequest, clinicId: number) {

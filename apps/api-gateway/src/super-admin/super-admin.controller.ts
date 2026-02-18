@@ -9,10 +9,8 @@ import {
   BadRequestException,
   Body,
   Controller,
-  DefaultValuePipe,
   Get,
   Param,
-  ParseIntPipe,
   ParseUUIDPipe,
   Patch,
   Post,
@@ -21,9 +19,9 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { Request } from 'express';
-import { CreateClinicDto } from '../../../super-admin/src/dtos';
 import { UpdateDoctorDto, UpdatePatientDto } from '../../../auth/src/dtos';
 import { User } from '../../../auth/src/entities';
+import { CreateClinicDto } from '../../../super-admin/src/dtos';
 import { JwtAuthGuard } from '../auth/guards';
 import { SuperAdminService } from './super-admin.service';
 
@@ -39,10 +37,7 @@ export class SuperAdminController {
   }
 
   @Get('doctors')
-  async getAllDoctors(
-    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
-    @Query('limit', new DefaultValuePipe(30), ParseIntPipe) limit: number,
-  ): Promise<
+  async getAllDoctors(@Query() { page, limit }: PaginationRequest): Promise<
     PaginationResponse<{
       id: string;
       phone: string;
@@ -67,10 +62,7 @@ export class SuperAdminController {
   }
 
   @Get('patients')
-  async getAllPatients(
-    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
-    @Query('limit', new DefaultValuePipe(30), ParseIntPipe) limit: number,
-  ): Promise<
+  async getAllPatients(@Query() { page, limit }: PaginationRequest): Promise<
     PaginationResponse<{
       id: string;
       address: string;
@@ -93,10 +85,7 @@ export class SuperAdminController {
   }
 
   @Get('visits')
-  async getAllVisits(
-    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
-    @Query('limit', new DefaultValuePipe(30), ParseIntPipe) limit: number,
-  ): Promise<
+  async getAllVisits(@Query() { page, limit }: PaginationRequest): Promise<
     PaginationResponse<{
       id: string;
       diagnoses: string;

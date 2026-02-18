@@ -9,6 +9,7 @@ import {
 } from '@app/common';
 import { Controller, ParseIntPipe, ParseUUIDPipe } from '@nestjs/common';
 import { MessagePattern, Payload, RpcException } from '@nestjs/microservices';
+import { ClinicInternalPaginationRequestDto } from '../../admin/src/dtos';
 import { AuthService } from './auth.service';
 import {
   CreateAdminDto,
@@ -241,5 +242,15 @@ export class AuthController {
     clinicalStaffUserId: number,
   ): Promise<Doctor | Admin | null> {
     return await this.authService.getClinicalStaffByUserId(clinicalStaffUserId);
+  }
+
+  @MessagePattern({ cmd: AuthPatterns.GET_CLINIC_DOCTORS })
+  async getClinicDoctors(
+    @Payload()
+    clinicInternalPaginationRequestDto: ClinicInternalPaginationRequestDto,
+  ): Promise<PaginationResponse<Doctor>> {
+    return await this.authService.getClinicDoctors(
+      clinicInternalPaginationRequestDto,
+    );
   }
 }

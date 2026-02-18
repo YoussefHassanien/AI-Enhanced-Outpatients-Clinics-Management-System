@@ -50,6 +50,7 @@ export enum AuthPatterns {
   GET_PATIENT_BY_SOCIAL_SECURITY_NUMBER = 'auth.getPatientBySocialSecurityNumber',
   DOCTOR_UPDATE = 'auth.doctor.update',
   GET_CLINICAL_STAFF_BY_USER_ID = 'auth.getClinicalStaffByUserId',
+  GET_CLINIC_DOCTORS = 'auht.clinic.doctors',
 }
 
 export enum DoctorPatterns {
@@ -88,9 +89,9 @@ export enum AdminPatterns {
   GET_ADMIN_VISITS = 'admin.visits',
   SEARCH_FOR_PATIENT_BY_SOCIAL_SECURITY_NUMBER = 'admin.searchForPatientBySocilaSecurityNumber',
   GET_PATIENT_VISITS = 'admin.patient.visits',
-  GET_PATIENT_MEDICATIONS = 'doctor.patient.medications',
-  GET_PATIENT_LABS = 'doctor.patient.labs',
-  GET_PATIENT_SCANS = 'doctor.patient.scans',
+  GET_PATIENT_MEDICATIONS = 'admin.patient.medications',
+  GET_PATIENT_LABS = 'admin.patient.labs',
+  GET_PATIENT_SCANS = 'admin.patient.scans',
 }
 
 export enum SuperAdminPatterns {
