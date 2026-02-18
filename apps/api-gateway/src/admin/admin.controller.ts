@@ -1,12 +1,16 @@
-import { Gender, PaginationResponse, Role, Roles } from '@app/common';
+import {
+  Gender,
+  PaginationRequest,
+  PaginationResponse,
+  Role,
+  Roles,
+} from '@app/common';
 import {
   BadRequestException,
   Body,
   Controller,
-  DefaultValuePipe,
   Get,
   Param,
-  ParseIntPipe,
   ParseUUIDPipe,
   Post,
   Query,
@@ -26,6 +30,11 @@ import { extname } from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import { User } from '../../../auth/src/entities';
 import {
+  MedicationDosage,
+  MedicationPeriod,
+  ScanTypes,
+} from '../../../doctor/src/constants';
+import {
   CreateMedicationDto,
   CreateVisitDto,
   UploadLabDto,
@@ -33,17 +42,12 @@ import {
 } from '../../../doctor/src/dtos';
 import { JwtAuthGuard } from '../auth/guards';
 import { AdminService } from './admin.service';
-import {
-  MedicationDosage,
-  MedicationPeriod,
-  ScanTypes,
-} from '../../../doctor/src/constants';
 
 @Roles(Role.ADMIN)
 @UseGuards(JwtAuthGuard)
 @Controller('admin')
 export class AdminController {
-  constructor(private readonly adminService: AdminService) { }
+  constructor(private readonly adminService: AdminService) {}
 
   @Get()
   async isUp(): Promise<string> {
@@ -197,8 +201,7 @@ export class AdminController {
   @Get('patients')
   async getAdminPatients(
     @Req() req: Request,
-    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
-    @Query('limit', new DefaultValuePipe(30), ParseIntPipe) limit: number,
+    @Query() { page, limit }: PaginationRequest,
   ): Promise<
     PaginationResponse<{
       id: string;
@@ -217,8 +220,7 @@ export class AdminController {
   @Get('visits')
   async getAdminVisits(
     @Req() req: Request,
-    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
-    @Query('limit', new DefaultValuePipe(30), ParseIntPipe) limit: number,
+    @Query() { page, limit }: PaginationRequest,
   ): Promise<
     PaginationResponse<{
       id: string;
@@ -291,11 +293,45 @@ export class AdminController {
     return await this.adminService.getPatientMedications(patientGlobalId);
   }
 
+  @Get('patient/:id/scans')
+  async getPatientScans(
+    @Param(
+      'id',
+      new ParseUUIDPipe({
+        exceptionFactory: () => new BadRequestException('Invalid patient ID'),
+      }),
+    )
+    patientGlobalId: string,
+  ): Promise<{
+    patient: {
+      id: string;
+      name: string;
+      gender: Gender;
+      dateOfBirth: string;
+      socialSecurityNumber: string;
+      address: string | null;
+      job: string | null;
+    };
+    scans: {
+      name: string;
+      type: ScanTypes;
+      photoUrl: string;
+      comments: string | null;
+      commentsAudioUrl: string | null;
+      doctor: {
+        name: string;
+        speciality: string;
+      };
+      createdAt: string;
+    }[];
+  }> {
+    return await this.adminService.getPatientScans(patientGlobalId);
+  }
+
   @Get('clinic/visits')
   async getClinicVisits(
     @Req() req: Request,
-    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
-    @Query('limit', new DefaultValuePipe(30), ParseIntPipe) limit: number,
+    @Query() { page, limit }: PaginationRequest,
   ): Promise<
     PaginationResponse<{
       id: string;
@@ -315,5 +351,27 @@ export class AdminController {
   > {
     const user = req.user as User;
     return await this.adminService.getClinicVisits(user.id, page, limit);
+  }
+
+  @Get('clinic/doctors')
+  async getClinicDoctors(
+    @Req() req: Request,
+    @Query() { page, limit }: PaginationRequest,
+  ): Promise<
+    PaginationResponse<{
+      id: string;
+      phone: string;
+      email: string;
+      speciality: string;
+      isApproved: boolean;
+      socialSecurityNumber: string;
+      gender: Gender;
+      name: string;
+      dateOfBirth: Date;
+      createdAt: Date;
+    }>
+  > {
+    const user = req.user as User;
+    return await this.adminService.getClinicDoctors(user.id, page, limit);
   }
 }

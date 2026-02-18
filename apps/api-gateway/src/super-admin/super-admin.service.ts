@@ -9,16 +9,16 @@ import { Inject, Injectable } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { lastValueFrom } from 'rxjs';
 import {
-  CreateClinicDto,
-  CreateClinicInternalDto,
-} from '../../../super-admin/src/dtos';
-import {
   UpdateDoctorDto,
   UpdateDoctorInternalDto,
   UpdatePatientDto,
   UpdatePatientInternalDto,
 } from '../../../auth/src/dtos';
 import { Doctor, Patient } from '../../../auth/src/entities';
+import {
+  CreateClinicDto,
+  CreateClinicInternalDto,
+} from '../../../super-admin/src/dtos';
 
 @Injectable()
 export class SuperAdminService {

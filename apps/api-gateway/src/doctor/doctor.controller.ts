@@ -1,12 +1,16 @@
-import { Gender, PaginationResponse, Role, Roles } from '@app/common';
+import {
+  Gender,
+  PaginationRequest,
+  PaginationResponse,
+  Role,
+  Roles,
+} from '@app/common';
 import {
   BadRequestException,
   Body,
   Controller,
-  DefaultValuePipe,
   Get,
   Param,
-  ParseIntPipe,
   ParseUUIDPipe,
   Post,
   Query,
@@ -299,8 +303,7 @@ export class DoctorController {
   @Get('patients')
   async getDoctorPatients(
     @Req() req: Request,
-    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
-    @Query('limit', new DefaultValuePipe(30), ParseIntPipe) limit: number,
+    @Query() { page, limit }: PaginationRequest,
   ): Promise<
     PaginationResponse<{
       id: string;
@@ -319,8 +322,7 @@ export class DoctorController {
   @Get('visits')
   async getDoctorVisits(
     @Req() req: Request,
-    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
-    @Query('limit', new DefaultValuePipe(30), ParseIntPipe) limit: number,
+    @Query() { page, limit }: PaginationRequest,
   ): Promise<
     PaginationResponse<{
       id: string;

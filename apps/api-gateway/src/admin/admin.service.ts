@@ -8,6 +8,12 @@ import {
 import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { lastValueFrom } from 'rxjs';
+import { AdminInternalPaginationRequestDto } from '../../../admin/src/dtos';
+import {
+  MedicationDosage,
+  MedicationPeriod,
+  ScanTypes,
+} from '../../../doctor/src/constants';
 import {
   CreateMedicationDto,
   CreateMedicationInternalDto,
@@ -19,17 +25,12 @@ import {
   UploadScanDto,
   UploadScanInternalDto,
 } from '../../../doctor/src/dtos';
-import {
-  MedicationDosage,
-  MedicationPeriod,
-  ScanTypes,
-} from '../../../doctor/src/constants';
 
 @Injectable()
 export class AdminService {
   constructor(
     @Inject(Microservices.ADMIN) private readonly adminClient: ClientProxy,
-  ) { }
+  ) {}
 
   private validateImageFile(image?: Express.Multer.File) {
     const imageTypeRegExp: RegExp = /(image\/jpeg|image\/jpg|image\/png)$/;
@@ -351,6 +352,56 @@ export class AdminService {
     );
   }
 
+  async getPatientScans(patientGlobalId: string): Promise<{
+    patient: {
+      id: string;
+      name: string;
+      gender: Gender;
+      dateOfBirth: string;
+      socialSecurityNumber: string;
+      address: string | null;
+      job: string | null;
+    };
+    scans: {
+      name: string;
+      type: ScanTypes;
+      photoUrl: string;
+      comments: string | null;
+      commentsAudioUrl: string | null;
+      doctor: {
+        name: string;
+        speciality: string;
+      };
+      createdAt: string;
+    }[];
+  }> {
+    return await lastValueFrom(
+      this.adminClient.send<{
+        patient: {
+          id: string;
+          name: string;
+          gender: Gender;
+          dateOfBirth: string;
+          socialSecurityNumber: string;
+          address: string | null;
+          job: string | null;
+        };
+        scans: {
+          name: string;
+          type: ScanTypes;
+          photoUrl: string;
+          comments: string | null;
+          commentsAudioUrl: string | null;
+          doctor: {
+            name: string;
+            speciality: string;
+          };
+          createdAt: string;
+        }[];
+      }>({ cmd: AdminPatterns.GET_PATIENT_SCANS }, patientGlobalId),
+    );
+  }
+
   async getClinicVisits(
     adminUserId: number,
     page: number,
@@ -372,10 +423,83 @@ export class AdminService {
       createdAt: string;
     }>
   > {
-    return await lastValueFrom(
+    const adminInternalPaginationRequestDto: AdminInternalPaginationRequestDto =
+      {
+        paginationRequest: {
+          page,
+          limit,
+        },
+        adminUserId,
+      };
+
+    return await lastValueFrom<
+      PaginationResponse<{
+        id: string;
+        diagnoses: string;
+        diagnosesAudioUrl: string | null;
+        patient: {
+          name: string;
+          id: string;
+        };
+        doctor: {
+          name: string;
+          speciality: string;
+          id: string;
+        };
+        createdAt: string;
+      }>
+    >(
       this.adminClient.send(
         { cmd: AdminPatterns.GET_CLINIC_VISITS },
-        { userId: adminUserId, page, limit },
+        adminInternalPaginationRequestDto,
+      ),
+    );
+  }
+
+  async getClinicDoctors(
+    adminUserId: number,
+    page: number,
+    limit: number,
+  ): Promise<
+    PaginationResponse<{
+      id: string;
+      phone: string;
+      email: string;
+      speciality: string;
+      isApproved: boolean;
+      socialSecurityNumber: string;
+      gender: Gender;
+      name: string;
+      dateOfBirth: Date;
+      createdAt: Date;
+    }>
+  > {
+    const adminInternalPaginationRequestDto: AdminInternalPaginationRequestDto =
+      {
+        paginationRequest: {
+          page,
+          limit,
+        },
+        adminUserId,
+      };
+
+    return await lastValueFrom<
+      PaginationResponse<{
+        id: string;
+        phone: string;
+        email: string;
+        speciality: string;
+        isApproved: boolean;
+        socialSecurityNumber: string;
+        gender: Gender;
+        name: string;
+        dateOfBirth: Date;
+        createdAt: Date;
+      }>
+    >(
+      this.adminClient.send(
+        { cmd: AdminPatterns.GET_CLINIC_DOCTORS },
+        adminInternalPaginationRequestDto,
       ),
     );
   }

@@ -6,7 +6,6 @@ import {
   Gender,
   LoggingService,
   Microservices,
-  PaginationRequest,
   PaginationResponse,
   SuperAdminPatterns,
 } from '@app/common';
@@ -15,7 +14,11 @@ import { ClientProxy, RpcException } from '@nestjs/microservices';
 import { lastValueFrom } from 'rxjs';
 import { Admin, Doctor, Patient } from '../../auth/src/entities';
 import {
-  ClinicInternalPaginationRequestDto,
+  MedicationDosage,
+  MedicationPeriod,
+  ScanTypes,
+} from '../../doctor/src/constants';
+import {
   CreateMedicationInternalDto,
   CreateVisitInternalDto,
   DoctorInternalPaginationRequestDto,
@@ -23,12 +26,12 @@ import {
   UploadScanInternalDto,
 } from '../../doctor/src/dtos';
 import { Clinic } from '../../super-admin/src/entities';
-import { DoctorResponseDTO, PatientResponseDTO } from './dtos';
 import {
-  MedicationDosage,
-  MedicationPeriod,
-  ScanTypes,
-} from '../../doctor/src/constants';
+  AdminInternalPaginationRequestDto,
+  ClinicInternalPaginationRequestDto,
+  DoctorResponseDTO,
+  PatientResponseDTO,
+} from './dtos';
 
 @Injectable()
 export class AdminService {
@@ -77,6 +80,23 @@ export class AdminService {
 
     this.logger.log('Patient is found');
     return patient;
+  }
+
+  private async getClinicById(clinicId: number): Promise<Clinic | null> {
+    const clinic = await lastValueFrom<Clinic | null>(
+      this.superAdminClient.send(
+        { cmd: SuperAdminPatterns.GET_CLINIC_BY_ID },
+        clinicId,
+      ),
+    );
+
+    if (!clinic) {
+      this.logger.log(`Clinic of id: ${clinicId} not found`);
+      return null;
+    }
+
+    this.logger.log('Clinic is found');
+    return clinic;
   }
 
   isUp(): string {
@@ -350,7 +370,29 @@ export class AdminService {
       createdAt: Date;
     }[];
   }> {
-    return await lastValueFrom(
+    return await lastValueFrom<{
+      patient: {
+        id: string;
+        name: string;
+        gender: Gender;
+        dateOfBirth: Date;
+        socialSecurityNumber: string;
+        address: string | null;
+        job: string | null;
+      };
+      medications: {
+        name: string;
+        dosage: MedicationDosage;
+        period: MedicationPeriod;
+        comments: string | null;
+        commentsAudioUrl: string | null;
+        doctor: {
+          name: string;
+          speciality: string;
+        };
+        createdAt: Date;
+      }[];
+    }>(
       this.doctorClient.send(
         { cmd: DoctorPatterns.GET_PATIENT_MEDICATIONS },
         patientGlobalId,
@@ -358,8 +400,61 @@ export class AdminService {
     );
   }
 
+  async getPatientScans(patientGlobalId: string): Promise<{
+    patient: {
+      id: string;
+      name: string;
+      gender: Gender;
+      dateOfBirth: string;
+      socialSecurityNumber: string;
+      address: string | null;
+      job: string | null;
+    };
+    scans: {
+      name: string;
+      type: ScanTypes;
+      photoUrl: string;
+      comments: string | null;
+      commentsAudioUrl: string | null;
+      doctor: {
+        name: string;
+        speciality: string;
+      };
+      createdAt: string;
+    }[];
+  }> {
+    return await lastValueFrom<{
+      patient: {
+        id: string;
+        name: string;
+        gender: Gender;
+        dateOfBirth: string;
+        socialSecurityNumber: string;
+        address: string | null;
+        job: string | null;
+      };
+      scans: {
+        name: string;
+        type: ScanTypes;
+        photoUrl: string;
+        comments: string | null;
+        commentsAudioUrl: string | null;
+        doctor: {
+          name: string;
+          speciality: string;
+        };
+        createdAt: string;
+      }[];
+    }>(
+      this.doctorClient.send(
+        { cmd: DoctorPatterns.GET_PATIENT_SCANS },
+        patientGlobalId,
+      ),
+    );
+  }
+
   async getClinicVisits(
-    getClinicVisitsRequest: PaginationRequest & { userId: number },
+    adminInternalPaginationRequestDto: AdminInternalPaginationRequestDto,
   ): Promise<
     PaginationResponse<{
       id: string;
@@ -377,24 +472,109 @@ export class AdminService {
       createdAt: string;
     }>
   > {
-    const admin = await this.getAdminByUserId(getClinicVisitsRequest.userId);
+    const admin = await this.getAdminByUserId(
+      adminInternalPaginationRequestDto.adminUserId,
+    );
     if (!admin) {
       throw new RpcException(
         new ErrorResponse('Admin not found for this user.', 404),
       );
     }
 
+    const clinic = await this.getClinicById(admin.clinicId);
+
+    if (!clinic) {
+      throw new RpcException(new ErrorResponse('Clinic not found!', 404));
+    }
+
     const clinicInternalPaginationRequestDto =
       new ClinicInternalPaginationRequestDto(
-        getClinicVisitsRequest,
+        adminInternalPaginationRequestDto.paginationRequest,
         admin.clinicId,
       );
 
     return lastValueFrom(
-      this.doctorClient.send(
+      this.doctorClient.send<
+        PaginationResponse<{
+          id: string;
+          diagnoses: string;
+          diagnosesAudioUrl: string | null;
+          patient: {
+            name: string;
+            id: string;
+          };
+          doctor: {
+            name: string;
+            speciality: string;
+            id: string;
+          };
+          createdAt: string;
+        }>
+      >(
         { cmd: DoctorPatterns.GET_CLINIC_VISITS },
         clinicInternalPaginationRequestDto,
       ),
     );
+  }
+
+  async getClinicDoctors(
+    adminInternalPaginationRequestDto: AdminInternalPaginationRequestDto,
+  ): Promise<
+    PaginationResponse<{
+      id: string;
+      phone: string;
+      email: string;
+      speciality: string;
+      isApproved: boolean;
+      socialSecurityNumber: string;
+      gender: Gender;
+      name: string;
+      dateOfBirth: Date;
+      createdAt: Date;
+    }>
+  > {
+    const admin = await this.getAdminByUserId(
+      adminInternalPaginationRequestDto.adminUserId,
+    );
+    if (!admin) {
+      throw new RpcException(
+        new ErrorResponse('Admin not found for this user.', 404),
+      );
+    }
+
+    const clinic = await this.getClinicById(admin.clinicId);
+
+    if (!clinic) {
+      throw new RpcException(new ErrorResponse('Clinic not found!', 404));
+    }
+
+    const clinicInternalPaginationRequestDto =
+      new ClinicInternalPaginationRequestDto(
+        adminInternalPaginationRequestDto.paginationRequest,
+        admin.clinicId,
+      );
+
+    const response = await lastValueFrom<PaginationResponse<Doctor>>(
+      this.authClient.send(
+        { cmd: AuthPatterns.GET_CLINIC_DOCTORS },
+        clinicInternalPaginationRequestDto,
+      ),
+    );
+
+    return {
+      ...response,
+      items: response.items.map((doctor) => ({
+        id: doctor.globalId,
+        name: `${doctor.user.firstName} ${doctor.user.lastName}`,
+        speciality: doctor.speciality,
+        email: doctor.email,
+        phone: doctor.phone,
+        isApproved: doctor.isApproved,
+        socialSecurityNumber: String(doctor.user.socialSecurityNumber),
+        gender: doctor.user.gender,
+        dateOfBirth: doctor.user.dateOfBirth,
+        createdAt: doctor.createdAt,
+      })),
+    };
   }
 }

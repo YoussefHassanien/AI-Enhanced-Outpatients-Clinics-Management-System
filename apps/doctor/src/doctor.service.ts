@@ -17,6 +17,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { lastValueFrom } from 'rxjs';
 import { IsNull, Repository } from 'typeorm';
 import { v4 as uuidv4 } from 'uuid';
+import { ClinicInternalPaginationRequestDto } from '../../admin/src/dtos';
 import { TranscribeAudioInternalDto } from '../../asr/src/dtos';
 import { Admin, Doctor, Patient } from '../../auth/src/entities';
 import {
@@ -35,7 +36,6 @@ import {
   DoctorInternalPaginationRequestDto,
   UploadLabInternalDto,
   UploadScanInternalDto,
-  ClinicInternalPaginationRequestDto,
 } from './dtos';
 import { Lab, Medication, Scan, Visit } from './entities';
 
@@ -518,9 +518,9 @@ export class DoctorService {
         patientIds[index],
         patient
           ? {
-            name: `${patient.user.firstName} ${patient.user.lastName}`,
-            id: patient.globalId,
-          }
+              name: `${patient.user.firstName} ${patient.user.lastName}`,
+              id: patient.globalId,
+            }
           : { name: 'UNKNOWN', id: 'UNKNOWN' },
       ]),
     );
@@ -631,9 +631,9 @@ export class DoctorService {
         doctorsUserId[index],
         doctor
           ? {
-            name: `${doctor.user.firstName} ${doctor.user.lastName}`,
-            speciality: doctor?.speciality ?? 'UNKNOWN',
-          }
+              name: `${doctor.user.firstName} ${doctor.user.lastName}`,
+              speciality: doctor?.speciality ?? 'UNKNOWN',
+            }
           : { name: 'UNKNOWN', speciality: 'UNKNOWN' },
       ]),
     );
@@ -760,9 +760,9 @@ export class DoctorService {
         doctorsIds[index],
         doctor
           ? {
-            name: `${doctor.user.firstName} ${doctor.user.lastName}`,
-            speciality: doctor.speciality,
-          }
+              name: `${doctor.user.firstName} ${doctor.user.lastName}`,
+              speciality: doctor.speciality,
+            }
           : { name: 'UNKNOWN', speciality: 'UNKNOWN' },
       ]),
     );
@@ -858,9 +858,9 @@ export class DoctorService {
         doctorsIds[index],
         doctor
           ? {
-            name: `${doctor.user.firstName} ${doctor.user.lastName}`,
-            speciality: doctor.speciality,
-          }
+              name: `${doctor.user.firstName} ${doctor.user.lastName}`,
+              speciality: doctor.speciality,
+            }
           : { name: 'UNKNOWN', speciality: 'UNKNOWN' },
       ]),
     );
@@ -955,9 +955,9 @@ export class DoctorService {
         doctorsIds[index],
         doctor
           ? {
-            name: `${doctor.user.firstName} ${doctor.user.lastName}`,
-            speciality: doctor.speciality,
-          }
+              name: `${doctor.user.firstName} ${doctor.user.lastName}`,
+              speciality: doctor.speciality,
+            }
           : { name: 'UNKNOWN', speciality: 'UNKNOWN' },
       ]),
     );
@@ -1388,9 +1388,7 @@ export class DoctorService {
 
     const [patients, doctors] = await Promise.all([
       Promise.all(patientIds.map((id) => this.getPatientById(id))),
-      Promise.all(
-        doctorUserIds.map((id) => this.getClinicalStaffByUserId(id)),
-      ),
+      Promise.all(doctorUserIds.map((id) => this.getClinicalStaffByUserId(id))),
     ]);
 
     const patientsMap = new Map(
@@ -1398,9 +1396,9 @@ export class DoctorService {
         patientIds[index],
         patient
           ? {
-            name: `${patient.user.firstName} ${patient.user.lastName}`,
-            id: patient.globalId,
-          }
+              name: `${patient.user.firstName} ${patient.user.lastName}`,
+              id: patient.globalId,
+            }
           : { name: 'UNKNOWN', id: 'UNKNOWN' },
       ]),
     );
@@ -1410,10 +1408,10 @@ export class DoctorService {
         doctorUserIds[index],
         doctor
           ? {
-            name: `${doctor.user.firstName} ${doctor.user.lastName}`,
-            id: doctor.globalId,
-            speciality: doctor.speciality,
-          }
+              name: `${doctor.user.firstName} ${doctor.user.lastName}`,
+              id: doctor.globalId,
+              speciality: doctor.speciality,
+            }
           : { name: 'UNKNOWN', id: 'UNKNOWN', speciality: 'UNKNOWN' },
       ]),
     );

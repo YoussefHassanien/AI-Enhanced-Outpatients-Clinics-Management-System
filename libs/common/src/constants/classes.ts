@@ -1,4 +1,12 @@
-import { IsInt, IsNotEmpty, IsPositive, Max, Min } from 'class-validator';
+import { Type } from 'class-transformer';
+import {
+  IsInt,
+  IsNotEmpty,
+  IsOptional,
+  IsPositive,
+  Max,
+  Min,
+} from 'class-validator';
 
 export class ErrorResponse {
   @IsNotEmpty()
@@ -31,11 +39,15 @@ export class PaginationResponse<T> {
 }
 
 export class PaginationRequest {
+  @Type(() => Number)
   @IsInt()
   @IsPositive()
-  limit: number;
+  @IsOptional()
+  page: number = 1;
 
+  @Type(() => Number)
   @IsInt()
   @IsPositive()
-  page: number;
+  @IsOptional()
+  limit: number = 30;
 }

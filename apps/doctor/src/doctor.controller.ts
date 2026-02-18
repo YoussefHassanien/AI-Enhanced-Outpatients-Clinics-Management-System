@@ -6,10 +6,10 @@ import {
 } from '@app/common';
 import { Controller } from '@nestjs/common';
 import { EventPattern, MessagePattern, Payload } from '@nestjs/microservices';
+import { ClinicInternalPaginationRequestDto } from '../../admin/src/dtos';
 import { MedicationDosage, MedicationPeriod, ScanTypes } from './constants';
 import { DoctorService } from './doctor.service';
 import {
-  ClinicInternalPaginationRequestDto,
   CreateMedicationInternalDto,
   CreateVisitInternalDto,
   DoctorInternalPaginationRequestDto,
@@ -19,7 +19,7 @@ import {
 
 @Controller()
 export class DoctorController {
-  constructor(private readonly doctorService: DoctorService) { }
+  constructor(private readonly doctorService: DoctorService) {}
 
   @MessagePattern({ cmd: DoctorPatterns.IS_UP })
   isUp(): string {
