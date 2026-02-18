@@ -65,6 +65,7 @@ export enum DoctorPatterns {
   GET_ALL_VISITS = 'doctor.admin.visits',
   GET_DOCTOR_PATIENTS = 'doctor.patients',
   GET_DOCTOR_VISITS = 'doctor.visits',
+  GET_CLINIC_VISITS = 'doctor.clinic.visits',
   SEARCH_FOR_PATIENT_BY_SOCIAL_SECURITY_NUMBER = 'doctor.searchForPatientBySocilaSecurityNumber',
 }
 

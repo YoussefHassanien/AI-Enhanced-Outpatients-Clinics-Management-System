@@ -290,4 +290,30 @@ export class AdminController {
   }> {
     return await this.adminService.getPatientMedications(patientGlobalId);
   }
+
+  @Get('clinic/visits')
+  async getClinicVisits(
+    @Req() req: Request,
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query('limit', new DefaultValuePipe(30), ParseIntPipe) limit: number,
+  ): Promise<
+    PaginationResponse<{
+      id: string;
+      diagnoses: string;
+      diagnosesAudioUrl: string | null;
+      patient: {
+        name: string;
+        id: string;
+      };
+      doctor: {
+        name: string;
+        speciality: string;
+        id: string;
+      };
+      createdAt: string;
+    }>
+  > {
+    const user = req.user as User;
+    return await this.adminService.getClinicVisits(user.id, page, limit);
+  }
 }

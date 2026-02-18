@@ -35,6 +35,7 @@ import {
   DoctorInternalPaginationRequestDto,
   UploadLabInternalDto,
   UploadScanInternalDto,
+  ClinicInternalPaginationRequestDto,
 } from './dtos';
 import { Lab, Medication, Scan, Visit } from './entities';
 
@@ -517,9 +518,9 @@ export class DoctorService {
         patientIds[index],
         patient
           ? {
-              name: `${patient.user.firstName} ${patient.user.lastName}`,
-              id: patient.globalId,
-            }
+            name: `${patient.user.firstName} ${patient.user.lastName}`,
+            id: patient.globalId,
+          }
           : { name: 'UNKNOWN', id: 'UNKNOWN' },
       ]),
     );
@@ -630,9 +631,9 @@ export class DoctorService {
         doctorsUserId[index],
         doctor
           ? {
-              name: `${doctor.user.firstName} ${doctor.user.lastName}`,
-              speciality: doctor?.speciality ?? 'UNKNOWN',
-            }
+            name: `${doctor.user.firstName} ${doctor.user.lastName}`,
+            speciality: doctor?.speciality ?? 'UNKNOWN',
+          }
           : { name: 'UNKNOWN', speciality: 'UNKNOWN' },
       ]),
     );
@@ -759,9 +760,9 @@ export class DoctorService {
         doctorsIds[index],
         doctor
           ? {
-              name: `${doctor.user.firstName} ${doctor.user.lastName}`,
-              speciality: doctor.speciality,
-            }
+            name: `${doctor.user.firstName} ${doctor.user.lastName}`,
+            speciality: doctor.speciality,
+          }
           : { name: 'UNKNOWN', speciality: 'UNKNOWN' },
       ]),
     );
@@ -857,9 +858,9 @@ export class DoctorService {
         doctorsIds[index],
         doctor
           ? {
-              name: `${doctor.user.firstName} ${doctor.user.lastName}`,
-              speciality: doctor.speciality,
-            }
+            name: `${doctor.user.firstName} ${doctor.user.lastName}`,
+            speciality: doctor.speciality,
+          }
           : { name: 'UNKNOWN', speciality: 'UNKNOWN' },
       ]),
     );
@@ -954,9 +955,9 @@ export class DoctorService {
         doctorsIds[index],
         doctor
           ? {
-              name: `${doctor.user.firstName} ${doctor.user.lastName}`,
-              speciality: doctor.speciality,
-            }
+            name: `${doctor.user.firstName} ${doctor.user.lastName}`,
+            speciality: doctor.speciality,
+          }
           : { name: 'UNKNOWN', speciality: 'UNKNOWN' },
       ]),
     );
@@ -1342,6 +1343,104 @@ export class DoctorService {
       job: patient.job,
       address: patient.address,
       createdAt: patient.createdAt,
+    };
+  }
+
+  async getClinicVisits(
+    clinicInternalPaginationRequestDto: ClinicInternalPaginationRequestDto,
+  ): Promise<
+    PaginationResponse<{
+      id: string;
+      diagnoses: string;
+      diagnosesAudioUrl: string | null;
+      patient: {
+        name: string;
+        id: string;
+      };
+      doctor: {
+        name: string;
+        speciality: string;
+        id: string;
+      };
+      createdAt: string;
+    }>
+  > {
+    const [visits, totalItems] = await this.visitsRepository.findAndCount({
+      where: {
+        clinicId: clinicInternalPaginationRequestDto.clinicId,
+        deletedAt: IsNull(),
+      },
+      order: {
+        createdAt: 'DESC',
+      },
+      skip:
+        (clinicInternalPaginationRequestDto.page - 1) *
+        clinicInternalPaginationRequestDto.limit,
+      take: clinicInternalPaginationRequestDto.limit,
+    });
+
+    this.logger.log(
+      `Found ${visits.length} visits for clinic ${clinicInternalPaginationRequestDto.clinicId}`,
+    );
+
+    const patientIds = [...new Set(visits.map((v) => v.patientId))];
+    const doctorUserIds = [...new Set(visits.map((v) => v.userId))];
+
+    const [patients, doctors] = await Promise.all([
+      Promise.all(patientIds.map((id) => this.getPatientById(id))),
+      Promise.all(
+        doctorUserIds.map((id) => this.getClinicalStaffByUserId(id)),
+      ),
+    ]);
+
+    const patientsMap = new Map(
+      patients.map((patient, index) => [
+        patientIds[index],
+        patient
+          ? {
+            name: `${patient.user.firstName} ${patient.user.lastName}`,
+            id: patient.globalId,
+          }
+          : { name: 'UNKNOWN', id: 'UNKNOWN' },
+      ]),
+    );
+
+    const doctorsMap = new Map(
+      doctors.map((doctor, index) => [
+        doctorUserIds[index],
+        doctor
+          ? {
+            name: `${doctor.user.firstName} ${doctor.user.lastName}`,
+            id: doctor.globalId,
+            speciality: doctor.speciality,
+          }
+          : { name: 'UNKNOWN', id: 'UNKNOWN', speciality: 'UNKNOWN' },
+      ]),
+    );
+
+    const visitsInformation = visits.map((visit) => ({
+      id: visit.globalId,
+      diagnoses: visit.diagnoses,
+      diagnosesAudioUrl: visit.diagnosesAudioUrl,
+      patient: patientsMap.get(visit.patientId) ?? {
+        name: 'UNKNOWN',
+        id: 'UNKNOWN',
+      },
+      doctor: doctorsMap.get(visit.userId) ?? {
+        name: 'UNKNOWN',
+        id: 'UNKNOWN',
+        speciality: 'UNKNOWN',
+      },
+      createdAt: visit.createdAt.toISOString(),
+    }));
+
+    return {
+      page: clinicInternalPaginationRequestDto.page,
+      items: visitsInformation,
+      totalItems,
+      totalPages: Math.ceil(
+        totalItems / clinicInternalPaginationRequestDto.limit,
+      ),
     };
   }
 }

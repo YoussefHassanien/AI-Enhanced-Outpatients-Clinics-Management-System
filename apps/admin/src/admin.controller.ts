@@ -101,4 +101,11 @@ export class AdminController {
   async getPatientMedications(@Payload() patientGlobalId: string) {
     return await this.adminService.getPatientMedications(patientGlobalId);
   }
+
+  @MessagePattern({ cmd: AdminPatterns.GET_CLINIC_VISITS })
+  async getClinicVisits(
+    @Payload() getClinicVisitsRequest: { userId: number; page: number; limit: number },
+  ) {
+    return await this.adminService.getClinicVisits(getClinicVisitsRequest);
+  }
 }

@@ -351,4 +351,32 @@ export class AdminService {
     );
   }
 
+  async getClinicVisits(
+    adminUserId: number,
+    page: number,
+    limit: number,
+  ): Promise<
+    PaginationResponse<{
+      id: string;
+      diagnoses: string;
+      diagnosesAudioUrl: string | null;
+      patient: {
+        name: string;
+        id: string;
+      };
+      doctor: {
+        name: string;
+        speciality: string;
+        id: string;
+      };
+      createdAt: string;
+    }>
+  > {
+    return await lastValueFrom(
+      this.adminClient.send(
+        { cmd: AdminPatterns.GET_CLINIC_VISITS },
+        { userId: adminUserId, page, limit },
+      ),
+    );
+  }
 }
