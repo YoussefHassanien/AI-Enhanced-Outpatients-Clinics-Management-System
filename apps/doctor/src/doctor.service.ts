@@ -1,5 +1,4 @@
 import {
-  AdminPatterns,
   AsrPatterns,
   AuthPatterns,
   CloudStoragePatterns,
@@ -10,6 +9,7 @@ import {
   Microservices,
   PaginationRequest,
   PaginationResponse,
+  SuperAdminPatterns,
 } from '@app/common';
 import { Inject, Injectable } from '@nestjs/common';
 import { ClientProxy, RpcException } from '@nestjs/microservices';
@@ -17,7 +17,6 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { lastValueFrom } from 'rxjs';
 import { IsNull, Repository } from 'typeorm';
 import { v4 as uuidv4 } from 'uuid';
-import { Clinic } from '../../admin/src/entities';
 import { TranscribeAudioInternalDto } from '../../asr/src/dtos';
 import { Admin, Doctor, Patient } from '../../auth/src/entities';
 import {
@@ -28,8 +27,10 @@ import {
   ScanPhotoInternalDto,
   VisitAudioInternalDto,
 } from '../../cloud-storage/src/dtos';
+import { Clinic } from '../../super-admin/src/entities';
 import { MedicationDosage, MedicationPeriod, ScanTypes } from './constants';
 import {
+  ClinicInternalPaginationRequestDto,
   CreateMedicationInternalDto,
   CreateVisitInternalDto,
   DoctorInternalPaginationRequestDto,
@@ -51,32 +52,14 @@ export class DoctorService {
     @InjectRepository(Scan)
     private readonly scansRepository: Repository<Scan>,
     @Inject(Microservices.AUTH) private readonly authClient: ClientProxy,
-    @Inject(Microservices.ADMIN) private readonly adminClient: ClientProxy,
+    @Inject(Microservices.SUPER_ADMIN)
+    private readonly superAdminClient: ClientProxy,
     @Inject(Microservices.CLOUD_STORAGE)
     private readonly cloudStorageClient: ClientProxy,
     @Inject(Microservices.ASR) private readonly asrClient: ClientProxy,
     @Inject(CommonServices.LOGGING) logger: LoggingService,
   ) {
     this.logger = logger;
-  }
-
-  private async getDoctorByUserId(
-    doctorUserId: number,
-  ): Promise<Doctor | null> {
-    const doctor = await lastValueFrom<Doctor | null>(
-      this.authClient.send(
-        { cmd: AuthPatterns.GET_DOCTOR_BY_USER_ID },
-        doctorUserId,
-      ),
-    );
-
-    if (!doctor) {
-      this.logger.log(`Doctor of user id: ${doctorUserId} not found`);
-      return null;
-    }
-
-    this.logger.log('Doctor is found');
-    return doctor;
   }
 
   private async getDoctorById(doctorId: number): Promise<Doctor | null> {
@@ -178,7 +161,7 @@ export class DoctorService {
   private async uploadLabAudio(
     labAudioInternalDto: LabAudioInternalDto,
   ): Promise<string> {
-    const photoUrl = await lastValueFrom<string>(
+    const audioUrl = await lastValueFrom<string>(
       this.cloudStorageClient.send(
         { cmd: CloudStoragePatterns.UPLOAD_LAB_AUDIO },
         labAudioInternalDto,
@@ -186,13 +169,13 @@ export class DoctorService {
     );
     this.logger.log('Lab audio is successfully uploaded');
 
-    return photoUrl;
+    return audioUrl;
   }
 
   private async uploadScanAudio(
     scanAudioInternalDto: ScanAudioInternalDto,
   ): Promise<string> {
-    const photoUrl = await lastValueFrom<string>(
+    const audioUrl = await lastValueFrom<string>(
       this.cloudStorageClient.send(
         { cmd: CloudStoragePatterns.UPLOAD_SCAN_AUDIO },
         scanAudioInternalDto,
@@ -200,13 +183,13 @@ export class DoctorService {
     );
     this.logger.log('Scan audio is successfully uploaded');
 
-    return photoUrl;
+    return audioUrl;
   }
 
   private async uploadMedicationAudio(
     medicationAudioInternalDto: MedicationAudioInternalDto,
   ): Promise<string> {
-    const photoUrl = await lastValueFrom<string>(
+    const audioUrl = await lastValueFrom<string>(
       this.cloudStorageClient.send(
         { cmd: CloudStoragePatterns.UPLOAD_MEDICATION_AUDIO },
         medicationAudioInternalDto,
@@ -214,13 +197,13 @@ export class DoctorService {
     );
     this.logger.log('Medication audio is successfully uploaded');
 
-    return photoUrl;
+    return audioUrl;
   }
 
   private async getClinicById(clinicId: number): Promise<Clinic | null> {
     const clinic = await lastValueFrom<Clinic | null>(
-      this.adminClient.send<Clinic | null>(
-        { cmd: AdminPatterns.GET_CLINIC_BY_ID },
+      this.superAdminClient.send<Clinic | null>(
+        { cmd: SuperAdminPatterns.GET_CLINIC_BY_ID },
         clinicId,
       ),
     );
@@ -236,7 +219,10 @@ export class DoctorService {
 
   private async getAllClinicsWithId(): Promise<Clinic[]> {
     return await lastValueFrom<Clinic[]>(
-      this.adminClient.send({ cmd: AdminPatterns.GET_ALL_CLINICS_WITH_ID }, {}),
+      this.superAdminClient.send(
+        { cmd: SuperAdminPatterns.GET_ALL_CLINICS_WITH_ID },
+        {},
+      ),
     );
   }
 
@@ -288,12 +274,6 @@ export class DoctorService {
     );
   }
 
-  private async deleteAsrTemporaryFile(filePath: string): Promise<void> {
-    await lastValueFrom<void>(
-      this.asrClient.emit({ cmd: AsrPatterns.DELETE_TEMPORARY_FILE }, filePath),
-    );
-  }
-
   isUp(): string {
     return 'Doctor service is up';
   }
@@ -309,7 +289,9 @@ export class DoctorService {
     );
 
     if (!doctor) {
-      this.logger.log(`Clinical staff member of user id: ${doctorUserId} not found`);
+      this.logger.log(
+        `Clinical staff member of user id: ${doctorUserId} not found`,
+      );
       return null;
     }
 
@@ -400,7 +382,12 @@ export class DoctorService {
     );
 
     if (!doctor) {
-      throw new RpcException(new ErrorResponse('There is no doctor or admin associated with this userId', 404));
+      throw new RpcException(
+        new ErrorResponse(
+          'There is no doctor or admin associated with this userId',
+          404,
+        ),
+      );
     }
 
     const visits = await this.visitsRepository.find({
@@ -493,7 +480,12 @@ export class DoctorService {
     );
 
     if (!doctor) {
-      throw new RpcException(new ErrorResponse('There is no doctor or admin associated with this userId', 404));
+      throw new RpcException(
+        new ErrorResponse(
+          'There is no doctor or admin associated with this userId',
+          404,
+        ),
+      );
     }
 
     const [visits, totalItems] = await this.visitsRepository.findAndCount({
@@ -526,9 +518,9 @@ export class DoctorService {
         patientIds[index],
         patient
           ? {
-            name: `${patient.user.firstName} ${patient.user.lastName}`,
-            id: patient.globalId,
-          }
+              name: `${patient.user.firstName} ${patient.user.lastName}`,
+              id: patient.globalId,
+            }
           : { name: 'UNKNOWN', id: 'UNKNOWN' },
       ]),
     );
@@ -581,7 +573,7 @@ export class DoctorService {
     return paginatedResponse;
   }
 
-  async getPatientVisits(socialSecurityNumber: string): Promise<{
+  async getPatientVisits(patientGlobalId: string): Promise<{
     patient: {
       id: string;
       name: string;
@@ -605,10 +597,7 @@ export class DoctorService {
       }[];
     }[];
   }> {
-    this.validateSocialSecurityNumber(socialSecurityNumber);
-
-    const patient =
-      await this.getPatientBySocialSecurityNumber(socialSecurityNumber);
+    const patient = await this.getPatientByGlobalId(patientGlobalId);
 
     if (!patient) {
       throw new RpcException(new ErrorResponse('Patient not found!', 404));
@@ -642,9 +631,9 @@ export class DoctorService {
         doctorsUserId[index],
         doctor
           ? {
-            name: `${doctor.user.firstName} ${doctor.user.lastName}`,
-            speciality: doctor?.speciality ?? 'UNKNOWN',
-          }
+              name: `${doctor.user.firstName} ${doctor.user.lastName}`,
+              speciality: doctor?.speciality ?? 'UNKNOWN',
+            }
           : { name: 'UNKNOWN', speciality: 'UNKNOWN' },
       ]),
     );
@@ -718,7 +707,7 @@ export class DoctorService {
     return { patient: patientInfo, clinics: Object.values(visitsByClinic) };
   }
 
-  async getPatientMedications(socialSecurityNumber: string): Promise<{
+  async getPatientMedications(patientGlobalId: string): Promise<{
     patient: {
       id: string;
       name: string;
@@ -741,10 +730,7 @@ export class DoctorService {
       createdAt: Date;
     }[];
   }> {
-    this.validateSocialSecurityNumber(socialSecurityNumber);
-
-    const patient =
-      await this.getPatientBySocialSecurityNumber(socialSecurityNumber);
+    const patient = await this.getPatientByGlobalId(patientGlobalId);
 
     if (!patient) {
       throw new RpcException(new ErrorResponse('Patient not found!', 404));
@@ -774,9 +760,9 @@ export class DoctorService {
         doctorsIds[index],
         doctor
           ? {
-            name: `${doctor.user.firstName} ${doctor.user.lastName}`,
-            speciality: doctor.speciality,
-          }
+              name: `${doctor.user.firstName} ${doctor.user.lastName}`,
+              speciality: doctor.speciality,
+            }
           : { name: 'UNKNOWN', speciality: 'UNKNOWN' },
       ]),
     );
@@ -819,7 +805,7 @@ export class DoctorService {
     };
   }
 
-  async getPatientScans(socialSecurityNumber: string): Promise<{
+  async getPatientScans(patientGlobalId: string): Promise<{
     patient: {
       id: string;
       name: string;
@@ -842,10 +828,7 @@ export class DoctorService {
       createdAt: Date;
     }[];
   }> {
-    this.validateSocialSecurityNumber(socialSecurityNumber);
-
-    const patient =
-      await this.getPatientBySocialSecurityNumber(socialSecurityNumber);
+    const patient = await this.getPatientByGlobalId(patientGlobalId);
 
     if (!patient) {
       throw new RpcException(new ErrorResponse('Patient not found!', 404));
@@ -875,9 +858,9 @@ export class DoctorService {
         doctorsIds[index],
         doctor
           ? {
-            name: `${doctor.user.firstName} ${doctor.user.lastName}`,
-            speciality: doctor.speciality,
-          }
+              name: `${doctor.user.firstName} ${doctor.user.lastName}`,
+              speciality: doctor.speciality,
+            }
           : { name: 'UNKNOWN', speciality: 'UNKNOWN' },
       ]),
     );
@@ -920,7 +903,7 @@ export class DoctorService {
     };
   }
 
-  async getPatientLabs(socialSecurityNumber: string): Promise<{
+  async getPatientLabs(patientGlobalId: string): Promise<{
     patient: {
       id: string;
       name: string;
@@ -942,10 +925,7 @@ export class DoctorService {
       createdAt: Date;
     }[];
   }> {
-    this.validateSocialSecurityNumber(socialSecurityNumber);
-
-    const patient =
-      await this.getPatientBySocialSecurityNumber(socialSecurityNumber);
+    const patient = await this.getPatientByGlobalId(patientGlobalId);
 
     if (!patient) {
       throw new RpcException(new ErrorResponse('Patient not found!', 404));
@@ -975,9 +955,9 @@ export class DoctorService {
         doctorsIds[index],
         doctor
           ? {
-            name: `${doctor.user.firstName} ${doctor.user.lastName}`,
-            speciality: doctor.speciality,
-          }
+              name: `${doctor.user.firstName} ${doctor.user.lastName}`,
+              speciality: doctor.speciality,
+            }
           : { name: 'UNKNOWN', speciality: 'UNKNOWN' },
       ]),
     );
@@ -1022,20 +1002,25 @@ export class DoctorService {
   async createVisit(
     createVisitInternalDto: CreateVisitInternalDto,
   ): Promise<void> {
-    const doctor = await this.getClinicalStaffByUserId(
-      createVisitInternalDto.doctorUserId,
-    );
-
-    if (!doctor) {
-      throw new RpcException(new ErrorResponse('There is no doctor or admin associated with this userId', 404));
-    }
-
     const patient = await this.getPatientByGlobalId(
       createVisitInternalDto.patientId,
     );
 
     if (!patient) {
       throw new RpcException(new ErrorResponse('Patient not found!', 404));
+    }
+
+    const doctor = await this.getClinicalStaffByUserId(
+      createVisitInternalDto.doctorUserId,
+    );
+
+    if (!doctor) {
+      throw new RpcException(
+        new ErrorResponse(
+          'There is no doctor or admin associated with this userId',
+          404,
+        ),
+      );
     }
 
     const clinic = await this.getClinicById(doctor.clinicId);
@@ -1106,7 +1091,7 @@ export class DoctorService {
 
   async createMedication(
     createMedicationInternalDto: CreateMedicationInternalDto,
-  ): Promise<{ success: boolean }> {
+  ): Promise<void> {
     const patient = await this.getPatientByGlobalId(
       createMedicationInternalDto.patientId,
     );
@@ -1115,12 +1100,20 @@ export class DoctorService {
       throw new RpcException(new ErrorResponse('Patient not found!', 404));
     }
 
+    const doctor = await this.getClinicalStaffByUserId(
+      createMedicationInternalDto.doctorUserId,
+    );
+
+    if (!doctor) {
+      throw new RpcException(new ErrorResponse('Doctor not found!', 404));
+    }
+
     const medicationGlobalId = uuidv4();
     const medication = this.medicationsRepository.create({
       globalId: medicationGlobalId,
       name: createMedicationInternalDto.name,
       comments: null,
-      userId: createMedicationInternalDto.doctorUserId,
+      userId: doctor.user.id,
       patientId: patient.id,
       period: createMedicationInternalDto.period,
       dosage: createMedicationInternalDto.dosage,
@@ -1135,10 +1128,8 @@ export class DoctorService {
       createMedicationInternalDto.audioFilePath &&
       createMedicationInternalDto.audioMimetype
     ) {
-      await this.medicationsRepository.insert(medication);
-
       const medicationAudioInternalDto: MedicationAudioInternalDto = {
-        medicationGlobalId: medication.globalId,
+        medicationGlobalId,
         patientGlobalId: patient.globalId,
         audioFilePath: createMedicationInternalDto.audioFilePath,
         audioMimetype: createMedicationInternalDto.audioMimetype,
@@ -1163,25 +1154,27 @@ export class DoctorService {
       await this.deleteCloudStorageTemporaryFile(
         createMedicationInternalDto.audioFilePath,
       );
-
-      await this.medicationsRepository.save(medication);
-      this.logger.log('Successfully updated medication with audio');
-    } else {
-      await this.medicationsRepository.insert(medication);
-      this.logger.log('Successfully inserted medication');
     }
-    return { success: true };
+
+    await this.medicationsRepository.insert(medication);
+    this.logger.log('Successfully inserted medication');
   }
 
-  async uploadLab(uploadLabInternalDto: UploadLabInternalDto): Promise<{ success: boolean }> {
-    const patient = uploadLabInternalDto.patientGlobalId
-      ? await this.getPatientByGlobalId(uploadLabInternalDto.patientGlobalId)
-      : await this.getPatientBySocialSecurityNumber(
-        uploadLabInternalDto.patientSocialSecurityNumber!,
-      );
+  async uploadLab(uploadLabInternalDto: UploadLabInternalDto): Promise<void> {
+    const patient = await this.getPatientByGlobalId(
+      uploadLabInternalDto.patientId,
+    );
 
     if (!patient) {
       throw new RpcException(new ErrorResponse('Patient not found!', 404));
+    }
+
+    const doctor = await this.getClinicalStaffByUserId(
+      uploadLabInternalDto.doctorUserId,
+    );
+
+    if (!doctor) {
+      throw new RpcException(new ErrorResponse('Doctor not found', 404));
     }
 
     const labGlobalId = uuidv4();
@@ -1189,16 +1182,14 @@ export class DoctorService {
       globalId: labGlobalId,
       name: uploadLabInternalDto.name,
       comments: null,
-      userId: uploadLabInternalDto.doctorUserId,
+      userId: doctor.user.id,
       patientId: patient.id,
       photoUrl: '',
       commentsAudioUrl: null,
     });
 
-    await this.labsRepository.insert(lab);
-
     const labPhotoInternalDto: LabPhotoInternalDto = {
-      labGlobalId: lab.globalId,
+      labGlobalId,
       patientGlobalId: patient.globalId,
       imageFilePath: uploadLabInternalDto.imageFilePath,
       imageMimetype: uploadLabInternalDto.imageMimetype,
@@ -1219,7 +1210,7 @@ export class DoctorService {
       uploadLabInternalDto.audioMimetype
     ) {
       const labAudioInternalDto: LabAudioInternalDto = {
-        labGlobalId: lab.globalId,
+        labGlobalId,
         patientGlobalId: patient.globalId,
         audioFilePath: uploadLabInternalDto.audioFilePath,
         audioMimetype: uploadLabInternalDto.audioMimetype,
@@ -1239,27 +1230,29 @@ export class DoctorService {
       await this.deleteCloudStorageTemporaryFile(
         uploadLabInternalDto.audioFilePath,
       );
-
-      await this.labsRepository.save(lab);
-      this.logger.log('Lab is updated successfully with audio');
-    } else {
-      await this.labsRepository.save(lab);
-      this.logger.log('Lab is inserted successfully');
     }
-    return { success: true };
+
+    await this.labsRepository.insert(lab);
+    this.logger.log('Lab is inserted successfully');
   }
 
   async uploadScan(
     uploadScanInternalDto: UploadScanInternalDto,
-  ): Promise<{ success: boolean }> {
-    const patient = uploadScanInternalDto.patientGlobalId
-      ? await this.getPatientByGlobalId(uploadScanInternalDto.patientGlobalId)
-      : await this.getPatientBySocialSecurityNumber(
-        uploadScanInternalDto.patientSocialSecurityNumber!,
-      );
+  ): Promise<void> {
+    const patient = await this.getPatientByGlobalId(
+      uploadScanInternalDto.patientId,
+    );
 
     if (!patient) {
       throw new RpcException(new ErrorResponse('Patient not found!', 404));
+    }
+
+    const doctor = await this.getClinicalStaffByUserId(
+      uploadScanInternalDto.doctorUserId,
+    );
+
+    if (!doctor) {
+      throw new RpcException(new ErrorResponse('Doctor not found', 404));
     }
 
     const scanGlobalId = uuidv4();
@@ -1268,16 +1261,14 @@ export class DoctorService {
       name: uploadScanInternalDto.name,
       type: uploadScanInternalDto.type,
       comments: null,
-      userId: uploadScanInternalDto.doctorUserId,
+      userId: doctor.user.id,
       patientId: patient.id,
       photoUrl: '',
       commentsAudioUrl: null,
     });
 
-    await this.scansRepository.insert(scan);
-
     const scanPhotoInternalDto: ScanPhotoInternalDto = {
-      scanGlobalId: scan.globalId,
+      scanGlobalId,
       patientGlobalId: patient.globalId,
       imageFilePath: uploadScanInternalDto.imageFilePath,
       imageMimetype: uploadScanInternalDto.imageMimetype,
@@ -1298,7 +1289,7 @@ export class DoctorService {
       uploadScanInternalDto.audioMimetype
     ) {
       const scanAudioInternalDto = new ScanAudioInternalDto(
-        scan.globalId,
+        scanGlobalId,
         patient.globalId,
         uploadScanInternalDto.audioFilePath,
         uploadScanInternalDto.audioMimetype,
@@ -1318,14 +1309,10 @@ export class DoctorService {
       await this.deleteCloudStorageTemporaryFile(
         uploadScanInternalDto.audioFilePath,
       );
-
-      await this.scansRepository.save(scan);
-      this.logger.log('Scan is updated successfully with audio');
-    } else {
-      await this.scansRepository.save(scan);
-      this.logger.log('Scan is inserted successfully');
     }
-    return { success: true };
+
+    await this.scansRepository.insert(scan);
+    this.logger.log('Scan is inserted successfully');
   }
 
   async searchForPatientBySocilaSecurityNumber(
@@ -1356,6 +1343,102 @@ export class DoctorService {
       job: patient.job,
       address: patient.address,
       createdAt: patient.createdAt,
+    };
+  }
+
+  async getClinicVisits(
+    clinicInternalPaginationRequestDto: ClinicInternalPaginationRequestDto,
+  ): Promise<
+    PaginationResponse<{
+      id: string;
+      diagnoses: string;
+      diagnosesAudioUrl: string | null;
+      patient: {
+        name: string;
+        id: string;
+      };
+      doctor: {
+        name: string;
+        speciality: string;
+        id: string;
+      };
+      createdAt: string;
+    }>
+  > {
+    const [visits, totalItems] = await this.visitsRepository.findAndCount({
+      where: {
+        clinicId: clinicInternalPaginationRequestDto.clinicId,
+        deletedAt: IsNull(),
+      },
+      order: {
+        createdAt: 'DESC',
+      },
+      skip:
+        (clinicInternalPaginationRequestDto.page - 1) *
+        clinicInternalPaginationRequestDto.limit,
+      take: clinicInternalPaginationRequestDto.limit,
+    });
+
+    this.logger.log(
+      `Found ${visits.length} visits for clinic ${clinicInternalPaginationRequestDto.clinicId}`,
+    );
+
+    const patientIds = [...new Set(visits.map((v) => v.patientId))];
+    const doctorUserIds = [...new Set(visits.map((v) => v.userId))];
+
+    const [patients, doctors] = await Promise.all([
+      Promise.all(patientIds.map((id) => this.getPatientById(id))),
+      Promise.all(doctorUserIds.map((id) => this.getClinicalStaffByUserId(id))),
+    ]);
+
+    const patientsMap = new Map(
+      patients.map((patient, index) => [
+        patientIds[index],
+        patient
+          ? {
+              name: `${patient.user.firstName} ${patient.user.lastName}`,
+              id: patient.globalId,
+            }
+          : { name: 'UNKNOWN', id: 'UNKNOWN' },
+      ]),
+    );
+
+    const doctorsMap = new Map(
+      doctors.map((doctor, index) => [
+        doctorUserIds[index],
+        doctor
+          ? {
+              name: `${doctor.user.firstName} ${doctor.user.lastName}`,
+              id: doctor.globalId,
+              speciality: doctor.speciality,
+            }
+          : { name: 'UNKNOWN', id: 'UNKNOWN', speciality: 'UNKNOWN' },
+      ]),
+    );
+
+    const visitsInformation = visits.map((visit) => ({
+      id: visit.globalId,
+      diagnoses: visit.diagnoses,
+      diagnosesAudioUrl: visit.diagnosesAudioUrl,
+      patient: patientsMap.get(visit.patientId) ?? {
+        name: 'UNKNOWN',
+        id: 'UNKNOWN',
+      },
+      doctor: doctorsMap.get(visit.userId) ?? {
+        name: 'UNKNOWN',
+        id: 'UNKNOWN',
+        speciality: 'UNKNOWN',
+      },
+      createdAt: visit.createdAt.toISOString(),
+    }));
+
+    return {
+      page: clinicInternalPaginationRequestDto.page,
+      items: visitsInformation,
+      totalItems,
+      totalPages: Math.ceil(
+        totalItems / clinicInternalPaginationRequestDto.limit,
+      ),
     };
   }
 }

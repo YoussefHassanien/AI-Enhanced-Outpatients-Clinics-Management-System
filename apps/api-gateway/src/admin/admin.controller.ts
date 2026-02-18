@@ -1,10 +1,4 @@
-import {
-  Gender,
-  PaginationRequest,
-  PaginationResponse,
-  Role,
-  Roles,
-} from '@app/common';
+import { Gender, PaginationResponse, Role, Roles } from '@app/common';
 import {
   BadRequestException,
   Body,
@@ -14,7 +8,6 @@ import {
   Param,
   ParseIntPipe,
   ParseUUIDPipe,
-  Patch,
   Post,
   Query,
   Req,
@@ -23,195 +16,39 @@ import {
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
-import { FileFieldsInterceptor, FileInterceptor } from '@nestjs/platform-express';
+import {
+  FileFieldsInterceptor,
+  FileInterceptor,
+} from '@nestjs/platform-express';
+import { Request } from 'express';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
-import { Request } from 'express';
 import { v4 as uuidv4 } from 'uuid';
-import { CreateClinicDto } from '../../../admin/src/dtos';
+import { User } from '../../../auth/src/entities';
 import {
+  MedicationDosage,
+  MedicationPeriod,
+} from '../../../doctor/src/constants';
+import {
+  CreateMedicationDto,
+  CreateVisitDto,
   UploadLabDto,
   UploadScanDto,
-  CreateVisitDto
 } from '../../../doctor/src/dtos';
-import { CreateMedicationAdminDto } from './dtos';
-import { UpdatePatientDto, UpdateDoctorDto } from '../../../auth/src/dtos';
-import { User } from '../../../auth/src/entities';
 import { JwtAuthGuard } from '../auth/guards';
 import { AdminService } from './admin.service';
 
+@Roles(Role.ADMIN)
+@UseGuards(JwtAuthGuard)
 @Controller('admin')
 export class AdminController {
-  constructor(private readonly adminService: AdminService) { }
+  constructor(private readonly adminService: AdminService) {}
 
   @Get()
   async isUp(): Promise<string> {
     return await this.adminService.isUp();
   }
 
-  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
-  @UseGuards(JwtAuthGuard)
-  @Get('doctors')
-  async getAllDoctors(
-    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
-    @Query('limit', new DefaultValuePipe(30), ParseIntPipe) limit: number,
-  ): Promise<
-    PaginationResponse<{
-      id: string;
-      phone: string;
-      email: string;
-      speciality: string;
-      isApproved: boolean;
-      user: {
-        id: string;
-        socialSecurityNumber: bigint;
-        gender: Gender;
-        firstName: string;
-        lastName: string;
-        dateOfBirth: Date;
-      };
-    }>
-  > {
-    const paginationRequest: PaginationRequest = {
-      page,
-      limit,
-    };
-    return await this.adminService.getAllDoctors(paginationRequest);
-  }
-
-  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
-  @UseGuards(JwtAuthGuard)
-  @Get('patients')
-  async getAllPatients(
-    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
-    @Query('limit', new DefaultValuePipe(30), ParseIntPipe) limit: number,
-  ): Promise<
-    PaginationResponse<{
-      id: string;
-      address: string;
-      job: string;
-      user: {
-        id: string;
-        socialSecurityNumber: bigint;
-        gender: Gender;
-        firstName: string;
-        lastName: string;
-        dateOfBirth: Date;
-      };
-    }>
-  > {
-    const paginationRequest: PaginationRequest = {
-      page,
-      limit,
-    };
-    return await this.adminService.getAllPatients(paginationRequest);
-  }
-
-  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
-  @UseGuards(JwtAuthGuard)
-  @Get('visits')
-  async getAllVisits(
-    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
-    @Query('limit', new DefaultValuePipe(30), ParseIntPipe) limit: number,
-  ): Promise<
-    PaginationResponse<{
-      id: string;
-      diagnoses: string;
-      patientId: string;
-      doctorId: string;
-      createdAt: Date;
-    }>
-  > {
-    const paginationRequest: PaginationRequest = {
-      page,
-      limit,
-    };
-    return await this.adminService.getAllVisits(paginationRequest);
-  }
-
-  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
-  @UseGuards(JwtAuthGuard)
-  @Patch('patient/:id')
-  async updatePatient(
-    @Param(
-      'id',
-      new ParseUUIDPipe({
-        exceptionFactory: () => new BadRequestException('Invalid patient ID'),
-      }),
-    )
-    globalId: string,
-    @Body() updatePatientDto: UpdatePatientDto,
-  ): Promise<{ message: string }> {
-    return await this.adminService.updatePatient(globalId, updatePatientDto);
-  }
-
-  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
-  @UseGuards(JwtAuthGuard)
-  @Post('clinic')
-  async createClinc(
-    @Req() req: Request,
-    @Body() createClinicDto: CreateClinicDto,
-  ) {
-    const user = req.user as User;
-    return await this.adminService.createClinic(user.id, createClinicDto);
-  }
-
-  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
-  @UseGuards(JwtAuthGuard)
-  @Get('clinics')
-  async getAllClincs() {
-    return await this.adminService.getAllClinics();
-  }
-
-  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
-  @UseGuards(JwtAuthGuard)
-  @Get('patient/:id')
-  async getPatientByGlobalId(
-    @Param(
-      'id',
-      new ParseUUIDPipe({
-        exceptionFactory: () => new BadRequestException('Invalid patient ID'),
-      }),
-    )
-    globalId: string,
-  ) {
-    return await this.adminService.getPatientByGlobalId(globalId);
-  }
-
-  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
-  @UseGuards(JwtAuthGuard)
-  @Get('doctor/:id')
-  async getDoctorByGlobalId(
-    @Param(
-      'id',
-      new ParseUUIDPipe({
-        exceptionFactory: () => new BadRequestException('Invalid doctor ID'),
-      }),
-    )
-    globalId: string,
-  ) {
-    return await this.adminService.getDoctorByGlobalId(globalId);
-  }
-
-
-  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
-  @UseGuards(JwtAuthGuard)
-  @Patch('doctor/:id')
-  async updateDoctor(
-    @Param(
-      'id',
-      new ParseUUIDPipe({
-        exceptionFactory: () => new BadRequestException('Invalid doctor ID'),
-      }),
-    )
-    globalId: string,
-    @Body() updateDoctorDto: UpdateDoctorDto,
-  ): Promise<{ message: string }> {
-    return await this.adminService.updateDoctor(globalId, updateDoctorDto);
-  }
-
-  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
-  @UseGuards(JwtAuthGuard)
   @UseInterceptors(
     FileInterceptor('audio', {
       storage: diskStorage({
@@ -223,21 +60,112 @@ export class AdminController {
       }),
     }),
   )
-  @Post('visit/create')
-  async createVisit(
+  @Post('visit')
+  createVisit(
     @Body() createVisitDto: CreateVisitDto,
     @Req() req: Request,
     @UploadedFile() audio?: Express.Multer.File,
-  ): Promise<void> {
+  ): void {
     const user = req.user as User;
-    await this.adminService.createVisit(createVisitDto, user.id, audio);
+    this.adminService.createVisit(createVisitDto, user.id, audio);
   }
 
-  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
-  @UseGuards(JwtAuthGuard)
-  @Get('patient/:socialSecurityNumber/visits')
+  @Post('medication')
+  @UseInterceptors(
+    FileInterceptor('audio', {
+      storage: diskStorage({
+        destination: process.env.ASR_TMP_DIR,
+        filename: (req, file, cb) => {
+          const randomName = uuidv4();
+          cb(null, `${randomName}${extname(file.originalname)}`);
+        },
+      }),
+    }),
+  )
+  createMedication(
+    @Body() createMedicationDto: CreateMedicationDto,
+    @Req() req: Request,
+    @UploadedFile() audio?: Express.Multer.File,
+  ): void {
+    const user = req.user as User;
+    this.adminService.createMedication(createMedicationDto, user.id, audio);
+  }
+
+  @Post('lab')
+  @UseInterceptors(
+    FileFieldsInterceptor(
+      [
+        { name: 'image', maxCount: 1 },
+        { name: 'audio', maxCount: 1 },
+      ],
+      {
+        storage: diskStorage({
+          destination: process.env.ASR_TMP_DIR,
+          filename: (req, file, cb) => {
+            const randomName = uuidv4();
+            cb(null, `${randomName}${extname(file.originalname)}`);
+          },
+        }),
+      },
+    ),
+  )
+  uploadLab(
+    @Body() uploadLabDto: UploadLabDto,
+    @UploadedFiles()
+    files: { image?: Express.Multer.File[]; audio?: Express.Multer.File[] },
+    @Req() req: Request,
+  ): void {
+    const user = req.user as User;
+    this.adminService.uploadLab(
+      uploadLabDto,
+      user.id,
+      files.image?.[0],
+      files.audio?.[0],
+    );
+  }
+
+  @Post('scan')
+  @UseInterceptors(
+    FileFieldsInterceptor(
+      [
+        { name: 'image', maxCount: 1 },
+        { name: 'audio', maxCount: 1 },
+      ],
+      {
+        storage: diskStorage({
+          destination: process.env.ASR_TMP_DIR,
+          filename: (req, file, cb) => {
+            const randomName = uuidv4();
+            cb(null, `${randomName}${extname(file.originalname)}`);
+          },
+        }),
+      },
+    ),
+  )
+  uploadScan(
+    @Body() uploadScanDto: UploadScanDto,
+    @UploadedFiles()
+    files: { image?: Express.Multer.File[]; audio?: Express.Multer.File[] },
+    @Req() req: Request,
+  ): void {
+    const user = req.user as User;
+    this.adminService.uploadScan(
+      uploadScanDto,
+      user.id,
+      files.image?.[0],
+      files.audio?.[0],
+    );
+  }
+
+  @Get('patient/:id/visits')
   async getPatientVisits(
-    @Param('socialSecurityNumber') socialSecurityNumber: string,
+    @Param(
+      'id',
+      new ParseUUIDPipe({
+        exceptionFactory: () => new BadRequestException('Invalid patient ID'),
+      }),
+    )
+    patientGlobalId: string,
   ): Promise<
     {
       patient: {
@@ -262,13 +190,10 @@ export class AdminController {
       };
     }[]
   > {
-    return await this.adminService.getPatientVisits(socialSecurityNumber);
+    return await this.adminService.getPatientVisits(patientGlobalId);
   }
 
-
-  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
-  @UseGuards(JwtAuthGuard)
-  @Get('my-patients')
+  @Get('patients')
   async getAdminPatients(
     @Req() req: Request,
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
@@ -288,9 +213,7 @@ export class AdminController {
     return await this.adminService.getAdminPatients(user.id, page, limit);
   }
 
-  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
-  @UseGuards(JwtAuthGuard)
-  @Get('my-visits')
+  @Get('visits')
   async getAdminVisits(
     @Req() req: Request,
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
@@ -315,62 +238,26 @@ export class AdminController {
     return await this.adminService.getAdminVisits(user.id, page, limit);
   }
 
-  @Post('patient/:id/medication')
-  @Roles(Role.ADMIN)
-  @UseGuards(JwtAuthGuard)
-  @UseInterceptors(
-    FileInterceptor('audio', {
-      storage: diskStorage({
-        destination: process.env.ASR_TMP_DIR,
-        filename: (req, file, cb) => {
-          const randomName = uuidv4();
-          cb(null, `${randomName}${extname(file.originalname)}`);
-        },
-      }),
-    }),
-  )
-  async createMedication(
-    @Param(
-      'id',
-      new ParseUUIDPipe({
-        exceptionFactory: () => new BadRequestException('Invalid patient ID'),
-      }),
-    )
-    patientGlobalId: string,
-    @Body() createMedicationDto: CreateMedicationAdminDto,
-    @Req() req: Request,
-    @UploadedFile() audio?: Express.Multer.File,
-  ): Promise<void> {
-    const user = req.user as User;
-    await this.adminService.createMedication(
-      createMedicationDto,
-      patientGlobalId,
-      user.id,
-      audio,
+  @Get('patient/:socialSecurityNumber')
+  async searchForPatientBySocialSecurityNumber(
+    @Param('socialSecurityNumber') socialSecurityNumber: string,
+  ): Promise<{
+    id: string;
+    name: string;
+    gender: Gender;
+    dateOfBirth: Date;
+    socialSecurityNumber: string;
+    job: string;
+    address: string;
+    createdAt: Date;
+  }> {
+    return await this.adminService.searchForPatientBySocialSecurityNumber(
+      socialSecurityNumber,
     );
   }
 
-  @Post('patient/:id/lab')
-  @Roles(Role.ADMIN)
-  @UseGuards(JwtAuthGuard)
-  @UseInterceptors(
-    FileFieldsInterceptor(
-      [
-        { name: 'image', maxCount: 1 },
-        { name: 'audio', maxCount: 1 },
-      ],
-      {
-        storage: diskStorage({
-          destination: process.env.ASR_TMP_DIR,
-          filename: (req, file, cb) => {
-            const randomName = uuidv4();
-            cb(null, `${randomName}${extname(file.originalname)}`);
-          },
-        }),
-      },
-    ),
-  )
-  async uploadLab(
+  @Get('patient/:id/medications')
+  async getPatientMedications(
     @Param(
       'id',
       new ParseUUIDPipe({
@@ -378,61 +265,54 @@ export class AdminController {
       }),
     )
     patientGlobalId: string,
-    @Body() uploadLabDto: UploadLabDto,
-    @UploadedFiles()
-    files: { image?: Express.Multer.File[]; audio?: Express.Multer.File[] },
-    @Req() req: Request,
-  ): Promise<void> {
-    const user = req.user as User;
-    await this.adminService.uploadLab(
-      uploadLabDto,
-      patientGlobalId,
-      user.id,
-      files.image?.[0],
-      files.audio?.[0],
-    );
+  ): Promise<{
+    patient: {
+      id: string;
+      name: string;
+      gender: Gender;
+      dateOfBirth: Date;
+      socialSecurityNumber: string;
+      address: string;
+      job: string;
+    };
+    medications: {
+      name: string;
+      dosage: MedicationDosage;
+      period: MedicationPeriod;
+      comments: string;
+      doctor: {
+        name: string;
+        speciality: string;
+      };
+      createdAt: Date;
+    }[];
+  }> {
+    return await this.adminService.getPatientMedications(patientGlobalId);
   }
 
-  @Post('patient/:id/scan')
-  @Roles(Role.ADMIN)
-  @UseGuards(JwtAuthGuard)
-  @UseInterceptors(
-    FileFieldsInterceptor(
-      [
-        { name: 'image', maxCount: 1 },
-        { name: 'audio', maxCount: 1 },
-      ],
-      {
-        storage: diskStorage({
-          destination: process.env.ASR_TMP_DIR,
-          filename: (req, file, cb) => {
-            const randomName = uuidv4();
-            cb(null, `${randomName}${extname(file.originalname)}`);
-          },
-        }),
-      },
-    ),
-  )
-  async uploadScan(
-    @Param(
-      'id',
-      new ParseUUIDPipe({
-        exceptionFactory: () => new BadRequestException('Invalid patient ID'),
-      }),
-    )
-    patientGlobalId: string,
-    @Body() uploadScanDto: UploadScanDto,
-    @UploadedFiles()
-    files: { image?: Express.Multer.File[]; audio?: Express.Multer.File[] },
+  @Get('clinic/visits')
+  async getClinicVisits(
     @Req() req: Request,
-  ): Promise<void> {
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query('limit', new DefaultValuePipe(30), ParseIntPipe) limit: number,
+  ): Promise<
+    PaginationResponse<{
+      id: string;
+      diagnoses: string;
+      diagnosesAudioUrl: string | null;
+      patient: {
+        name: string;
+        id: string;
+      };
+      doctor: {
+        name: string;
+        speciality: string;
+        id: string;
+      };
+      createdAt: string;
+    }>
+  > {
     const user = req.user as User;
-    await this.adminService.uploadScan(
-      uploadScanDto,
-      patientGlobalId,
-      user.id,
-      files.image?.[0],
-      files.audio?.[0],
-    );
+    return await this.adminService.getClinicVisits(user.id, page, limit);
   }
 }

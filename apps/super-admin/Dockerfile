@@ -10,16 +10,15 @@ COPY package.json package-lock.json ./
 COPY tsconfig.json tsconfig.build.json nest-cli.json ./
 
 # copy only needed folders and libs
-COPY ./apps/doctor /app/apps/doctor
+COPY ./apps/super-admin /app/apps/super-admin
 COPY ./apps/auth/src/entities /app/apps/auth/src/entities
-COPY ./apps/super-admin/src/entities /app/apps/super-admin/src/entities
-COPY ./apps/cloud-storage/src/dtos /app/apps/cloud-storage/src/dtos
-COPY ./apps/asr/src/dtos /app/apps/asr/src/dtos
+COPY ./apps/auth/src/dtos /app/apps/auth/src/dtos
+COPY ./apps/admin/src/dtos /app/apps/admin/src/dtos
 COPY ./libs /app/libs
 
 # install all deps including dev and build
 RUN npm ci
-RUN npm run build doctor
+RUN npm run build super-admin
 
 ########################################################
 
@@ -34,4 +33,4 @@ COPY package.json package-lock.json ./
 RUN npm ci --only=production
 
 # copy built output
-COPY --from=builder /app/dist/apps/doctor /app/doctor
+COPY --from=builder /app/dist/apps/super-admin /app/super-admin

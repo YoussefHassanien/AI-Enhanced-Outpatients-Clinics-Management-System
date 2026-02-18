@@ -1,5 +1,11 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
+import {
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  IsUUID,
+  MaxLength,
+} from 'class-validator';
 
 export class UploadLabDto {
   @ApiProperty({
@@ -19,4 +25,11 @@ export class UploadLabDto {
   @MaxLength(512)
   @IsOptional()
   comments?: string;
+
+  @ApiProperty({
+    description: 'The patient id of this medication',
+    example: '0281ba4f-7592-477e-9d02-f2641aa89221',
+  })
+  @IsUUID()
+  patientId: string;
 }

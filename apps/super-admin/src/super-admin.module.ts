@@ -10,10 +10,10 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ClientsModule, Transport } from '@nestjs/microservices';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
+import { SuperAdminController } from './super-admin.controller';
+import { SuperAdminService } from './super-admin.service';
 import { EnvironmentVariables } from './constants';
-import { DoctorController } from './doctor.controller';
-import { DoctorService } from './doctor.service';
-import { Lab, Medication, Scan, Visit } from './entities';
+import { Clinic } from './entities';
 
 @Module({
   imports: [
@@ -25,10 +25,10 @@ import { Lab, Medication, Scan, Visit } from './entities';
         allowUnknown: false,
         abortEarly: true,
       },
-      envFilePath: './apps/doctor/.env',
+      envFilePath: './apps/super-admin/.env',
     }),
     TypeOrmModule.forRootAsync(dataSourceAsyncOptions),
-    TypeOrmModule.forFeature([Scan, Lab, Medication, Visit]),
+    TypeOrmModule.forFeature([Clinic]),
     ClientsModule.registerAsync([
       {
         name: Microservices.AUTH,
@@ -48,51 +48,13 @@ import { Lab, Medication, Scan, Visit } from './entities';
         inject: [ConfigService],
       },
       {
-        name: Microservices.SUPER_ADMIN,
+        name: Microservices.DOCTOR,
         imports: [ConfigModule],
         useFactory: (configService: ConfigService) => ({
           transport: Transport.RMQ,
           options: {
             urls: [configService.getOrThrow<string>('RABBIT_MQ_URL')],
-            queue: configService.getOrThrow<string>(
-              'RABBIT_MQ_SUPER_ADMIN_QUEUE',
-            ),
-            queueOptions: {
-              durable: true,
-            },
-            persistent: true,
-            maxConnectionAttempts: 5,
-          },
-        }),
-        inject: [ConfigService],
-      },
-      {
-        name: Microservices.CLOUD_STORAGE,
-        imports: [ConfigModule],
-        useFactory: (configService: ConfigService) => ({
-          transport: Transport.RMQ,
-          options: {
-            urls: [configService.getOrThrow<string>('RABBIT_MQ_URL')],
-            queue: configService.getOrThrow<string>(
-              'RABBIT_MQ_CLOUD_STORAGE_QUEUE',
-            ),
-            queueOptions: {
-              durable: true,
-            },
-            persistent: true,
-            maxConnectionAttempts: 5,
-          },
-        }),
-        inject: [ConfigService],
-      },
-      {
-        name: Microservices.ASR,
-        imports: [ConfigModule],
-        useFactory: (configService: ConfigService) => ({
-          transport: Transport.RMQ,
-          options: {
-            urls: [configService.getOrThrow<string>('RABBIT_MQ_URL')],
-            queue: configService.getOrThrow<string>('RABBIT_MQ_ASR_QUEUE'),
+            queue: configService.getOrThrow<string>('RABBIT_MQ_DOCTOR_QUEUE'),
             queueOptions: {
               durable: true,
             },
@@ -104,21 +66,21 @@ import { Lab, Medication, Scan, Visit } from './entities';
       },
     ]),
   ],
-  controllers: [DoctorController],
+  controllers: [SuperAdminController],
   providers: [
-    DoctorService,
+    SuperAdminService,
     {
       provide: CommonServices.LOGGING,
       useFactory: (configService: ConfigService) => {
-        return new LoggingService(configService, 'doctor');
+        return new LoggingService(configService, 'super-admin');
       },
       inject: [ConfigService],
     },
   ],
   exports: [CommonServices.LOGGING],
 })
-export class DoctorModule {
-  private readonly logger = new Logger(DoctorModule.name);
+export class SuperAdminModule {
+  private readonly logger = new Logger(SuperAdminModule.name);
   constructor(private readonly dataSource: DataSource) {
     const connectionStatus: string = this.dataSource.isInitialized
       ? 'succeeded'

@@ -13,6 +13,7 @@ import { ApiGatewayController } from './api-gateway.controller';
 import { AuthModule } from './auth/auth.module';
 import { EnvironmentVariables } from './constants';
 import { DoctorModule } from './doctor/doctor.module';
+import { SuperAdminModule } from './super-admin/super-admin.module';
 import { AsrModule } from './asr/asr.module';
 import { OcrModule } from './ocr/ocr.module';
 
@@ -38,6 +39,7 @@ import { OcrModule } from './ocr/ocr.module';
     AuthModule,
     DoctorModule,
     AdminModule,
+    SuperAdminModule,
     AsrModule,
     OcrModule,
   ],

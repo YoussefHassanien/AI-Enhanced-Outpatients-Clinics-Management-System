@@ -4,21 +4,10 @@ import {
   IsNotEmpty,
   IsOptional,
   IsString,
-  IsUUID,
-  ValidateIf,
 } from 'class-validator';
 import { UploadScanDto } from './upload-scan.dto';
 
 export class UploadScanInternalDto extends UploadScanDto {
-  @ValidateIf((o) => !o.patientGlobalId)
-  @IsString()
-  @IsNotEmpty()
-  readonly patientSocialSecurityNumber?: string;
-
-  @ValidateIf((o) => !o.patientSocialSecurityNumber)
-  @IsUUID()
-  readonly patientGlobalId?: string;
-
   @IsString()
   @IsNotEmpty()
   readonly imageFilePath: string;
@@ -39,7 +28,6 @@ export class UploadScanInternalDto extends UploadScanDto {
 
   constructor(
     uploadScanDto: UploadScanDto,
-    patientSocialSecurityNumber: string,
     doctorUserId: number,
     imageFilePath: string,
     imageMimetype: string,
@@ -48,7 +36,6 @@ export class UploadScanInternalDto extends UploadScanDto {
   ) {
     super();
     Object.assign(this, uploadScanDto);
-    this.patientSocialSecurityNumber = patientSocialSecurityNumber;
     this.imageFilePath = imageFilePath;
     this.imageMimetype = imageMimetype;
     this.audioFilePath = audioFilePath;

@@ -25,6 +25,7 @@ export enum Microservices {
   AUTH = 'AUTH_MICROSERVICE',
   DOCTOR = 'DOCTOR_MICROSERVICE',
   ADMIN = 'ADMIN_MICROSERVICE',
+  SUPER_ADMIN = 'SUPER_ADMIN_MICROSERVICE',
   ASR = 'ASR_MICROSERVICE',
   OCR = 'OCR_MICROSERVICE',
   CLOUD_STORAGE = 'CLOUD_STORAGE_MICROSERVICE',
@@ -64,6 +65,7 @@ export enum DoctorPatterns {
   GET_ALL_VISITS = 'doctor.admin.visits',
   GET_DOCTOR_PATIENTS = 'doctor.patients',
   GET_DOCTOR_VISITS = 'doctor.visits',
+  GET_CLINIC_VISITS = 'doctor.clinic.visits',
   SEARCH_FOR_PATIENT_BY_SOCIAL_SECURITY_NUMBER = 'doctor.searchForPatientBySocilaSecurityNumber',
 }
 
@@ -73,25 +75,38 @@ export enum CommonServices {
 
 export enum AdminPatterns {
   IS_UP = 'admin.isUp',
-  GET_ALL_VISITS = 'admin.getAllVisits',
-  GET_ALL_PATIENTS = 'admin.getAllPatients',
-  GET_ALL_DOCTORS = 'admin.getAllDoctors',
-  UPDATE_PATIENT = 'admin.updatePatient',
-  CREATE_CLINIC = 'admin.clinic.create',
-  GET_ALL_CLINICS_WITH_GLOBAL_ID = 'admin.getAllClinicsWithGlobalId',
-  GET_ALL_CLINICS_WITH_ID = 'admin.getAllClinicsWithId',
-  GET_CLINIC_BY_GLOBAL_ID = 'admin.getClinicByGlobalId',
-  GET_CLINIC_BY_ID = 'admin.getClinicById',
-  GET_PATIENT_BY_GLOBAL_ID = 'admin.getPatientByGlobalId',
   GET_DOCTOR_BY_GLOBAL_ID = 'admin.getDoctorByGlobalId',
-  UPDATE_DOCTOR = 'admin.updateDoctor',
+  GET_PATIENT_BY_GLOBAL_ID = 'admin.getPatientByGlobalId',
+  GET_CLINIC_DOCTORS = 'admin.getClinicDoctors',
+  GET_CLINIC_Patients = 'admin.getClinicPatients',
+  GET_CLINIC_VISITS = 'admin.getClinicVisits',
   VISIT_CREATE = 'admin.visit.create',
-  GET_PATIENT_VISITS = 'admin.patient.visits',
-  GET_ADMIN_PATIENTS = 'admin.patients',
-  GET_ADMIN_VISITS = 'admin.visits',
   MEDICATION_CREATE = 'admin.medication.create',
   LAB_UPLOAD = 'admin.lab.upload',
   SCAN_UPLOAD = 'admin.scan.upload',
+  GET_ADMIN_PATIENTS = 'admin.patients',
+  GET_ADMIN_VISITS = 'admin.visits',
+  SEARCH_FOR_PATIENT_BY_SOCIAL_SECURITY_NUMBER = 'admin.searchForPatientBySocilaSecurityNumber',
+  GET_PATIENT_VISITS = 'admin.patient.visits',
+  GET_PATIENT_MEDICATIONS = 'doctor.patient.medications',
+  GET_PATIENT_LABS = 'doctor.patient.labs',
+  GET_PATIENT_SCANS = 'doctor.patient.scans',
+}
+
+export enum SuperAdminPatterns {
+  IS_UP = 'superAdmin.isUp',
+  GET_ALL_DOCTORS = 'superAdmin.getAllDoctors',
+  GET_ALL_PATIENTS = 'superAdmin.getAllPatients',
+  GET_ALL_VISITS = 'superAdmin.getAllVisits',
+  UPDATE_PATIENT = 'superAdmin.updatePatient',
+  CREATE_CLINIC = 'superAdmin.clinic.create',
+  GET_ALL_CLINICS = 'superAdmin.getAllClinics',
+  GET_ALL_CLINICS_WITH_ID = 'superAdmin.getAllClinicsWithId',
+  GET_CLINIC_BY_ID = 'superAdmin.getClinicById',
+  GET_CLINIC_BY_GLOBAL_ID = 'superAdmin.getClinicByGlobalId',
+  GET_PATIENT_BY_GLOBAL_ID = 'superAdmin.getPatientByGlobalId',
+  GET_DOCTOR_BY_GLOBAL_ID = 'superAdmin.getDoctorByGlobalId',
+  UPDATE_DOCTOR = 'superAdmin.updateDoctor',
 }
 
 export enum AsrPatterns {

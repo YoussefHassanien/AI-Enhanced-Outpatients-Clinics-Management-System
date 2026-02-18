@@ -7,3 +7,4 @@ export * from './upload-lab-internal.dto';
 export * from './upload-lab.dto';
 export * from './upload-scan-internal.dto';
 export * from './upload-scan.dto';
+export * from './clinic-internal-pagination-request.dto';
