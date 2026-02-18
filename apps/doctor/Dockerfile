@@ -14,6 +14,7 @@ COPY ./apps/doctor /app/apps/doctor
 COPY ./apps/auth/src/entities /app/apps/auth/src/entities
 COPY ./apps/super-admin/src/entities /app/apps/super-admin/src/entities
 COPY ./apps/cloud-storage/src/dtos /app/apps/cloud-storage/src/dtos
+COPY ./apps/admin/src/dtos /app/apps/admin/src/dtos
 COPY ./apps/asr/src/dtos /app/apps/asr/src/dtos
 COPY ./libs /app/libs
 

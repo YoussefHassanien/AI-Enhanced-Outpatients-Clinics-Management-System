@@ -1,6 +1,11 @@
-import { AdminPatterns, Gender } from '@app/common';
+import { AdminPatterns, Gender, PaginationResponse } from '@app/common';
 import { Controller } from '@nestjs/common';
 import { EventPattern, MessagePattern, Payload } from '@nestjs/microservices';
+import {
+  MedicationDosage,
+  MedicationPeriod,
+  ScanTypes,
+} from '../..//doctor/src/constants';
 import {
   CreateMedicationInternalDto,
   CreateVisitInternalDto,
@@ -9,6 +14,7 @@ import {
   UploadScanInternalDto,
 } from '../../doctor/src/dtos';
 import { AdminService } from './admin.service';
+import { DoctorResponseDTO, PatientResponseDTO } from './dtos';
 
 @Controller()
 export class AdminController {
@@ -20,17 +26,44 @@ export class AdminController {
   }
 
   @MessagePattern({ cmd: AdminPatterns.GET_PATIENT_BY_GLOBAL_ID })
-  async getPatientByGlobalId(@Payload() globalId: string) {
+  async getPatientByGlobalId(
+    @Payload() globalId: string,
+  ): Promise<PatientResponseDTO> {
     return await this.adminService.getPatientByGlobalId(globalId);
   }
 
   @MessagePattern({ cmd: AdminPatterns.GET_DOCTOR_BY_GLOBAL_ID })
-  async getDoctorByGlobalId(@Payload() globalId: string) {
+  async getDoctorByGlobalId(
+    @Payload() globalId: string,
+  ): Promise<DoctorResponseDTO> {
     return await this.adminService.getDoctorByGlobalId(globalId);
   }
 
   @MessagePattern({ cmd: AdminPatterns.GET_PATIENT_VISITS })
-  async getPatientVisits(@Payload() patientGlobalId: string) {
+  async getPatientVisits(@Payload() patientGlobalId: string): Promise<{
+    patient: {
+      id: string;
+      name: string;
+      gender: Gender;
+      dateOfBirth: Date;
+      socialSecurityNumber: string;
+      address: string | null;
+      job: string | null;
+    };
+    clinics: {
+      id: string;
+      name: string;
+      visits: {
+        doctor: {
+          name: string;
+          speciality: string;
+        };
+        diagnosesAudioUrl: string | null;
+        diagnoses: string;
+        createdAt: Date;
+      }[];
+    }[];
+  }> {
     return await this.adminService.getPatientVisits(patientGlobalId);
   }
 
@@ -38,7 +71,17 @@ export class AdminController {
   async getAdminPatients(
     @Payload()
     doctorInternalPaginationRequestDto: DoctorInternalPaginationRequestDto,
-  ) {
+  ): Promise<
+    PaginationResponse<{
+      id: string;
+      name: string;
+      gender: Gender;
+      dateOfBirth: Date;
+      socialSecurityNumber: string;
+      address: string | null;
+      job: string | null;
+    }>
+  > {
     return await this.adminService.getAdminPatients(
       doctorInternalPaginationRequestDto,
     );
@@ -48,7 +91,22 @@ export class AdminController {
   async getAdminVisits(
     @Payload()
     doctorInternalPaginationRequestDto: DoctorInternalPaginationRequestDto,
-  ) {
+  ): Promise<
+    PaginationResponse<{
+      id: string;
+      diagnoses: string;
+      diagnosesAudioUrl: string | null;
+      patient: {
+        name: string;
+        id: string;
+      };
+      admin: {
+        name: string;
+        id: string;
+      };
+      createdAt: Date;
+    }>
+  > {
     return await this.adminService.getAdminVisits(
       doctorInternalPaginationRequestDto,
     );
@@ -98,8 +156,57 @@ export class AdminController {
   }
 
   @MessagePattern({ cmd: AdminPatterns.GET_PATIENT_MEDICATIONS })
-  async getPatientMedications(@Payload() patientGlobalId: string) {
+  async getPatientMedications(@Payload() patientGlobalId: string): Promise<{
+    patient: {
+      id: string;
+      name: string;
+      gender: Gender;
+      dateOfBirth: Date;
+      socialSecurityNumber: string;
+      address: string | null;
+      job: string | null;
+    };
+    medications: {
+      name: string;
+      dosage: MedicationDosage;
+      period: MedicationPeriod;
+      comments: string | null;
+      commentsAudioUrl: string | null;
+      doctor: {
+        name: string;
+        speciality: string;
+      };
+      createdAt: Date;
+    }[];
+  }> {
     return await this.adminService.getPatientMedications(patientGlobalId);
+  }
+
+  @MessagePattern({ cmd: AdminPatterns.GET_PATIENT_SCANS })
+  async getPatientScans(@Payload() patientGlobalId: string): Promise<{
+    patient: {
+      id: string;
+      name: string;
+      gender: Gender;
+      dateOfBirth: string;
+      socialSecurityNumber: string;
+      address: string | null;
+      job: string | null;
+    };
+    scans: {
+      name: string;
+      type: ScanTypes;
+      photoUrl: string;
+      comments: string | null;
+      commentsAudioUrl: string | null;
+      doctor: {
+        name: string;
+        speciality: string;
+      };
+      createdAt: string;
+    }[];
+  }> {
+    return await this.adminService.getPatientScans(patientGlobalId);
   }
 
   @MessagePattern({ cmd: AdminPatterns.GET_CLINIC_VISITS })

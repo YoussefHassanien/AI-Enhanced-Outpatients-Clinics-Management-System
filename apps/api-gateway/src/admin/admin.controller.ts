@@ -28,6 +28,7 @@ import { User } from '../../../auth/src/entities';
 import {
   MedicationDosage,
   MedicationPeriod,
+  ScanTypes,
 } from '../../../doctor/src/constants';
 import {
   CreateMedicationDto,
@@ -288,6 +289,41 @@ export class AdminController {
     }[];
   }> {
     return await this.adminService.getPatientMedications(patientGlobalId);
+  }
+
+  @Get('patient/:id/scans')
+  async getPatientScans(
+    @Param(
+      'id',
+      new ParseUUIDPipe({
+        exceptionFactory: () => new BadRequestException('Invalid patient ID'),
+      }),
+    )
+    patientGlobalId: string,
+  ): Promise<{
+    patient: {
+      id: string;
+      name: string;
+      gender: Gender;
+      dateOfBirth: string;
+      socialSecurityNumber: string;
+      address: string | null;
+      job: string | null;
+    };
+    scans: {
+      name: string;
+      type: ScanTypes;
+      photoUrl: string;
+      comments: string | null;
+      commentsAudioUrl: string | null;
+      doctor: {
+        name: string;
+        speciality: string;
+      };
+      createdAt: string;
+    }[];
+  }> {
+    return await this.adminService.getPatientScans(patientGlobalId);
   }
 
   @Get('clinic/visits')

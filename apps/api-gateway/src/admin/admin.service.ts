@@ -11,6 +11,7 @@ import { lastValueFrom } from 'rxjs';
 import {
   MedicationDosage,
   MedicationPeriod,
+  ScanTypes,
 } from '../../../doctor/src/constants';
 import {
   CreateMedicationDto,
@@ -347,6 +348,56 @@ export class AdminService {
           createdAt: Date;
         }[];
       }>({ cmd: AdminPatterns.GET_PATIENT_MEDICATIONS }, patientGlobalId),
+    );
+  }
+
+  async getPatientScans(patientGlobalId: string): Promise<{
+    patient: {
+      id: string;
+      name: string;
+      gender: Gender;
+      dateOfBirth: string;
+      socialSecurityNumber: string;
+      address: string | null;
+      job: string | null;
+    };
+    scans: {
+      name: string;
+      type: ScanTypes;
+      photoUrl: string;
+      comments: string | null;
+      commentsAudioUrl: string | null;
+      doctor: {
+        name: string;
+        speciality: string;
+      };
+      createdAt: string;
+    }[];
+  }> {
+    return await lastValueFrom(
+      this.adminClient.send<{
+        patient: {
+          id: string;
+          name: string;
+          gender: Gender;
+          dateOfBirth: string;
+          socialSecurityNumber: string;
+          address: string | null;
+          job: string | null;
+        };
+        scans: {
+          name: string;
+          type: ScanTypes;
+          photoUrl: string;
+          comments: string | null;
+          commentsAudioUrl: string | null;
+          doctor: {
+            name: string;
+            speciality: string;
+          };
+          createdAt: string;
+        }[];
+      }>({ cmd: AdminPatterns.GET_PATIENT_SCANS }, patientGlobalId),
     );
   }
 

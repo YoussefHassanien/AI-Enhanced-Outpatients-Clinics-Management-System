@@ -6,10 +6,10 @@ import {
 } from '@app/common';
 import { Controller } from '@nestjs/common';
 import { EventPattern, MessagePattern, Payload } from '@nestjs/microservices';
+import { ClinicInternalPaginationRequestDto } from '../../admin/src/dtos';
 import { MedicationDosage, MedicationPeriod, ScanTypes } from './constants';
 import { DoctorService } from './doctor.service';
 import {
-  ClinicInternalPaginationRequestDto,
   CreateMedicationInternalDto,
   CreateVisitInternalDto,
   DoctorInternalPaginationRequestDto,

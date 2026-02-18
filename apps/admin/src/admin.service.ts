@@ -14,9 +14,12 @@ import { Inject, Injectable } from '@nestjs/common';
 import { ClientProxy, RpcException } from '@nestjs/microservices';
 import { lastValueFrom } from 'rxjs';
 import { Admin, Doctor, Patient } from '../../auth/src/entities';
-import { MedicationDosage, MedicationPeriod } from '../../doctor/src/constants';
 import {
-  ClinicInternalPaginationRequestDto,
+  MedicationDosage,
+  MedicationPeriod,
+  ScanTypes,
+} from '../../doctor/src/constants';
+import {
   CreateMedicationInternalDto,
   CreateVisitInternalDto,
   DoctorInternalPaginationRequestDto,
@@ -24,7 +27,11 @@ import {
   UploadScanInternalDto,
 } from '../../doctor/src/dtos';
 import { Clinic } from '../../super-admin/src/entities';
-import { DoctorResponseDTO, PatientResponseDTO } from './dtos';
+import {
+  ClinicInternalPaginationRequestDto,
+  DoctorResponseDTO,
+  PatientResponseDTO,
+} from './dtos';
 
 @Injectable()
 export class AdminService {
@@ -73,6 +80,23 @@ export class AdminService {
 
     this.logger.log('Patient is found');
     return patient;
+  }
+
+  private async getClinicById(clinicId: number): Promise<Clinic | null> {
+    const clinic = await lastValueFrom<Clinic | null>(
+      this.superAdminClient.send(
+        { cmd: SuperAdminPatterns.GET_CLINIC_BY_ID },
+        clinicId,
+      ),
+    );
+
+    if (!clinic) {
+      this.logger.log(`Clinic of id: ${clinicId} not found`);
+      return null;
+    }
+
+    this.logger.log('Clinic is found');
+    return clinic;
   }
 
   isUp(): string {
@@ -346,9 +370,84 @@ export class AdminService {
       createdAt: Date;
     }[];
   }> {
-    return await lastValueFrom(
+    return await lastValueFrom<{
+      patient: {
+        id: string;
+        name: string;
+        gender: Gender;
+        dateOfBirth: Date;
+        socialSecurityNumber: string;
+        address: string | null;
+        job: string | null;
+      };
+      medications: {
+        name: string;
+        dosage: MedicationDosage;
+        period: MedicationPeriod;
+        comments: string | null;
+        commentsAudioUrl: string | null;
+        doctor: {
+          name: string;
+          speciality: string;
+        };
+        createdAt: Date;
+      }[];
+    }>(
       this.doctorClient.send(
         { cmd: DoctorPatterns.GET_PATIENT_MEDICATIONS },
+        patientGlobalId,
+      ),
+    );
+  }
+
+  async getPatientScans(patientGlobalId: string): Promise<{
+    patient: {
+      id: string;
+      name: string;
+      gender: Gender;
+      dateOfBirth: string;
+      socialSecurityNumber: string;
+      address: string | null;
+      job: string | null;
+    };
+    scans: {
+      name: string;
+      type: ScanTypes;
+      photoUrl: string;
+      comments: string | null;
+      commentsAudioUrl: string | null;
+      doctor: {
+        name: string;
+        speciality: string;
+      };
+      createdAt: string;
+    }[];
+  }> {
+    return await lastValueFrom<{
+      patient: {
+        id: string;
+        name: string;
+        gender: Gender;
+        dateOfBirth: string;
+        socialSecurityNumber: string;
+        address: string | null;
+        job: string | null;
+      };
+      scans: {
+        name: string;
+        type: ScanTypes;
+        photoUrl: string;
+        comments: string | null;
+        commentsAudioUrl: string | null;
+        doctor: {
+          name: string;
+          speciality: string;
+        };
+        createdAt: string;
+      }[];
+    }>(
+      this.doctorClient.send(
+        { cmd: DoctorPatterns.GET_PATIENT_SCANS },
         patientGlobalId,
       ),
     );
@@ -378,6 +477,12 @@ export class AdminService {
       throw new RpcException(
         new ErrorResponse('Admin not found for this user.', 404),
       );
+    }
+
+    const clinic = await this.getClinicById(admin.clinicId);
+
+    if (!clinic) {
+      throw new RpcException(new ErrorResponse('Clinic not found!', 404));
     }
 
     const clinicInternalPaginationRequestDto =

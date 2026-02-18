@@ -17,6 +17,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { lastValueFrom } from 'rxjs';
 import { IsNull, Repository } from 'typeorm';
 import { v4 as uuidv4 } from 'uuid';
+import { ClinicInternalPaginationRequestDto } from '../../admin/src/dtos';
 import { TranscribeAudioInternalDto } from '../../asr/src/dtos';
 import { Admin, Doctor, Patient } from '../../auth/src/entities';
 import {
@@ -30,7 +31,6 @@ import {
 import { Clinic } from '../../super-admin/src/entities';
 import { MedicationDosage, MedicationPeriod, ScanTypes } from './constants';
 import {
-  ClinicInternalPaginationRequestDto,
   CreateMedicationInternalDto,
   CreateVisitInternalDto,
   DoctorInternalPaginationRequestDto,
