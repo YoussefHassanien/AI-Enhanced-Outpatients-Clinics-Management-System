@@ -518,9 +518,9 @@ export class DoctorService {
         patientIds[index],
         patient
           ? {
-              name: `${patient.user.firstName} ${patient.user.lastName}`,
-              id: patient.globalId,
-            }
+            name: `${patient.user.firstName} ${patient.user.lastName}`,
+            id: patient.globalId,
+          }
           : { name: 'UNKNOWN', id: 'UNKNOWN' },
       ]),
     );
@@ -631,9 +631,9 @@ export class DoctorService {
         doctorsUserId[index],
         doctor
           ? {
-              name: `${doctor.user.firstName} ${doctor.user.lastName}`,
-              speciality: doctor?.speciality ?? 'UNKNOWN',
-            }
+            name: `${doctor.user.firstName} ${doctor.user.lastName}`,
+            speciality: doctor?.speciality ?? 'UNKNOWN',
+          }
           : { name: 'UNKNOWN', speciality: 'UNKNOWN' },
       ]),
     );
@@ -760,9 +760,9 @@ export class DoctorService {
         doctorsIds[index],
         doctor
           ? {
-              name: `${doctor.user.firstName} ${doctor.user.lastName}`,
-              speciality: doctor.speciality,
-            }
+            name: `${doctor.user.firstName} ${doctor.user.lastName}`,
+            speciality: doctor.speciality,
+          }
           : { name: 'UNKNOWN', speciality: 'UNKNOWN' },
       ]),
     );
@@ -858,9 +858,9 @@ export class DoctorService {
         doctorsIds[index],
         doctor
           ? {
-              name: `${doctor.user.firstName} ${doctor.user.lastName}`,
-              speciality: doctor.speciality,
-            }
+            name: `${doctor.user.firstName} ${doctor.user.lastName}`,
+            speciality: doctor.speciality,
+          }
           : { name: 'UNKNOWN', speciality: 'UNKNOWN' },
       ]),
     );
@@ -955,9 +955,9 @@ export class DoctorService {
         doctorsIds[index],
         doctor
           ? {
-              name: `${doctor.user.firstName} ${doctor.user.lastName}`,
-              speciality: doctor.speciality,
-            }
+            name: `${doctor.user.firstName} ${doctor.user.lastName}`,
+            speciality: doctor.speciality,
+          }
           : { name: 'UNKNOWN', speciality: 'UNKNOWN' },
       ]),
     );
@@ -1396,9 +1396,9 @@ export class DoctorService {
         patientIds[index],
         patient
           ? {
-              name: `${patient.user.firstName} ${patient.user.lastName}`,
-              id: patient.globalId,
-            }
+            name: `${patient.user.firstName} ${patient.user.lastName}`,
+            id: patient.globalId,
+          }
           : { name: 'UNKNOWN', id: 'UNKNOWN' },
       ]),
     );
@@ -1408,10 +1408,10 @@ export class DoctorService {
         doctorUserIds[index],
         doctor
           ? {
-              name: `${doctor.user.firstName} ${doctor.user.lastName}`,
-              id: doctor.globalId,
-              speciality: doctor.speciality,
-            }
+            name: `${doctor.user.firstName} ${doctor.user.lastName}`,
+            id: doctor.globalId,
+            speciality: doctor.speciality,
+          }
           : { name: 'UNKNOWN', id: 'UNKNOWN', speciality: 'UNKNOWN' },
       ]),
     );
@@ -1435,6 +1435,79 @@ export class DoctorService {
     return {
       page: clinicInternalPaginationRequestDto.page,
       items: visitsInformation,
+      totalItems,
+      totalPages: Math.ceil(
+        totalItems / clinicInternalPaginationRequestDto.limit,
+      ),
+    };
+  }
+
+  async getClinicPatients(
+    clinicInternalPaginationRequestDto: ClinicInternalPaginationRequestDto,
+  ): Promise<
+    PaginationResponse<{
+      id: string;
+      name: string;
+      gender: Gender;
+      dateOfBirth: Date;
+      socialSecurityNumber: string;
+      address: string | null;
+      job: string | null;
+    }>
+  > {
+    const visits = await this.visitsRepository.find({
+      where: {
+        clinicId: clinicInternalPaginationRequestDto.clinicId,
+        deletedAt: IsNull(),
+      },
+      select: {
+        patientId: true,
+      },
+    });
+
+    const patientIds = [...new Set(visits.map((v) => v.patientId))];
+    const totalItems = patientIds.length;
+    this.logger.log(
+      `Found ${totalItems} patients for clinic ${clinicInternalPaginationRequestDto.clinicId}`,
+    );
+
+    const skip =
+      (clinicInternalPaginationRequestDto.page - 1) *
+      clinicInternalPaginationRequestDto.limit;
+    const paginatedPatientIds = patientIds.slice(
+      skip,
+      skip + clinicInternalPaginationRequestDto.limit,
+    );
+
+    const patients = await Promise.all(
+      paginatedPatientIds.map(async (patientId) => {
+        const patient = await this.getPatientById(patientId);
+
+        if (!patient) {
+          this.logger.log(`Patient with ID ${patientId} not found`);
+          return null;
+        }
+
+        return {
+          id: patient.globalId,
+          name: `${patient.user.firstName} ${patient.user.lastName}`,
+          gender: patient.user.gender,
+          dateOfBirth: patient.user.dateOfBirth,
+          socialSecurityNumber: patient.user.socialSecurityNumber.toString(),
+          address: patient.address,
+          job: patient.job,
+        };
+      }),
+    );
+
+    const items = patients.filter((p) => p !== null);
+    this.logger.log(
+      `Successfully retrieved ${items.length} patients for page ${clinicInternalPaginationRequestDto.page}`,
+    );
+
+    return {
+      page: clinicInternalPaginationRequestDto.page,
+      items,
       totalItems,
       totalPages: Math.ceil(
         totalItems / clinicInternalPaginationRequestDto.limit,

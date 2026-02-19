@@ -17,6 +17,7 @@
     "strictBindCallApply": false,
     "noFallthroughCasesInSwitch": false,
     "esModuleInterop": true,
+    "strictPropertyInitialization": false,
     "paths": {
       "@app/common": [
         "./libs/common/src"

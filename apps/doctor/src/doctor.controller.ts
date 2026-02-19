@@ -19,7 +19,7 @@ import {
 
 @Controller()
 export class DoctorController {
-  constructor(private readonly doctorService: DoctorService) {}
+  constructor(private readonly doctorService: DoctorService) { }
 
   @MessagePattern({ cmd: DoctorPatterns.IS_UP })
   isUp(): string {
@@ -262,6 +262,26 @@ export class DoctorController {
     }>
   > {
     return await this.doctorService.getClinicVisits(
+      clinicInternalPaginationRequestDto,
+    );
+  }
+
+  @MessagePattern({ cmd: DoctorPatterns.GET_CLINIC_PATIENTS })
+  async getClinicPatients(
+    @Payload()
+    clinicInternalPaginationRequestDto: ClinicInternalPaginationRequestDto,
+  ): Promise<
+    PaginationResponse<{
+      id: string;
+      name: string;
+      gender: Gender;
+      dateOfBirth: Date;
+      socialSecurityNumber: string;
+      address: string | null;
+      job: string | null;
+    }>
+  > {
+    return await this.doctorService.getClinicPatients(
       clinicInternalPaginationRequestDto,
     );
   }
