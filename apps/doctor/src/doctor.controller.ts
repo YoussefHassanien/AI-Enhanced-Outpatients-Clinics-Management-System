@@ -19,7 +19,7 @@ import {
 
 @Controller()
 export class DoctorController {
-  constructor(private readonly doctorService: DoctorService) { }
+  constructor(private readonly doctorService: DoctorService) {}
 
   @MessagePattern({ cmd: DoctorPatterns.IS_UP })
   isUp(): string {

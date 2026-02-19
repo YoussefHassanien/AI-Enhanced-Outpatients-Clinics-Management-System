@@ -518,9 +518,9 @@ export class DoctorService {
         patientIds[index],
         patient
           ? {
-            name: `${patient.user.firstName} ${patient.user.lastName}`,
-            id: patient.globalId,
-          }
+              name: `${patient.user.firstName} ${patient.user.lastName}`,
+              id: patient.globalId,
+            }
           : { name: 'UNKNOWN', id: 'UNKNOWN' },
       ]),
     );
@@ -631,9 +631,9 @@ export class DoctorService {
         doctorsUserId[index],
         doctor
           ? {
-            name: `${doctor.user.firstName} ${doctor.user.lastName}`,
-            speciality: doctor?.speciality ?? 'UNKNOWN',
-          }
+              name: `${doctor.user.firstName} ${doctor.user.lastName}`,
+              speciality: doctor?.speciality ?? 'UNKNOWN',
+            }
           : { name: 'UNKNOWN', speciality: 'UNKNOWN' },
       ]),
     );
@@ -760,9 +760,9 @@ export class DoctorService {
         doctorsIds[index],
         doctor
           ? {
-            name: `${doctor.user.firstName} ${doctor.user.lastName}`,
-            speciality: doctor.speciality,
-          }
+              name: `${doctor.user.firstName} ${doctor.user.lastName}`,
+              speciality: doctor.speciality,
+            }
           : { name: 'UNKNOWN', speciality: 'UNKNOWN' },
       ]),
     );
@@ -858,9 +858,9 @@ export class DoctorService {
         doctorsIds[index],
         doctor
           ? {
-            name: `${doctor.user.firstName} ${doctor.user.lastName}`,
-            speciality: doctor.speciality,
-          }
+              name: `${doctor.user.firstName} ${doctor.user.lastName}`,
+              speciality: doctor.speciality,
+            }
           : { name: 'UNKNOWN', speciality: 'UNKNOWN' },
       ]),
     );
@@ -955,9 +955,9 @@ export class DoctorService {
         doctorsIds[index],
         doctor
           ? {
-            name: `${doctor.user.firstName} ${doctor.user.lastName}`,
-            speciality: doctor.speciality,
-          }
+              name: `${doctor.user.firstName} ${doctor.user.lastName}`,
+              speciality: doctor.speciality,
+            }
           : { name: 'UNKNOWN', speciality: 'UNKNOWN' },
       ]),
     );
@@ -1396,9 +1396,9 @@ export class DoctorService {
         patientIds[index],
         patient
           ? {
-            name: `${patient.user.firstName} ${patient.user.lastName}`,
-            id: patient.globalId,
-          }
+              name: `${patient.user.firstName} ${patient.user.lastName}`,
+              id: patient.globalId,
+            }
           : { name: 'UNKNOWN', id: 'UNKNOWN' },
       ]),
     );
@@ -1408,10 +1408,10 @@ export class DoctorService {
         doctorUserIds[index],
         doctor
           ? {
-            name: `${doctor.user.firstName} ${doctor.user.lastName}`,
-            id: doctor.globalId,
-            speciality: doctor.speciality,
-          }
+              name: `${doctor.user.firstName} ${doctor.user.lastName}`,
+              id: doctor.globalId,
+              speciality: doctor.speciality,
+            }
           : { name: 'UNKNOWN', id: 'UNKNOWN', speciality: 'UNKNOWN' },
       ]),
     );

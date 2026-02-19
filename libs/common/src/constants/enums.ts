@@ -80,7 +80,7 @@ export enum AdminPatterns {
   GET_DOCTOR_BY_GLOBAL_ID = 'admin.getDoctorByGlobalId',
   GET_PATIENT_BY_GLOBAL_ID = 'admin.getPatientByGlobalId',
   GET_CLINIC_DOCTORS = 'admin.getClinicDoctors',
-  GET_CLINIC_Patients = 'admin.getClinicPatients',
+  GET_CLINIC_PATIENTS = 'admin.getClinicPatients',
   GET_CLINIC_VISITS = 'admin.getClinicVisits',
   VISIT_CREATE = 'admin.visit.create',
   MEDICATION_CREATE = 'admin.medication.create',

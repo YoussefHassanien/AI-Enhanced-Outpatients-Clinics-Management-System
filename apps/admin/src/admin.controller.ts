@@ -22,7 +22,7 @@ import {
 
 @Controller()
 export class AdminController {
-  constructor(private readonly adminService: AdminService) { }
+  constructor(private readonly adminService: AdminService) {}
 
   @MessagePattern({ cmd: AdminPatterns.IS_UP })
   isUp(): string {
@@ -213,6 +213,32 @@ export class AdminController {
     return await this.adminService.getPatientScans(patientGlobalId);
   }
 
+  @MessagePattern({ cmd: AdminPatterns.GET_PATIENT_LABS })
+  async getPatientLabs(@Payload() patientGlobalId: string): Promise<{
+    patient: {
+      id: string;
+      name: string;
+      gender: Gender;
+      dateOfBirth: Date;
+      socialSecurityNumber: string;
+      address: string | null;
+      job: string | null;
+    };
+    labs: {
+      name: string;
+      photoUrl: string;
+      comments: string | null;
+      commentsAudioUrl: string | null;
+      doctor: {
+        name: string;
+        speciality: string;
+      };
+      createdAt: Date;
+    }[];
+  }> {
+    return await this.adminService.getPatientLabs(patientGlobalId);
+  }
+
   @MessagePattern({ cmd: AdminPatterns.GET_CLINIC_VISITS })
   async getClinicVisits(
     @Payload()
@@ -262,7 +288,7 @@ export class AdminController {
     );
   }
 
-  @MessagePattern({ cmd: AdminPatterns.GET_CLINIC_Patients })
+  @MessagePattern({ cmd: AdminPatterns.GET_CLINIC_PATIENTS })
   async getClinicPatients(
     @Payload()
     adminInternalPaginationRequestDto: AdminInternalPaginationRequestDto,
@@ -280,31 +306,5 @@ export class AdminController {
     return await this.adminService.getClinicPatients(
       adminInternalPaginationRequestDto,
     );
-  }
-
-  @MessagePattern({ cmd: AdminPatterns.GET_PATIENT_LABS })
-  async getPatientLabs(@Payload() patientGlobalId: string): Promise<{
-    patient: {
-      id: string;
-      name: string;
-      gender: Gender;
-      dateOfBirth: Date;
-      socialSecurityNumber: string;
-      address: string | null;
-      job: string | null;
-    };
-    labs: {
-      name: string;
-      photoUrl: string;
-      comments: string | null;
-      commentsAudioUrl: string | null;
-      doctor: {
-        name: string;
-        speciality: string;
-      };
-      createdAt: Date;
-    }[];
-  }> {
-    return await this.adminService.getPatientLabs(patientGlobalId);
   }
 }

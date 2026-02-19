@@ -30,7 +30,7 @@ import {
 export class AdminService {
   constructor(
     @Inject(Microservices.ADMIN) private readonly adminClient: ClientProxy,
-  ) { }
+  ) {}
 
   private validateImageFile(image?: Express.Multer.File) {
     const imageTypeRegExp: RegExp = /(image\/jpeg|image\/jpg|image\/png)$/;
@@ -402,150 +402,6 @@ export class AdminService {
     );
   }
 
-  async getClinicVisits(
-    adminUserId: number,
-    page: number,
-    limit: number,
-  ): Promise<
-    PaginationResponse<{
-      id: string;
-      diagnoses: string;
-      diagnosesAudioUrl: string | null;
-      patient: {
-        name: string;
-        id: string;
-      };
-      doctor: {
-        name: string;
-        speciality: string;
-        id: string;
-      };
-      createdAt: string;
-    }>
-  > {
-    const adminInternalPaginationRequestDto: AdminInternalPaginationRequestDto =
-    {
-      paginationRequest: {
-        page,
-        limit,
-      },
-      adminUserId,
-    };
-
-    return await lastValueFrom<
-      PaginationResponse<{
-        id: string;
-        diagnoses: string;
-        diagnosesAudioUrl: string | null;
-        patient: {
-          name: string;
-          id: string;
-        };
-        doctor: {
-          name: string;
-          speciality: string;
-          id: string;
-        };
-        createdAt: string;
-      }>
-    >(
-      this.adminClient.send(
-        { cmd: AdminPatterns.GET_CLINIC_VISITS },
-        adminInternalPaginationRequestDto,
-      ),
-    );
-  }
-
-  async getClinicDoctors(
-    adminUserId: number,
-    page: number,
-    limit: number,
-  ): Promise<
-    PaginationResponse<{
-      id: string;
-      phone: string;
-      email: string;
-      speciality: string;
-      isApproved: boolean;
-      socialSecurityNumber: string;
-      gender: Gender;
-      name: string;
-      dateOfBirth: Date;
-      createdAt: Date;
-    }>
-  > {
-    const adminInternalPaginationRequestDto: AdminInternalPaginationRequestDto =
-    {
-      paginationRequest: {
-        page,
-        limit,
-      },
-      adminUserId,
-    };
-
-    return await lastValueFrom<
-      PaginationResponse<{
-        id: string;
-        phone: string;
-        email: string;
-        speciality: string;
-        isApproved: boolean;
-        socialSecurityNumber: string;
-        gender: Gender;
-        name: string;
-        dateOfBirth: Date;
-        createdAt: Date;
-      }>
-    >(
-      this.adminClient.send(
-        { cmd: AdminPatterns.GET_CLINIC_DOCTORS },
-        adminInternalPaginationRequestDto,
-      ),
-    );
-  }
-
-  async getClinicPatients(
-    adminUserId: number,
-    page: number,
-    limit: number,
-  ): Promise<
-    PaginationResponse<{
-      id: string;
-      name: string;
-      gender: Gender;
-      dateOfBirth: Date;
-      socialSecurityNumber: string;
-      address: string | null;
-      job: string | null;
-    }>
-  > {
-    const adminInternalPaginationRequestDto: AdminInternalPaginationRequestDto =
-    {
-      paginationRequest: {
-        page,
-        limit,
-      },
-      adminUserId,
-    };
-
-    return await lastValueFrom<
-      PaginationResponse<{
-        id: string;
-        name: string;
-        gender: Gender;
-        dateOfBirth: Date;
-        socialSecurityNumber: string;
-        address: string | null;
-        job: string | null;
-      }>
-    >(
-      this.adminClient.send(
-        { cmd: AdminPatterns.GET_CLINIC_Patients },
-        adminInternalPaginationRequestDto,
-      ),
-    );
-  }
-
   async getPatientLabs(patientGlobalId: string): Promise<{
     patient: {
       id: string;
@@ -593,6 +449,150 @@ export class AdminService {
       this.adminClient.send(
         { cmd: AdminPatterns.GET_PATIENT_LABS },
         patientGlobalId,
+      ),
+    );
+  }
+
+  async getClinicVisits(
+    adminUserId: number,
+    page: number,
+    limit: number,
+  ): Promise<
+    PaginationResponse<{
+      id: string;
+      diagnoses: string;
+      diagnosesAudioUrl: string | null;
+      patient: {
+        name: string;
+        id: string;
+      };
+      doctor: {
+        name: string;
+        speciality: string;
+        id: string;
+      };
+      createdAt: string;
+    }>
+  > {
+    const adminInternalPaginationRequestDto: AdminInternalPaginationRequestDto =
+      {
+        paginationRequest: {
+          page,
+          limit,
+        },
+        adminUserId,
+      };
+
+    return await lastValueFrom<
+      PaginationResponse<{
+        id: string;
+        diagnoses: string;
+        diagnosesAudioUrl: string | null;
+        patient: {
+          name: string;
+          id: string;
+        };
+        doctor: {
+          name: string;
+          speciality: string;
+          id: string;
+        };
+        createdAt: string;
+      }>
+    >(
+      this.adminClient.send(
+        { cmd: AdminPatterns.GET_CLINIC_VISITS },
+        adminInternalPaginationRequestDto,
+      ),
+    );
+  }
+
+  async getClinicDoctors(
+    adminUserId: number,
+    page: number,
+    limit: number,
+  ): Promise<
+    PaginationResponse<{
+      id: string;
+      phone: string;
+      email: string;
+      speciality: string;
+      isApproved: boolean;
+      socialSecurityNumber: string;
+      gender: Gender;
+      name: string;
+      dateOfBirth: Date;
+      createdAt: Date;
+    }>
+  > {
+    const adminInternalPaginationRequestDto: AdminInternalPaginationRequestDto =
+      {
+        paginationRequest: {
+          page,
+          limit,
+        },
+        adminUserId,
+      };
+
+    return await lastValueFrom<
+      PaginationResponse<{
+        id: string;
+        phone: string;
+        email: string;
+        speciality: string;
+        isApproved: boolean;
+        socialSecurityNumber: string;
+        gender: Gender;
+        name: string;
+        dateOfBirth: Date;
+        createdAt: Date;
+      }>
+    >(
+      this.adminClient.send(
+        { cmd: AdminPatterns.GET_CLINIC_DOCTORS },
+        adminInternalPaginationRequestDto,
+      ),
+    );
+  }
+
+  async getClinicPatients(
+    adminUserId: number,
+    page: number,
+    limit: number,
+  ): Promise<
+    PaginationResponse<{
+      id: string;
+      name: string;
+      gender: Gender;
+      dateOfBirth: Date;
+      socialSecurityNumber: string;
+      address: string | null;
+      job: string | null;
+    }>
+  > {
+    const adminInternalPaginationRequestDto: AdminInternalPaginationRequestDto =
+      {
+        paginationRequest: {
+          page,
+          limit,
+        },
+        adminUserId,
+      };
+
+    return await lastValueFrom<
+      PaginationResponse<{
+        id: string;
+        name: string;
+        gender: Gender;
+        dateOfBirth: Date;
+        socialSecurityNumber: string;
+        address: string | null;
+        job: string | null;
+      }>
+    >(
+      this.adminClient.send(
+        { cmd: AdminPatterns.GET_CLINIC_PATIENTS },
+        adminInternalPaginationRequestDto,
       ),
     );
   }

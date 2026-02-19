@@ -47,7 +47,7 @@ import { AdminService } from './admin.service';
 @UseGuards(JwtAuthGuard)
 @Controller('admin')
 export class AdminController {
-  constructor(private readonly adminService: AdminService) { }
+  constructor(private readonly adminService: AdminService) {}
 
   @Get()
   async isUp(): Promise<string> {
@@ -328,6 +328,40 @@ export class AdminController {
     return await this.adminService.getPatientScans(patientGlobalId);
   }
 
+  @Get('patient/:id/labs')
+  async getPatientLabs(
+    @Param(
+      'id',
+      new ParseUUIDPipe({
+        exceptionFactory: () => new BadRequestException('Invalid patient ID'),
+      }),
+    )
+    patientGlobalId: string,
+  ): Promise<{
+    patient: {
+      id: string;
+      name: string;
+      gender: Gender;
+      dateOfBirth: Date;
+      socialSecurityNumber: string;
+      address: string | null;
+      job: string | null;
+    };
+    labs: {
+      name: string;
+      photoUrl: string;
+      comments: string | null;
+      commentsAudioUrl: string | null;
+      doctor: {
+        name: string;
+        speciality: string;
+      };
+      createdAt: Date;
+    }[];
+  }> {
+    return await this.adminService.getPatientLabs(patientGlobalId);
+  }
+
   @Get('clinic/visits')
   async getClinicVisits(
     @Req() req: Request,
@@ -392,39 +426,5 @@ export class AdminController {
   > {
     const user = req.user as User;
     return await this.adminService.getClinicPatients(user.id, page, limit);
-  }
-
-  @Get('patient/:id/labs')
-  async getPatientLabs(
-    @Param(
-      'id',
-      new ParseUUIDPipe({
-        exceptionFactory: () => new BadRequestException('Invalid patient ID'),
-      }),
-    )
-    patientGlobalId: string,
-  ): Promise<{
-    patient: {
-      id: string;
-      name: string;
-      gender: Gender;
-      dateOfBirth: Date;
-      socialSecurityNumber: string;
-      address: string | null;
-      job: string | null;
-    };
-    labs: {
-      name: string;
-      photoUrl: string;
-      comments: string | null;
-      commentsAudioUrl: string | null;
-      doctor: {
-        name: string;
-        speciality: string;
-      };
-      createdAt: Date;
-    }[];
-  }> {
-    return await this.adminService.getPatientLabs(patientGlobalId);
   }
 }
