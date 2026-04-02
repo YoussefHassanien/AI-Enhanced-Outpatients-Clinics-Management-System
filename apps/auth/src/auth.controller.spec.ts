@@ -20,7 +20,7 @@ import {
   CreatePatientDto,
   LoginDto,
 } from './dtos';
-import { Admin, Doctor, Patient, User } from './entities';
+import { Admin, Doctor, Patient, SuperAdmin, User } from './entities';
 
 describe('AuthController', () => {
   let authController: AuthController;
@@ -82,6 +82,10 @@ describe('AuthController', () => {
         },
         {
           provide: getRepositoryToken(Admin),
+          useValue: mockRepository,
+        },
+        {
+          provide: getRepositoryToken(SuperAdmin),
           useValue: mockRepository,
         },
         {
