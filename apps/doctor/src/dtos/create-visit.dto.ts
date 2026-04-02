@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsString, IsUUID } from 'class-validator';
+import { IsNotEmpty, IsOptional, IsString, IsUUID } from 'class-validator';
 
 export class CreateVisitDto {
   @ApiProperty({
@@ -9,7 +9,8 @@ export class CreateVisitDto {
   })
   @IsString()
   @IsNotEmpty()
-  diagnoses: string;
+  @IsOptional()
+  diagnoses?: string;
 
   @ApiProperty({
     description: 'The patient id of this visit',
@@ -17,4 +18,11 @@ export class CreateVisitDto {
   })
   @IsUUID()
   patientId: string;
+
+  @ApiProperty({
+    description: 'The clinic id that visit belongs to (same as doctor clinic)',
+    example: '718d3eed-43a9-44b9-a01b-5676dd781f25',
+  })
+  @IsUUID()
+  clinicId: string;
 }

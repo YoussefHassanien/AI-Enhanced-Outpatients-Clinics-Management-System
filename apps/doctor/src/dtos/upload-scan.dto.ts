@@ -4,6 +4,7 @@ import {
   IsNotEmpty,
   IsOptional,
   IsString,
+  IsUUID,
   MaxLength,
 } from 'class-validator';
 import { ScanTypes } from '../constants';
@@ -25,7 +26,7 @@ export class UploadScanDto {
   @IsString()
   @MaxLength(512)
   @IsOptional()
-  comments: string;
+  comments?: string;
 
   @ApiProperty({
     enum: ScanTypes,
@@ -34,4 +35,11 @@ export class UploadScanDto {
   })
   @IsEnum(ScanTypes)
   type: ScanTypes;
+
+  @ApiProperty({
+    description: 'The patient id of this medication',
+    example: '0281ba4f-7592-477e-9d02-f2641aa89221',
+  })
+  @IsUUID()
+  patientId: string;
 }

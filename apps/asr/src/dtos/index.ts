@@ -1,1 +1,1 @@
-export * from './transcribe-audio.dto';
+export * from './transcribe-audio-Internal.dto';

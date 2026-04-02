@@ -2,28 +2,28 @@ import { IsNotEmpty, IsString, IsUUID } from 'class-validator';
 
 export class LabPhotoInternalDto {
   @IsUUID()
-  labGlobalId: string;
+  readonly labGlobalId: string;
 
   @IsUUID()
-  patientGlobalId: string;
+  readonly patientGlobalId: string;
 
   @IsString()
   @IsNotEmpty()
-  imageBase64: string;
+  readonly imageFilePath: string;
 
   @IsString()
   @IsNotEmpty()
-  mimetype: string;
+  readonly imageMimetype: string;
 
   constructor(
     labGlobalId: string,
     patientGlobalId: string,
-    imageBase64: string,
-    mimetype: string,
+    imageFilePath: string,
+    imageMimetype: string,
   ) {
     this.labGlobalId = labGlobalId;
     this.patientGlobalId = patientGlobalId;
-    this.imageBase64 = imageBase64;
-    this.mimetype = mimetype;
+    this.imageFilePath = imageFilePath;
+    this.imageMimetype = imageMimetype;
   }
 }

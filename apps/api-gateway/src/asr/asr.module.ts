@@ -5,7 +5,6 @@ import { AsrController } from './asr.controller';
 import { AsrService } from './asr.service';
 import { Microservices } from '@app/common';
 
-
 @Module({
   imports: [
     ClientsModule.registerAsync([
@@ -31,4 +30,4 @@ import { Microservices } from '@app/common';
   controllers: [AsrController],
   providers: [AsrService],
 })
-export class AsrModule { }
+export class AsrModule {}

@@ -32,6 +32,7 @@ services:
       - ocr
       - asr
       - admin
+      - super-admin
       - cloud-storage
     command: node api-gateway/main
     networks:
@@ -50,6 +51,7 @@ services:
       - services-network
     volumes:
       - ./logs:/app/logs
+      - ./tmp/asr_uploads:/app/tmp/asr_uploads
 
   admin:
     image: youssefhassanien1/admin-service:latest
@@ -58,6 +60,18 @@ services:
     depends_on:
       - rabbitmq
     command: node admin/main
+    networks:
+      - services-network
+    volumes:
+      - ./logs:/app/logs
+
+  super-admin:
+    image: youssefhassanien1/super-admin-service:latest
+    env_file:
+      - ./super-admin.env
+    depends_on:
+      - rabbitmq
+    command: node super-admin/main
     networks:
       - services-network
     volumes:
@@ -100,6 +114,7 @@ services:
       - services-network
     volumes:
       - ./logs:/app/logs
+      - ./tmp/asr_uploads:/app/tmp/asr_uploads
 
   nginx:
     image: nginx:latest

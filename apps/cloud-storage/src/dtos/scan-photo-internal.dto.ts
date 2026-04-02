@@ -1,35 +1,29 @@
-import { IsEnum, IsNotEmpty, IsString, IsUUID } from 'class-validator';
-import { ScanTypes } from '../../../doctor/src/constants';
+import { IsNotEmpty, IsString, IsUUID } from 'class-validator';
 
 export class ScanPhotoInternalDto {
   @IsUUID()
-  scanGlobalId: string;
+  readonly scanGlobalId: string;
 
   @IsUUID()
-  patientGlobalId: string;
+  readonly patientGlobalId: string;
 
   @IsString()
   @IsNotEmpty()
-  imageBase64: string;
+  readonly imageFilePath: string;
 
   @IsString()
   @IsNotEmpty()
-  mimetype: string;
-
-  @IsEnum(ScanTypes)
-  type: ScanTypes;
+  readonly imageMimetype: string;
 
   constructor(
     scanGlobalId: string,
     patientGlobalId: string,
-    imageBase64: string,
-    mimetype: string,
-    type: ScanTypes,
+    imageFilePath: string,
+    imageMimetype: string,
   ) {
     this.scanGlobalId = scanGlobalId;
     this.patientGlobalId = patientGlobalId;
-    this.imageBase64 = imageBase64;
-    this.mimetype = mimetype;
-    this.type = type;
+    this.imageFilePath = imageFilePath;
+    this.imageMimetype = imageMimetype;
   }
 }

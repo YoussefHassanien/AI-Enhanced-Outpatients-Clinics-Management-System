@@ -11,7 +11,7 @@ export class CreatePatientDto extends CreateUserDto {
   @IsNotEmpty()
   @MaxLength(128)
   @IsOptional()
-  address: string;
+  address?: string;
 
   @ApiProperty({
     description: 'User job',
@@ -21,5 +21,5 @@ export class CreatePatientDto extends CreateUserDto {
   @IsNotEmpty()
   @MaxLength(128)
   @IsOptional()
-  job: string;
+  job?: string;
 }

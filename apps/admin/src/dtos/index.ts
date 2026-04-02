@@ -1,4 +1,4 @@
-export * from './create-clinic-internal.dto';
-export * from './create-clinic.dto';
-export * from './patient-response.dto';
+export * from './admin-internal-pagination-request.dto';
+export * from './clinic-internal-pagination-request.dto';
 export * from './doctor-response.dto';
+export * from './patient-response.dto';

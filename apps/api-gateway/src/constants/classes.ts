@@ -71,12 +71,20 @@ export class EnvironmentVariables {
   RABBIT_MQ_ADMIN_QUEUE: string;
 
   @IsString()
+  @Equals('super-admin')
+  RABBIT_MQ_SUPER_ADMIN_QUEUE: string;
+
+  @IsString()
   @Equals('ocr')
   RABBIT_MQ_OCR_QUEUE: string;
 
   @IsString()
   @Equals('asr')
   RABBIT_MQ_ASR_QUEUE: string;
+
+  @IsString()
+  @IsNotEmpty()
+  ASR_TMP_DIR: string;
 
   @ValidateIf(
     (environmentVariables: EnvironmentVariables) =>

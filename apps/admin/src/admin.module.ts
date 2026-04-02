@@ -1,19 +1,15 @@
 import {
   CommonServices,
-  dataSourceAsyncOptions,
   LoggingService,
   Microservices,
   validateEnviornmentVariables,
 } from '@app/common';
-import { Logger, Module } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ClientsModule, Transport } from '@nestjs/microservices';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { DataSource } from 'typeorm';
 import { AdminController } from './admin.controller';
 import { AdminService } from './admin.service';
 import { EnvironmentVariables } from './constants';
-import { Clinic } from './entities';
 
 @Module({
   imports: [
@@ -27,8 +23,6 @@ import { Clinic } from './entities';
       },
       envFilePath: './apps/admin/.env',
     }),
-    TypeOrmModule.forRootAsync(dataSourceAsyncOptions),
-    TypeOrmModule.forFeature([Clinic]),
     ClientsModule.registerAsync([
       {
         name: Microservices.AUTH,
@@ -64,6 +58,25 @@ import { Clinic } from './entities';
         }),
         inject: [ConfigService],
       },
+      {
+        name: Microservices.SUPER_ADMIN,
+        imports: [ConfigModule],
+        useFactory: (configService: ConfigService) => ({
+          transport: Transport.RMQ,
+          options: {
+            urls: [configService.getOrThrow<string>('RABBIT_MQ_URL')],
+            queue: configService.getOrThrow<string>(
+              'RABBIT_MQ_SUPER_ADMIN_QUEUE',
+            ),
+            queueOptions: {
+              durable: true,
+            },
+            persistent: true,
+            maxConnectionAttempts: 5,
+          },
+        }),
+        inject: [ConfigService],
+      },
     ]),
   ],
   controllers: [AdminController],
@@ -79,12 +92,4 @@ import { Clinic } from './entities';
   ],
   exports: [CommonServices.LOGGING],
 })
-export class AdminModule {
-  private readonly logger = new Logger(AdminModule.name);
-  constructor(private readonly dataSource: DataSource) {
-    const connectionStatus: string = this.dataSource.isInitialized
-      ? 'succeeded'
-      : 'failed';
-    this.logger.log(`Database connection ${connectionStatus}`);
-  }
-}
+export class AdminModule {}

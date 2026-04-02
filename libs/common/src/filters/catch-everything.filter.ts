@@ -29,11 +29,11 @@ export class CatchEverythingFilter implements ExceptionFilter {
     if (this.isRpcError(exception)) {
       status = exception.status;
       message = exception.message;
-      this.logger.error('Rpc Exception');
+      this.logger.error(`Rpc Exception [${status}]: ${message}`);
     } else if (exception instanceof HttpException) {
       status = exception.getStatus();
       message = exception.message;
-      this.logger.error('Http Exception');
+      this.logger.error(`Http Exception [${status}]: ${message}`);
     } else {
       this.logger.error('Unknown Exception', exception);
     }

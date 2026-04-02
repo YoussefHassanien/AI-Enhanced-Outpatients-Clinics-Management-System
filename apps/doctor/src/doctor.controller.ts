@@ -6,15 +6,15 @@ import {
 } from '@app/common';
 import { Controller } from '@nestjs/common';
 import { EventPattern, MessagePattern, Payload } from '@nestjs/microservices';
+import { ClinicInternalPaginationRequestDto } from '../../admin/src/dtos';
 import { MedicationDosage, MedicationPeriod, ScanTypes } from './constants';
 import { DoctorService } from './doctor.service';
 import {
   CreateMedicationInternalDto,
   CreateVisitInternalDto,
-  GetDoctorPatientsDto,
-  GetDoctorVisitsDto,
+  DoctorInternalPaginationRequestDto,
   UploadLabInternalDto,
-  UploadScanPhotoInternalDto,
+  UploadScanInternalDto,
 } from './dtos';
 
 @Controller()
@@ -26,20 +26,18 @@ export class DoctorController {
     return this.doctorService.isUp();
   }
 
-  @MessagePattern({ cmd: DoctorPatterns.VISIT_CREATE })
+  @EventPattern({ cmd: DoctorPatterns.VISIT_CREATE })
   async visitCreate(
     @Payload() createVisitInternalDto: CreateVisitInternalDto,
-  ): Promise<{ message: string }> {
-    return await this.doctorService.createVisit(createVisitInternalDto);
+  ): Promise<void> {
+    await this.doctorService.createVisit(createVisitInternalDto);
   }
 
-  @MessagePattern({ cmd: DoctorPatterns.MEDICATION_CREATE })
+  @EventPattern({ cmd: DoctorPatterns.MEDICATION_CREATE })
   async medicationCreate(
     @Payload() createMedicationInternalDto: CreateMedicationInternalDto,
-  ): Promise<{ message: string }> {
-    return await this.doctorService.createMedication(
-      createMedicationInternalDto,
-    );
+  ): Promise<void> {
+    await this.doctorService.createMedication(createMedicationInternalDto);
   }
 
   @MessagePattern({ cmd: DoctorPatterns.GET_ALL_VISITS })
@@ -56,15 +54,15 @@ export class DoctorController {
   }
 
   @MessagePattern({ cmd: DoctorPatterns.GET_PATIENT_VISITS })
-  async getPatientVisits(@Payload() socialSecurityNumber: string): Promise<{
+  async getPatientVisits(@Payload() patientGlobalId: string): Promise<{
     patient: {
       id: string;
       name: string;
       gender: Gender;
       dateOfBirth: Date;
       socialSecurityNumber: string;
-      address: string;
-      job: string;
+      address: string | null;
+      job: string | null;
     };
     clinics: {
       id: string;
@@ -74,32 +72,32 @@ export class DoctorController {
           name: string;
           speciality: string;
         };
+        diagnosesAudioUrl: string | null;
         diagnoses: string;
         createdAt: Date;
       }[];
     }[];
   }> {
-    return await this.doctorService.getPatientVisits(socialSecurityNumber);
+    return await this.doctorService.getPatientVisits(patientGlobalId);
   }
 
   @MessagePattern({ cmd: DoctorPatterns.GET_PATIENT_MEDICATIONS })
-  async getPatientMedications(
-    @Payload() socialSecurityNumber: string,
-  ): Promise<{
+  async getPatientMedications(@Payload() patientGlobalId: string): Promise<{
     patient: {
       id: string;
       name: string;
       gender: Gender;
       dateOfBirth: Date;
       socialSecurityNumber: string;
-      address: string;
-      job: string;
+      address: string | null;
+      job: string | null;
     };
     medications: {
       name: string;
       dosage: MedicationDosage;
       period: MedicationPeriod;
-      comments: string;
+      comments: string | null;
+      commentsAudioUrl: string | null;
       doctor: {
         name: string;
         speciality: string;
@@ -107,25 +105,26 @@ export class DoctorController {
       createdAt: Date;
     }[];
   }> {
-    return await this.doctorService.getPatientMedications(socialSecurityNumber);
+    return await this.doctorService.getPatientMedications(patientGlobalId);
   }
 
   @MessagePattern({ cmd: DoctorPatterns.GET_PATIENT_SCANS })
-  async getPatientScans(@Payload() socialSecurityNumber: string): Promise<{
+  async getPatientScans(@Payload() patientGlobalId: string): Promise<{
     patient: {
       id: string;
       name: string;
       gender: Gender;
       dateOfBirth: Date;
       socialSecurityNumber: string;
-      address: string;
-      job: string;
+      address: string | null;
+      job: string | null;
     };
     scans: {
       name: string;
       type: ScanTypes;
       photoUrl: string;
-      comments: string;
+      comments: string | null;
+      commentsAudioUrl: string | null;
       doctor: {
         name: string;
         speciality: string;
@@ -133,24 +132,25 @@ export class DoctorController {
       createdAt: Date;
     }[];
   }> {
-    return await this.doctorService.getPatientScans(socialSecurityNumber);
+    return await this.doctorService.getPatientScans(patientGlobalId);
   }
 
   @MessagePattern({ cmd: DoctorPatterns.GET_PATIENT_LABS })
-  async getPatientLabs(@Payload() socialSecurityNumber: string): Promise<{
+  async getPatientLabs(@Payload() patientGlobalId: string): Promise<{
     patient: {
       id: string;
       name: string;
       gender: Gender;
       dateOfBirth: Date;
       socialSecurityNumber: string;
-      address: string;
-      job: string;
+      address: string | null;
+      job: string | null;
     };
     labs: {
       name: string;
       photoUrl: string;
-      comments: string;
+      comments: string | null;
+      commentsAudioUrl: string | null;
       doctor: {
         name: string;
         speciality: string;
@@ -158,37 +158,38 @@ export class DoctorController {
       createdAt: Date;
     }[];
   }> {
-    return await this.doctorService.getPatientLabs(socialSecurityNumber);
+    return await this.doctorService.getPatientLabs(patientGlobalId);
   }
 
   @MessagePattern({ cmd: DoctorPatterns.GET_DOCTOR_PATIENTS })
   async getDoctorPatients(
-    @Payload() getDoctorPatientsDto: GetDoctorPatientsDto,
-  ): Promise<{
-    page: number;
-    items: {
+    @Payload()
+    doctorInternalPaginationRequestDto: DoctorInternalPaginationRequestDto,
+  ): Promise<
+    PaginationResponse<{
       id: string;
       name: string;
       gender: Gender;
       dateOfBirth: Date;
       socialSecurityNumber: string;
-      address: string;
-      job: string;
-    }[];
-    totalItems: number;
-    totalPages: number;
-  }> {
-    return await this.doctorService.getDoctorPatients(getDoctorPatientsDto);
+      address: string | null;
+      job: string | null;
+    }>
+  > {
+    return await this.doctorService.getDoctorPatients(
+      doctorInternalPaginationRequestDto,
+    );
   }
 
   @MessagePattern({ cmd: DoctorPatterns.GET_DOCTOR_VISITS })
   async getDoctorVisits(
-    @Payload() getDoctorVisitsDto: GetDoctorVisitsDto,
-  ): Promise<{
-    page: number;
-    items: {
+    @Payload()
+    doctorInternalPaginationRequestDto: DoctorInternalPaginationRequestDto,
+  ): Promise<
+    PaginationResponse<{
       id: string;
       diagnoses: string;
+      diagnosesAudioUrl: string | null;
       patient: {
         name: string;
         id: string;
@@ -198,11 +199,11 @@ export class DoctorController {
         id: string;
       };
       createdAt: Date;
-    }[];
-    totalItems: number;
-    totalPages: number;
-  }> {
-    return await this.doctorService.getDoctorVisits(getDoctorVisitsDto);
+    }>
+  > {
+    return await this.doctorService.getDoctorVisits(
+      doctorInternalPaginationRequestDto,
+    );
   }
 
   @EventPattern({ cmd: DoctorPatterns.LAB_UPLOAD })
@@ -214,7 +215,7 @@ export class DoctorController {
 
   @EventPattern({ cmd: DoctorPatterns.SCAN_UPLOAD })
   async uploadScan(
-    @Payload() uploadScanInternalDto: UploadScanPhotoInternalDto,
+    @Payload() uploadScanInternalDto: UploadScanInternalDto,
   ): Promise<void> {
     await this.doctorService.uploadScan(uploadScanInternalDto);
   }
@@ -230,12 +231,58 @@ export class DoctorController {
     gender: Gender;
     dateOfBirth: Date;
     socialSecurityNumber: string;
-    job: string;
-    address: string;
+    job: string | null;
+    address: string | null;
     createdAt: Date;
   }> {
     return await this.doctorService.searchForPatientBySocilaSecurityNumber(
       socialSecurityNumber,
+    );
+  }
+
+  @MessagePattern({ cmd: DoctorPatterns.GET_CLINIC_VISITS })
+  async getClinicVisits(
+    @Payload()
+    clinicInternalPaginationRequestDto: ClinicInternalPaginationRequestDto,
+  ): Promise<
+    PaginationResponse<{
+      id: string;
+      diagnoses: string;
+      diagnosesAudioUrl: string | null;
+      patient: {
+        name: string;
+        id: string;
+      };
+      doctor: {
+        name: string;
+        speciality: string;
+        id: string;
+      };
+      createdAt: string;
+    }>
+  > {
+    return await this.doctorService.getClinicVisits(
+      clinicInternalPaginationRequestDto,
+    );
+  }
+
+  @MessagePattern({ cmd: DoctorPatterns.GET_CLINIC_PATIENTS })
+  async getClinicPatients(
+    @Payload()
+    clinicInternalPaginationRequestDto: ClinicInternalPaginationRequestDto,
+  ): Promise<
+    PaginationResponse<{
+      id: string;
+      name: string;
+      gender: Gender;
+      dateOfBirth: Date;
+      socialSecurityNumber: string;
+      address: string | null;
+      job: string | null;
+    }>
+  > {
+    return await this.doctorService.getClinicPatients(
+      clinicInternalPaginationRequestDto,
     );
   }
 }

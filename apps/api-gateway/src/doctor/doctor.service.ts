@@ -1,4 +1,10 @@
-import { DoctorPatterns, Gender, Microservices } from '@app/common';
+import {
+  DoctorPatterns,
+  Gender,
+  Microservices,
+  PaginationRequest,
+  PaginationResponse,
+} from '@app/common';
 import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { lastValueFrom } from 'rxjs';
@@ -12,10 +18,11 @@ import {
   CreateMedicationInternalDto,
   CreateVisitDto,
   CreateVisitInternalDto,
+  DoctorInternalPaginationRequestDto,
   UploadLabDto,
   UploadLabInternalDto,
   UploadScanDto,
-  UploadScanPhotoInternalDto,
+  UploadScanInternalDto,
 } from '../../../doctor/src/dtos';
 
 @Injectable()
@@ -30,47 +37,135 @@ export class DoctorService {
       throw new BadRequestException('Invalid social security number format');
     }
   }
+
+  private validateImageFile(image?: Express.Multer.File) {
+    const imageTypeRegExp: RegExp = /(image\/jpeg|image\/jpg|image\/png)$/;
+    const imageSize: number = 5 * 1024 * 1024; // 5 MB
+
+    if (!image) {
+      throw new BadRequestException('Image file is required');
+    }
+
+    if (!imageTypeRegExp.test(image.mimetype)) {
+      throw new BadRequestException('Invalid image file type');
+    }
+
+    if (image.size > imageSize) {
+      throw new BadRequestException('Image file too large');
+    }
+  }
+
+  private validateAudioFile(audio?: Express.Multer.File) {
+    const audioTypeRegExp: RegExp =
+      /(audio\/mpeg|audio\/wave|audio\/mp3|audio\/ogg|audio\/wav)$/;
+    const audioSize: number = 10 * 1024 * 1024; // 10 MB
+
+    if (audio) {
+      console.log('Audio mimetype:', audio.mimetype);
+      if (!audioTypeRegExp.test(audio.mimetype)) {
+        throw new BadRequestException('Invalid audio file type');
+      }
+
+      if (audio.size > audioSize) {
+        throw new BadRequestException('Audio file too large');
+      }
+    }
+  }
   async isUp(): Promise<string> {
     return await lastValueFrom<string>(
       this.doctorClient.send({ cmd: DoctorPatterns.IS_UP }, {}),
     );
   }
 
-  async createVisit(
+  createVisit(
     createVisitDto: CreateVisitDto,
     userId: number,
-  ): Promise<{ message: string }> {
+    audio?: Express.Multer.File,
+  ): void {
+    this.validateAudioFile(audio);
+
     const createVisitInternalDto = new CreateVisitInternalDto(
       createVisitDto,
       userId,
+      audio?.path,
+      audio?.mimetype,
     );
 
-    return await lastValueFrom<{ message: string }>(
-      this.doctorClient.send(
-        { cmd: DoctorPatterns.VISIT_CREATE },
-        createVisitInternalDto,
-      ),
+    this.doctorClient.emit(
+      { cmd: DoctorPatterns.VISIT_CREATE },
+      createVisitInternalDto,
     );
   }
 
-  async createMedication(
+  createMedication(
     createMedicationDto: CreateMedicationDto,
     userId: number,
-  ): Promise<{ message: string }> {
+    audio?: Express.Multer.File,
+  ): void {
+    this.validateAudioFile(audio);
+
     const createMedicationInternalDto = new CreateMedicationInternalDto(
       createMedicationDto,
       userId,
+      audio?.path,
+      audio?.mimetype,
     );
 
-    return await lastValueFrom<{ message: string }>(
-      this.doctorClient.send(
-        { cmd: DoctorPatterns.MEDICATION_CREATE },
-        createMedicationInternalDto,
-      ),
+    this.doctorClient.emit(
+      { cmd: DoctorPatterns.MEDICATION_CREATE },
+      createMedicationInternalDto,
     );
   }
 
-  async getPatientVisits(socialSecurityNumber: string): Promise<
+  uploadLab(
+    uploadLabDto: UploadLabDto,
+    doctorUserId: number,
+    image?: Express.Multer.File,
+    audio?: Express.Multer.File,
+  ): void {
+    this.validateImageFile(image);
+    this.validateAudioFile(audio);
+
+    const uploadLabInternalDto = new UploadLabInternalDto(
+      uploadLabDto,
+      doctorUserId,
+      image!.path,
+      image!.mimetype,
+      audio?.path,
+      audio?.mimetype,
+    );
+
+    this.doctorClient.emit(
+      { cmd: DoctorPatterns.LAB_UPLOAD },
+      uploadLabInternalDto,
+    );
+  }
+
+  uploadScan(
+    uploadScanDto: UploadScanDto,
+    doctorUserId: number,
+    image?: Express.Multer.File,
+    audio?: Express.Multer.File,
+  ): void {
+    this.validateImageFile(image);
+    this.validateAudioFile(audio);
+
+    const uploadScanInternalDto = new UploadScanInternalDto(
+      uploadScanDto,
+      doctorUserId,
+      image!.path,
+      image!.mimetype,
+      audio?.path,
+      audio?.mimetype,
+    );
+
+    this.doctorClient.emit(
+      { cmd: DoctorPatterns.SCAN_UPLOAD },
+      uploadScanInternalDto,
+    );
+  }
+
+  async getPatientVisits(patientGlobalId: string): Promise<
     {
       patient: {
         id: string;
@@ -94,7 +189,6 @@ export class DoctorService {
       };
     }[]
   > {
-    this.validateSocialSecurityNumber(socialSecurityNumber);
     return await lastValueFrom<
       {
         patient: {
@@ -121,12 +215,12 @@ export class DoctorService {
     >(
       this.doctorClient.send(
         { cmd: DoctorPatterns.GET_PATIENT_VISITS },
-        socialSecurityNumber,
+        patientGlobalId,
       ),
     );
   }
 
-  async getPatientMedications(socialSecurityNumber: string): Promise<{
+  async getPatientMedications(patientGlobalId: string): Promise<{
     patient: {
       id: string;
       name: string;
@@ -148,7 +242,6 @@ export class DoctorService {
       createdAt: Date;
     }[];
   }> {
-    this.validateSocialSecurityNumber(socialSecurityNumber);
     return await lastValueFrom(
       this.doctorClient.send<{
         patient: {
@@ -171,11 +264,11 @@ export class DoctorService {
           };
           createdAt: Date;
         }[];
-      }>({ cmd: DoctorPatterns.GET_PATIENT_MEDICATIONS }, socialSecurityNumber),
+      }>({ cmd: DoctorPatterns.GET_PATIENT_MEDICATIONS }, patientGlobalId),
     );
   }
 
-  async getPatientScans(socialSecurityNumber: string): Promise<{
+  async getPatientScans(patientGlobalId: string): Promise<{
     patient: {
       id: string;
       name: string;
@@ -197,7 +290,6 @@ export class DoctorService {
       createdAt: Date;
     }[];
   }> {
-    this.validateSocialSecurityNumber(socialSecurityNumber);
     return await lastValueFrom<{
       patient: {
         id: string;
@@ -222,12 +314,12 @@ export class DoctorService {
     }>(
       this.doctorClient.send(
         { cmd: DoctorPatterns.GET_PATIENT_SCANS },
-        socialSecurityNumber,
+        patientGlobalId,
       ),
     );
   }
 
-  async getPatientLabs(socialSecurityNumber: string): Promise<{
+  async getPatientLabs(patientGlobalId: string): Promise<{
     patient: {
       id: string;
       name: string;
@@ -248,7 +340,6 @@ export class DoctorService {
       createdAt: Date;
     }[];
   }> {
-    this.validateSocialSecurityNumber(socialSecurityNumber);
     return await lastValueFrom<{
       patient: {
         id: string;
@@ -272,66 +363,17 @@ export class DoctorService {
     }>(
       this.doctorClient.send(
         { cmd: DoctorPatterns.GET_PATIENT_LABS },
-        socialSecurityNumber,
-      ),
-    );
-  }
-
-  async uploadLab(
-    uploadLabDto: UploadLabDto,
-    patientSocialSecurityNumber: string,
-    image: Express.Multer.File,
-    doctorUserId: number,
-  ): Promise<void> {
-    this.validateSocialSecurityNumber(patientSocialSecurityNumber);
-
-    const uploadLabInternalDto = new UploadLabInternalDto(
-      uploadLabDto,
-      patientSocialSecurityNumber,
-      image.buffer.toString('base64'),
-      image.mimetype,
-      doctorUserId,
-    );
-
-    await lastValueFrom<void>(
-      this.doctorClient.emit(
-        { cmd: DoctorPatterns.LAB_UPLOAD },
-        uploadLabInternalDto,
-      ),
-    );
-  }
-
-  async uploadScan(
-    uploadScanDto: UploadScanDto,
-    patientSocialSecurityNumber: string,
-    image: Express.Multer.File,
-    doctorUserId: number,
-  ): Promise<void> {
-    this.validateSocialSecurityNumber(patientSocialSecurityNumber);
-
-    const uploadScanInternalDto = new UploadScanPhotoInternalDto(
-      uploadScanDto,
-      patientSocialSecurityNumber,
-      image.buffer.toString('base64'),
-      image.mimetype,
-      doctorUserId,
-    );
-
-    await lastValueFrom<void>(
-      this.doctorClient.emit(
-        { cmd: DoctorPatterns.SCAN_UPLOAD },
-        uploadScanInternalDto,
+        patientGlobalId,
       ),
     );
   }
 
   async getDoctorVisits(
     doctorUserId: number,
-    page?: number,
-    limit?: number,
-  ): Promise<{
-    page: number;
-    items: {
+    page: number,
+    limit: number,
+  ): Promise<
+    PaginationResponse<{
       id: string;
       diagnoses: string;
       patient: {
@@ -339,13 +381,13 @@ export class DoctorService {
         id: string;
       };
       createdAt: Date;
-    }[];
-    totalItems: number;
-    totalPages: number;
-  }> {
-    return await lastValueFrom<{
-      page: number;
-      items: {
+    }>
+  > {
+    const paginationRequest: PaginationRequest = { page, limit };
+    const doctorInternalPaginationRequestDto =
+      new DoctorInternalPaginationRequestDto(paginationRequest, doctorUserId);
+    return await lastValueFrom<
+      PaginationResponse<{
         id: string;
         diagnoses: string;
         patient: {
@@ -353,52 +395,55 @@ export class DoctorService {
           id: string;
         };
         createdAt: Date;
-      }[];
-      totalItems: number;
-      totalPages: number;
-    }>(
+      }>
+    >(
       this.doctorClient.send(
         { cmd: DoctorPatterns.GET_DOCTOR_VISITS },
-        { doctorUserId, page, limit },
+        doctorInternalPaginationRequestDto,
       ),
     );
   }
 
   async getDoctorPatients(
     doctorUserId: number,
-    page?: number,
-    limit?: number,
-  ): Promise<{
-    page: number;
-    items: {
+    page: number,
+    limit: number,
+  ): Promise<
+    PaginationResponse<{
       id: string;
-      name: string;
-      gender: Gender;
-      dateOfBirth: Date;
-      socialSecurityNumber: string;
-      address: string;
-      job: string;
-    }[];
-    totalItems: number;
-    totalPages: number;
-  }> {
-    return await lastValueFrom<{
-      page: number;
-      items: {
-        id: string;
+      diagnoses: string;
+      patient: {
         name: string;
-        gender: Gender;
-        dateOfBirth: Date;
-        socialSecurityNumber: string;
-        address: string;
-        job: string;
-      }[];
-      totalItems: number;
-      totalPages: number;
-    }>(
+        id: string;
+      };
+      doctor: {
+        name: string;
+        id: string;
+      };
+      createdAt: Date;
+    }>
+  > {
+    const paginationRequest: PaginationRequest = { page, limit };
+    const doctorInternalPaginationRequestDto =
+      new DoctorInternalPaginationRequestDto(paginationRequest, doctorUserId);
+    return await lastValueFrom<
+      PaginationResponse<{
+        id: string;
+        diagnoses: string;
+        patient: {
+          name: string;
+          id: string;
+        };
+        doctor: {
+          name: string;
+          id: string;
+        };
+        createdAt: Date;
+      }>
+    >(
       this.doctorClient.send(
         { cmd: DoctorPatterns.GET_DOCTOR_PATIENTS },
-        { doctorUserId, page, limit },
+        doctorInternalPaginationRequestDto,
       ),
     );
   }

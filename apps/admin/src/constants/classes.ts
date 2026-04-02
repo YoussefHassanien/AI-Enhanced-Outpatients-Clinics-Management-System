@@ -5,9 +5,6 @@ export class EnvironmentVariables {
   @IsEnum(Environment)
   ENVIRONMENT: Environment;
 
-  @IsUrl({ protocols: ['postgresql'] })
-  DATABASE_URL: string;
-
   @IsUrl({
     protocols: ['amqp'],
     require_host: true,
@@ -27,4 +24,8 @@ export class EnvironmentVariables {
   @IsString()
   @Equals('admin')
   RABBIT_MQ_ADMIN_QUEUE: string;
+
+  @IsString()
+  @Equals('super-admin')
+  RABBIT_MQ_SUPER_ADMIN_QUEUE: string;
 }

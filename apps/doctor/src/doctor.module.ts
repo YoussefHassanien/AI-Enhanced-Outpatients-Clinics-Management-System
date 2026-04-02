@@ -48,13 +48,15 @@ import { Lab, Medication, Scan, Visit } from './entities';
         inject: [ConfigService],
       },
       {
-        name: Microservices.ADMIN,
+        name: Microservices.SUPER_ADMIN,
         imports: [ConfigModule],
         useFactory: (configService: ConfigService) => ({
           transport: Transport.RMQ,
           options: {
             urls: [configService.getOrThrow<string>('RABBIT_MQ_URL')],
-            queue: configService.getOrThrow<string>('RABBIT_MQ_ADMIN_QUEUE'),
+            queue: configService.getOrThrow<string>(
+              'RABBIT_MQ_SUPER_ADMIN_QUEUE',
+            ),
             queueOptions: {
               durable: true,
             },
@@ -74,6 +76,23 @@ import { Lab, Medication, Scan, Visit } from './entities';
             queue: configService.getOrThrow<string>(
               'RABBIT_MQ_CLOUD_STORAGE_QUEUE',
             ),
+            queueOptions: {
+              durable: true,
+            },
+            persistent: true,
+            maxConnectionAttempts: 5,
+          },
+        }),
+        inject: [ConfigService],
+      },
+      {
+        name: Microservices.ASR,
+        imports: [ConfigModule],
+        useFactory: (configService: ConfigService) => ({
+          transport: Transport.RMQ,
+          options: {
+            urls: [configService.getOrThrow<string>('RABBIT_MQ_URL')],
+            queue: configService.getOrThrow<string>('RABBIT_MQ_ASR_QUEUE'),
             queueOptions: {
               durable: true,
             },

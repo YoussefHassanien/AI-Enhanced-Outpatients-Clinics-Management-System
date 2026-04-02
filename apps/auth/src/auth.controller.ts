@@ -9,14 +9,16 @@ import {
 } from '@app/common';
 import { Controller, ParseIntPipe, ParseUUIDPipe } from '@nestjs/common';
 import { MessagePattern, Payload, RpcException } from '@nestjs/microservices';
+import { ClinicInternalPaginationRequestDto } from '../../admin/src/dtos';
 import { AuthService } from './auth.service';
 import {
   CreateAdminDto,
   CreateDoctorInternalDto,
   CreatePatientDto,
   LoginDto,
+  UpdateDoctorInternalDto,
+  UpdatePatientInternalDto,
 } from './dtos';
-import { UpdatePatientInternalDto } from './dtos/update-patient-internal.dto';
 import { Admin, Doctor, Patient, User } from './entities';
 
 @Controller()
@@ -151,8 +153,8 @@ export class AuthController {
   ): Promise<
     PaginationResponse<{
       id: string;
-      address: string;
-      job: string;
+      address: string | null;
+      job: string | null;
       user: {
         id: string;
         socialSecurityNumber: bigint;
@@ -220,5 +222,35 @@ export class AuthController {
     doctorGlobalId: string,
   ): Promise<Doctor | null> {
     return await this.authService.getDoctorByGlobalId(doctorGlobalId);
+  }
+
+  @MessagePattern({ cmd: AuthPatterns.DOCTOR_UPDATE })
+  async doctorUpdate(
+    @Payload() updateDoctorInternalDto: UpdateDoctorInternalDto,
+  ): Promise<{ message: string }> {
+    return await this.authService.updateDoctor(updateDoctorInternalDto);
+  }
+
+  @MessagePattern({ cmd: AuthPatterns.GET_CLINICAL_STAFF_BY_USER_ID })
+  async getClinicalStaffByUserId(
+    @Payload(
+      new ParseIntPipe({
+        exceptionFactory: () =>
+          new RpcException(new ErrorResponse('Invalid id', 400)),
+      }),
+    )
+    clinicalStaffUserId: number,
+  ): Promise<Doctor | Admin | null> {
+    return await this.authService.getClinicalStaffByUserId(clinicalStaffUserId);
+  }
+
+  @MessagePattern({ cmd: AuthPatterns.GET_CLINIC_DOCTORS })
+  async getClinicDoctors(
+    @Payload()
+    clinicInternalPaginationRequestDto: ClinicInternalPaginationRequestDto,
+  ): Promise<PaginationResponse<Doctor>> {
+    return await this.authService.getClinicDoctors(
+      clinicInternalPaginationRequestDto,
+    );
   }
 }

@@ -37,14 +37,13 @@ export abstract class CreateUserDto {
   })
   @IsOptional()
   @IsEnum(Language)
-  language: Language;
+  language?: Language;
 
   @ApiProperty({
     description: 'User national ID',
     example: '30202041234567',
   })
   @IsString()
-  @IsNotEmpty()
   @Length(14, 14)
   @Matches(/^[23]\d{2}(0[1-9]|1[0-2])(0[1-9]|[12]\d|3[01])\d{7}$/)
   socialSecurityNumber: string;

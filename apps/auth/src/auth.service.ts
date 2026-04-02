@@ -1,5 +1,4 @@
 import {
-  AdminPatterns,
   CommonServices,
   ErrorResponse,
   Gender,
@@ -9,6 +8,7 @@ import {
   PaginationRequest,
   PaginationResponse,
   Role,
+  SuperAdminPatterns,
 } from '@app/common';
 import { Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -19,7 +19,8 @@ import * as bcrypt from 'bcrypt';
 import { Algorithm } from 'jsonwebtoken';
 import { lastValueFrom } from 'rxjs';
 import { EntityManager, IsNull, Not, Repository } from 'typeorm';
-import { Clinic } from '../../admin/src/entities';
+import { ClinicInternalPaginationRequestDto } from '../../admin/src/dtos';
+import { Clinic } from '../../super-admin/src/entities';
 import { JwtPayload } from './constants';
 import {
   CreateAdminDto,
@@ -28,9 +29,10 @@ import {
   CreateUserDto,
   CredentialsResponseDto,
   LoginDto,
+  UpdateDoctorInternalDto,
+  UpdatePatientInternalDto,
 } from './dtos';
-import { UpdatePatientInternalDto } from './dtos/update-patient-internal.dto';
-import { Admin, Doctor, Patient, User } from './entities';
+import { Admin, Doctor, Patient, SuperAdmin, User } from './entities';
 
 @Injectable()
 export class AuthService {
@@ -52,6 +54,8 @@ export class AuthService {
     private readonly doctorRepository: Repository<Doctor>,
     @InjectRepository(Admin)
     private readonly adminRepository: Repository<Admin>,
+    @InjectRepository(SuperAdmin)
+    private readonly superAdminRepository: Repository<SuperAdmin>,
     @Inject(CommonServices.LOGGING) logger: LoggingService,
     @Inject(Microservices.ADMIN) private readonly adminClient: ClientProxy,
   ) {
@@ -104,6 +108,21 @@ export class AuthService {
       this.logger.log('Validated an admin');
 
       return admin.user;
+    }
+
+    const superAdmin = await this.superAdminRepository.findOne({
+      relations: { user: true },
+      where: {
+        email,
+        deletedAt: IsNull(),
+        user: Not(IsNull()),
+      },
+    });
+
+    if (superAdmin && (await bcrypt.compare(password, superAdmin.password))) {
+      this.logger.log('Validated a Super Admin');
+
+      return superAdmin.user;
     }
 
     this.logger.log('User is not validated');
@@ -274,6 +293,28 @@ export class AuthService {
     return admin;
   }
 
+  private async checkExistingSuperAdmin(
+    email: string,
+    phone: string,
+  ): Promise<SuperAdmin | null> {
+    email = email.trim().toLowerCase();
+
+    const superAdmin = await this.superAdminRepository.findOne({
+      where: [
+        { email, deletedAt: IsNull() },
+        { phone, deletedAt: IsNull() },
+      ],
+    });
+
+    if (!superAdmin) {
+      this.logger.log('Super Admin does not exist');
+      return null;
+    }
+
+    this.logger.log('Super Admin already exists');
+    return superAdmin;
+  }
+
   private validateSocialSecurityNumber(socialSecurityNumber: string): void {
     const regex = /^[23]\d{2}(0[1-9]|1[0-2])(0[1-9]|[12]\d|3[01])\d{7}$/;
     if (!regex.test(socialSecurityNumber)) {
@@ -345,7 +386,7 @@ export class AuthService {
   }
 
   async getPatientByGlobalId(globalId: string): Promise<Patient | null> {
-    const patient = await this.patientRepository.findOne({
+    return await this.patientRepository.findOne({
       relations: {
         user: true,
       },
@@ -372,8 +413,6 @@ export class AuthService {
         },
       },
     });
-
-    return patient;
   }
 
   async getAdminByUserId(userId: number): Promise<Admin | null> {
@@ -408,7 +447,7 @@ export class AuthService {
     );
 
     if (existingUser) {
-      throw new RpcException(new ErrorResponse('User already exists!', 400));
+      throw new RpcException(new ErrorResponse('Doctor already exists!', 400));
     }
 
     const existingDoctor = await this.checkExistingDoctor(
@@ -420,9 +459,27 @@ export class AuthService {
       throw new RpcException(new ErrorResponse('Doctor already exists!', 400));
     }
 
+    const existingAdmin = await this.checkExistingAdmin(
+      doctorDto.email,
+      doctorDto.phone,
+    );
+
+    if (existingAdmin) {
+      throw new RpcException(new ErrorResponse('Doctor already exists!', 400));
+    }
+
+    const existingSuperAdmin = await this.checkExistingSuperAdmin(
+      doctorDto.email,
+      doctorDto.phone,
+    );
+
+    if (existingSuperAdmin) {
+      throw new RpcException(new ErrorResponse('Doctor already exists!', 400));
+    }
+
     const clinic = await lastValueFrom<Clinic | null>(
       this.adminClient.send(
-        { cmd: AdminPatterns.GET_CLINIC_BY_GLOBAL_ID },
+        { cmd: SuperAdminPatterns.GET_CLINIC_BY_GLOBAL_ID },
         doctorDto.clinicId,
       ),
     );
@@ -478,7 +535,7 @@ export class AuthService {
     );
 
     if (existingUser) {
-      throw new RpcException(new ErrorResponse('User already exists!', 400));
+      throw new RpcException(new ErrorResponse('Admin already exists!', 400));
     }
 
     const existingAdmin = await this.checkExistingAdmin(
@@ -487,6 +544,24 @@ export class AuthService {
     );
 
     if (existingAdmin) {
+      throw new RpcException(new ErrorResponse('Admin already exists!', 400));
+    }
+
+    const existingSuperAdmin = await this.checkExistingSuperAdmin(
+      adminDto.email,
+      adminDto.phone,
+    );
+
+    if (existingSuperAdmin) {
+      throw new RpcException(new ErrorResponse('Admin already exists!', 400));
+    }
+
+    const existingDoctor = await this.checkExistingDoctor(
+      adminDto.email,
+      adminDto.phone,
+    );
+
+    if (existingDoctor) {
       throw new RpcException(new ErrorResponse('Admin already exists!', 400));
     }
 
@@ -553,14 +628,11 @@ export class AuthService {
 
         const patientRepository = manager.getRepository(Patient);
 
-        const patient = patientRepository.create({
+        const patient = await patientRepository.save({
           user: createdUser,
-          job: patientDto.job ?? null,
-          address: patientDto.address ?? null,
+          job: patientDto.job,
+          address: patientDto.address,
         });
-        this.logger.log('Successfully created a patient');
-
-        await patientRepository.insert(patient);
         this.logger.log('Successfully inserted a patient');
 
         return patient.globalId;
@@ -670,8 +742,8 @@ export class AuthService {
   async getAllPatients(paginationRequest: PaginationRequest): Promise<
     PaginationResponse<{
       id: string;
-      address: string;
-      job: string;
+      address: string | null;
+      job: string | null;
       user: {
         id: string;
         socialSecurityNumber: bigint;
@@ -726,8 +798,8 @@ export class AuthService {
 
     const response: PaginationResponse<{
       id: string;
-      address: string;
-      job: string;
+      address: string | null;
+      job: string | null;
       user: {
         id: string;
         socialSecurityNumber: bigint;
@@ -906,18 +978,13 @@ export class AuthService {
   }
 
   async getDoctorByGlobalId(globalId: string): Promise<Doctor | null> {
-    const doctor = await this.doctorRepository.findOne({
+    return await this.doctorRepository.findOne({
       where: { globalId, deletedAt: IsNull() },
       relations: { user: true },
       select: {
-        id: true,
-        phone: true,
-        email: true,
-        speciality: true,
-        isApproved: true,
-        globalId: true,
-        createdAt: true,
-        clinicId: true,
+        password: false,
+        updatedAt: false,
+        deletedAt: false,
         user: {
           id: true,
           firstName: true,
@@ -929,15 +996,173 @@ export class AuthService {
         },
       },
     });
-    const doctorClinc = await lastValueFrom<Clinic | null>(
-      this.adminClient.send(
-        { cmd: AdminPatterns.GET_CLINIC_BY_ID },
-        doctor?.clinicId,
-      ),
-    );
-    if (doctorClinc) {
-      (doctor as any).clinic = doctorClinc;
+  }
+
+  async updateDoctor(
+    updateDoctorInternalDto: UpdateDoctorInternalDto,
+  ): Promise<{ message: string }> {
+    const doctor = await this.doctorRepository.findOne({
+      where: {
+        globalId: updateDoctorInternalDto.globalId,
+        deletedAt: IsNull(),
+      },
+      relations: {
+        user: true,
+      },
+    });
+
+    if (!doctor) {
+      throw new RpcException(new ErrorResponse('Doctor not found!', 404));
     }
-    return doctor;
+
+    // Email uniqueness check
+    if (
+      updateDoctorInternalDto.email &&
+      updateDoctorInternalDto.email.trim().toLowerCase() !== doctor.email
+    ) {
+      const email = updateDoctorInternalDto.email.trim().toLowerCase();
+
+      const doctorConflict = await this.doctorRepository.findOneBy({
+        email,
+      });
+
+      const adminConflict = await this.adminRepository.findOneBy({
+        email,
+      });
+      const superAdminConflict = await this.superAdminRepository.findOneBy({
+        email,
+      });
+
+      if (doctorConflict || adminConflict || superAdminConflict) {
+        throw new RpcException(new ErrorResponse('Email already exists!', 400));
+      }
+    }
+
+    // Phone uniqueness check
+    if (
+      updateDoctorInternalDto.phone &&
+      updateDoctorInternalDto.phone !== doctor.phone
+    ) {
+      const phone = updateDoctorInternalDto.phone;
+
+      const doctorConflict = await this.doctorRepository.findOneBy({
+        phone,
+      });
+
+      const adminConflict = await this.adminRepository.findOneBy({
+        phone,
+      });
+      const superAdminConflict = await this.superAdminRepository.findOneBy({
+        phone,
+      });
+
+      if (doctorConflict || adminConflict || superAdminConflict) {
+        throw new RpcException(new ErrorResponse('Phone already exists!', 400));
+      }
+    }
+
+    await this.doctorRepository.manager.transaction(
+      async (manager: EntityManager) => {
+        // Update User fields if provided
+        if (
+          updateDoctorInternalDto.firstName ||
+          updateDoctorInternalDto.lastName
+        ) {
+          const userRepository = manager.getRepository(User);
+          const userUpdates: Partial<User> = {};
+
+          if (updateDoctorInternalDto.firstName) {
+            userUpdates.firstName = updateDoctorInternalDto.firstName;
+          }
+          if (updateDoctorInternalDto.lastName) {
+            userUpdates.lastName = updateDoctorInternalDto.lastName;
+          }
+
+          await userRepository.update(doctor.user.id, userUpdates);
+          this.logger.log('Successfully updated user data for doctor');
+        }
+
+        // Update Doctor fields if provided
+        if (
+          updateDoctorInternalDto.email ||
+          updateDoctorInternalDto.phone ||
+          updateDoctorInternalDto.speciality
+        ) {
+          const doctorRepository = manager.getRepository(Doctor);
+          const doctorUpdates: Partial<Doctor> = {};
+
+          if (updateDoctorInternalDto.email) {
+            doctorUpdates.email = updateDoctorInternalDto.email
+              .trim()
+              .toLowerCase();
+          }
+          if (updateDoctorInternalDto.phone) {
+            doctorUpdates.phone = updateDoctorInternalDto.phone;
+          }
+          if (updateDoctorInternalDto.speciality) {
+            doctorUpdates.speciality = updateDoctorInternalDto.speciality;
+          }
+          await doctorRepository.update(doctor.id, doctorUpdates);
+          this.logger.log('Successfully updated doctor data');
+        }
+      },
+    );
+
+    return { message: 'Doctor data is successfully updated' };
+  }
+
+  async getClinicalStaffByUserId(
+    userId: number,
+  ): Promise<Doctor | Admin | null> {
+    const doctor = await this.getDoctorByUserId(userId);
+
+    return doctor ? doctor : await this.getAdminByUserId(userId);
+  }
+
+  async getClinicDoctors(
+    clinicInternalPaginationRequestDto: ClinicInternalPaginationRequestDto,
+  ): Promise<PaginationResponse<Doctor>> {
+    const [doctors, totalItems] = await this.doctorRepository.findAndCount({
+      select: {
+        user: {
+          id: true,
+          globalId: true,
+          gender: true,
+          socialSecurityNumber: true,
+          firstName: true,
+          lastName: true,
+          dateOfBirth: true,
+        },
+        id: true,
+        globalId: true,
+        speciality: true,
+        isApproved: true,
+        phone: true,
+        email: true,
+        createdAt: true,
+      },
+      relations: {
+        user: true,
+      },
+      where: {
+        clinicId: clinicInternalPaginationRequestDto.clinicId,
+        deletedAt: IsNull(),
+      },
+      skip:
+        (clinicInternalPaginationRequestDto.page - 1) *
+        clinicInternalPaginationRequestDto.limit,
+      take: clinicInternalPaginationRequestDto.limit,
+    });
+
+    const response: PaginationResponse<Doctor> = {
+      items: doctors,
+      totalItems,
+      totalPages: Math.ceil(
+        totalItems / clinicInternalPaginationRequestDto.limit,
+      ),
+      page: clinicInternalPaginationRequestDto.page,
+    };
+
+    return response;
   }
 }
