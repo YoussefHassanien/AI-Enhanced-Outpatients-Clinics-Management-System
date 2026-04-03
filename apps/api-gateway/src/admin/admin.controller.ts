@@ -47,7 +47,7 @@ import { AdminService } from './admin.service';
 @UseGuards(JwtAuthGuard)
 @Controller('admin')
 export class AdminController {
-  constructor(private readonly adminService: AdminService) {}
+  constructor(private readonly adminService: AdminService) { }
 
   @Get()
   async isUp(): Promise<string> {
@@ -426,5 +426,16 @@ export class AdminController {
   > {
     const user = req.user as User;
     return await this.adminService.getClinicPatients(user.id, page, limit);
+  }
+
+  @Get('clinic')
+  async getAdminClinic(
+    @Req() req: Request,
+  ): Promise<{
+    id: string;
+    name: string;
+  }> {
+    const user = req.user as User;
+    return await this.adminService.getAdminClinic(user.id);
   }
 }
