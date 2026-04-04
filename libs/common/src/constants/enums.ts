@@ -93,6 +93,7 @@ export enum AdminPatterns {
   GET_PATIENT_MEDICATIONS = 'admin.patient.medications',
   GET_PATIENT_LABS = 'admin.patient.labs',
   GET_PATIENT_SCANS = 'admin.patient.scans',
+  GET_ADMIN_CLINIC = 'admin.clinic',
 }
 
 export enum SuperAdminPatterns {
