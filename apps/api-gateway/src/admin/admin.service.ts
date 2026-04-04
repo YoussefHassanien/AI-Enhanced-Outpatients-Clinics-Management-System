@@ -30,7 +30,7 @@ import {
 export class AdminService {
   constructor(
     @Inject(Microservices.ADMIN) private readonly adminClient: ClientProxy,
-  ) {}
+  ) { }
 
   private validateImageFile(image?: Express.Multer.File) {
     const imageTypeRegExp: RegExp = /(image\/jpeg|image\/jpg|image\/png)$/;
@@ -475,13 +475,13 @@ export class AdminService {
     }>
   > {
     const adminInternalPaginationRequestDto: AdminInternalPaginationRequestDto =
-      {
-        paginationRequest: {
-          page,
-          limit,
-        },
-        adminUserId,
-      };
+    {
+      paginationRequest: {
+        page,
+        limit,
+      },
+      adminUserId,
+    };
 
     return await lastValueFrom<
       PaginationResponse<{
@@ -526,13 +526,13 @@ export class AdminService {
     }>
   > {
     const adminInternalPaginationRequestDto: AdminInternalPaginationRequestDto =
-      {
-        paginationRequest: {
-          page,
-          limit,
-        },
-        adminUserId,
-      };
+    {
+      paginationRequest: {
+        page,
+        limit,
+      },
+      adminUserId,
+    };
 
     return await lastValueFrom<
       PaginationResponse<{
@@ -571,13 +571,13 @@ export class AdminService {
     }>
   > {
     const adminInternalPaginationRequestDto: AdminInternalPaginationRequestDto =
-      {
-        paginationRequest: {
-          page,
-          limit,
-        },
-        adminUserId,
-      };
+    {
+      paginationRequest: {
+        page,
+        limit,
+      },
+      adminUserId,
+    };
 
     return await lastValueFrom<
       PaginationResponse<{
@@ -593,6 +593,21 @@ export class AdminService {
       this.adminClient.send(
         { cmd: AdminPatterns.GET_CLINIC_PATIENTS },
         adminInternalPaginationRequestDto,
+      ),
+    );
+  }
+
+  async getAdminClinic(adminUserId: number): Promise<{
+    id: string;
+    name: string;
+  }> {
+    return await lastValueFrom<{
+      id: string;
+      name: string;
+    }>(
+      this.adminClient.send(
+        { cmd: AdminPatterns.GET_ADMIN_CLINIC },
+        adminUserId,
       ),
     );
   }

@@ -22,7 +22,7 @@ import {
 
 @Controller()
 export class AdminController {
-  constructor(private readonly adminService: AdminService) {}
+  constructor(private readonly adminService: AdminService) { }
 
   @MessagePattern({ cmd: AdminPatterns.IS_UP })
   isUp(): string {
@@ -305,6 +305,16 @@ export class AdminController {
   > {
     return await this.adminService.getClinicPatients(
       adminInternalPaginationRequestDto,
+    );
+  }
+
+  @MessagePattern({ cmd: AdminPatterns.GET_ADMIN_CLINIC })
+  async getAdminClinic(
+    @Payload()
+    adminUserId: number,
+  ): Promise<{ id: string; name: string } | null> {
+    return await this.adminService.getAdminClinic(
+      adminUserId,
     );
   }
 }
