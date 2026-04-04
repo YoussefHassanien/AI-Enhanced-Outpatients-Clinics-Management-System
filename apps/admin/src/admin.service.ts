@@ -680,4 +680,21 @@ export class AdminService {
       ),
     );
   }
+
+  async getAdminClinic(
+    adminUserId: number,
+  ): Promise<{ id: string; name: string } | null> {
+    const admin = await this.getAdminByUserId(adminUserId);
+
+    if (!admin) {
+      throw new RpcException(
+        new ErrorResponse('Admin not found for this user.', 404),
+      );
+    }
+    const clinic = await this.getClinicById(admin.clinicId);
+    if (!clinic) {
+      throw new RpcException(new ErrorResponse('Clinic not found!', 404));
+    }
+    return { id: clinic.globalId, name: clinic.name };
+  }
 }

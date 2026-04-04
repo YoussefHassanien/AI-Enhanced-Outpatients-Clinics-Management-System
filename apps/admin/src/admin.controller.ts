@@ -307,4 +307,12 @@ export class AdminController {
       adminInternalPaginationRequestDto,
     );
   }
+
+  @MessagePattern({ cmd: AdminPatterns.GET_ADMIN_CLINIC })
+  async getAdminClinic(
+    @Payload()
+    adminUserId: number,
+  ): Promise<{ id: string; name: string } | null> {
+    return await this.adminService.getAdminClinic(adminUserId);
+  }
 }

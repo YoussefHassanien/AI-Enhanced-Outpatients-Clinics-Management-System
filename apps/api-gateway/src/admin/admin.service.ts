@@ -596,4 +596,19 @@ export class AdminService {
       ),
     );
   }
+
+  async getAdminClinic(adminUserId: number): Promise<{
+    id: string;
+    name: string;
+  }> {
+    return await lastValueFrom<{
+      id: string;
+      name: string;
+    }>(
+      this.adminClient.send(
+        { cmd: AdminPatterns.GET_ADMIN_CLINIC },
+        adminUserId,
+      ),
+    );
+  }
 }
