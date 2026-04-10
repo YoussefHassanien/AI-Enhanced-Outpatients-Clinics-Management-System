@@ -43,8 +43,6 @@ import {
 import { JwtAuthGuard } from '../auth/guards';
 import { AdminService } from './admin.service';
 
-@Roles(Role.ADMIN)
-@UseGuards(JwtAuthGuard)
 @Controller('admin')
 export class AdminController {
   constructor(private readonly adminService: AdminService) {}
@@ -54,6 +52,8 @@ export class AdminController {
     return await this.adminService.isUp();
   }
 
+  @Roles(Role.ADMIN)
+  @UseGuards(JwtAuthGuard)
   @UseInterceptors(
     FileInterceptor('audio', {
       storage: diskStorage({
@@ -75,6 +75,8 @@ export class AdminController {
     this.adminService.createVisit(createVisitDto, user.id, audio);
   }
 
+  @Roles(Role.ADMIN)
+  @UseGuards(JwtAuthGuard)
   @Post('medication')
   @UseInterceptors(
     FileInterceptor('audio', {
@@ -96,6 +98,8 @@ export class AdminController {
     this.adminService.createMedication(createMedicationDto, user.id, audio);
   }
 
+  @Roles(Role.ADMIN)
+  @UseGuards(JwtAuthGuard)
   @Post('lab')
   @UseInterceptors(
     FileFieldsInterceptor(
@@ -129,6 +133,8 @@ export class AdminController {
     );
   }
 
+  @Roles(Role.ADMIN)
+  @UseGuards(JwtAuthGuard)
   @Post('scan')
   @UseInterceptors(
     FileFieldsInterceptor(
@@ -162,6 +168,8 @@ export class AdminController {
     );
   }
 
+  @Roles(Role.ADMIN)
+  @UseGuards(JwtAuthGuard)
   @Get('patient/:id/visits')
   async getPatientVisits(
     @Param(
@@ -198,6 +206,8 @@ export class AdminController {
     return await this.adminService.getPatientVisits(patientGlobalId);
   }
 
+  @Roles(Role.ADMIN)
+  @UseGuards(JwtAuthGuard)
   @Get('patients')
   async getAdminPatients(
     @Req() req: Request,
@@ -217,6 +227,8 @@ export class AdminController {
     return await this.adminService.getAdminPatients(user.id, page, limit);
   }
 
+  @Roles(Role.ADMIN)
+  @UseGuards(JwtAuthGuard)
   @Get('visits')
   async getAdminVisits(
     @Req() req: Request,
@@ -241,6 +253,8 @@ export class AdminController {
     return await this.adminService.getAdminVisits(user.id, page, limit);
   }
 
+  @Roles(Role.ADMIN)
+  @UseGuards(JwtAuthGuard)
   @Get('patient/:socialSecurityNumber')
   async searchForPatientBySocialSecurityNumber(
     @Param('socialSecurityNumber') socialSecurityNumber: string,
@@ -259,6 +273,8 @@ export class AdminController {
     );
   }
 
+  @Roles(Role.ADMIN)
+  @UseGuards(JwtAuthGuard)
   @Get('patient/:id/medications')
   async getPatientMedications(
     @Param(
@@ -293,6 +309,8 @@ export class AdminController {
     return await this.adminService.getPatientMedications(patientGlobalId);
   }
 
+  @Roles(Role.ADMIN)
+  @UseGuards(JwtAuthGuard)
   @Get('patient/:id/scans')
   async getPatientScans(
     @Param(
@@ -328,6 +346,8 @@ export class AdminController {
     return await this.adminService.getPatientScans(patientGlobalId);
   }
 
+  @Roles(Role.ADMIN)
+  @UseGuards(JwtAuthGuard)
   @Get('patient/:id/labs')
   async getPatientLabs(
     @Param(
@@ -362,6 +382,8 @@ export class AdminController {
     return await this.adminService.getPatientLabs(patientGlobalId);
   }
 
+  @Roles(Role.ADMIN)
+  @UseGuards(JwtAuthGuard)
   @Get('clinic/visits')
   async getClinicVisits(
     @Req() req: Request,
@@ -387,6 +409,8 @@ export class AdminController {
     return await this.adminService.getClinicVisits(user.id, page, limit);
   }
 
+  @Roles(Role.ADMIN)
+  @UseGuards(JwtAuthGuard)
   @Get('clinic/doctors')
   async getClinicDoctors(
     @Req() req: Request,
@@ -409,6 +433,8 @@ export class AdminController {
     return await this.adminService.getClinicDoctors(user.id, page, limit);
   }
 
+  @Roles(Role.ADMIN)
+  @UseGuards(JwtAuthGuard)
   @Get('clinic/patients')
   async getClinicPatients(
     @Req() req: Request,
@@ -428,6 +454,8 @@ export class AdminController {
     return await this.adminService.getClinicPatients(user.id, page, limit);
   }
 
+  @Roles(Role.ADMIN)
+  @UseGuards(JwtAuthGuard)
   @Get('clinic')
   async getAdminClinic(@Req() req: Request): Promise<{
     id: string;

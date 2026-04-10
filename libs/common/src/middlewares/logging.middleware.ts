@@ -72,7 +72,12 @@ export function LoggingMiddleware(config: ConfigService, serviceName: string) {
       const responseTime = endTime - startTime;
       const { statusCode } = res;
 
-      const logMessage = `${method} ${url} - ${statusCode} - ${responseTime}ms`;
+      const ip =
+        (req.headers['x-forwarded-for'] as string)?.split(',')[0].trim() ||
+        req.socket.remoteAddress ||
+        'unknown';
+
+      const logMessage = `${method} ${url} - ${statusCode} - ${responseTime}ms - ${ip}`;
 
       if (statusCode >= 500) {
         logger.error(logMessage);
