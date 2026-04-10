@@ -43,8 +43,6 @@ import {
 import { JwtAuthGuard } from '../auth/guards';
 import { DoctorService } from './doctor.service';
 
-@Roles(Role.DOCTOR)
-@UseGuards(JwtAuthGuard)
 @Controller('doctor')
 export class DoctorController {
   constructor(private readonly doctorService: DoctorService) {}
@@ -54,6 +52,8 @@ export class DoctorController {
     return await this.doctorService.isUp();
   }
 
+  @Roles(Role.DOCTOR)
+  @UseGuards(JwtAuthGuard)
   @UseInterceptors(
     FileInterceptor('audio', {
       storage: diskStorage({
@@ -75,6 +75,8 @@ export class DoctorController {
     this.doctorService.createVisit(createVisitDto, user.id, audio);
   }
 
+  @Roles(Role.DOCTOR)
+  @UseGuards(JwtAuthGuard)
   @UseInterceptors(
     FileInterceptor('audio', {
       storage: diskStorage({
@@ -96,6 +98,8 @@ export class DoctorController {
     this.doctorService.createMedication(createMedicationDto, user.id, audio);
   }
 
+  @Roles(Role.DOCTOR)
+  @UseGuards(JwtAuthGuard)
   @UseInterceptors(
     FileFieldsInterceptor(
       [
@@ -129,6 +133,8 @@ export class DoctorController {
     );
   }
 
+  @Roles(Role.DOCTOR)
+  @UseGuards(JwtAuthGuard)
   @UseInterceptors(
     FileFieldsInterceptor(
       [
@@ -163,6 +169,8 @@ export class DoctorController {
     );
   }
 
+  @Roles(Role.DOCTOR)
+  @UseGuards(JwtAuthGuard)
   @Get('patient/:id/visits')
   async getPatientVisits(
     @Param(
@@ -199,6 +207,8 @@ export class DoctorController {
     return await this.doctorService.getPatientVisits(patientGlobalId);
   }
 
+  @Roles(Role.DOCTOR)
+  @UseGuards(JwtAuthGuard)
   @Get('patient/:id/medications')
   async getPatientMedications(
     @Param(
@@ -233,6 +243,8 @@ export class DoctorController {
     return await this.doctorService.getPatientMedications(patientGlobalId);
   }
 
+  @Roles(Role.DOCTOR)
+  @UseGuards(JwtAuthGuard)
   @Get('patient/:id/scans')
   async getPatientScans(
     @Param(
@@ -267,6 +279,8 @@ export class DoctorController {
     return await this.doctorService.getPatientScans(patientGlobalId);
   }
 
+  @Roles(Role.DOCTOR)
+  @UseGuards(JwtAuthGuard)
   @Get('patient/:id/labs')
   async getPatientLabs(
     @Param(
@@ -300,6 +314,8 @@ export class DoctorController {
     return await this.doctorService.getPatientLabs(patientGlobalId);
   }
 
+  @Roles(Role.DOCTOR)
+  @UseGuards(JwtAuthGuard)
   @Get('patients')
   async getDoctorPatients(
     @Req() req: Request,
@@ -319,6 +335,8 @@ export class DoctorController {
     return await this.doctorService.getDoctorPatients(user.id, page, limit);
   }
 
+  @Roles(Role.DOCTOR)
+  @UseGuards(JwtAuthGuard)
   @Get('visits')
   async getDoctorVisits(
     @Req() req: Request,
@@ -338,6 +356,8 @@ export class DoctorController {
     return await this.doctorService.getDoctorVisits(user.id, page, limit);
   }
 
+  @Roles(Role.DOCTOR)
+  @UseGuards(JwtAuthGuard)
   @Get('patient/:socialSecurityNumber')
   async searchForPatientBySocialSecurityNumber(
     @Param('socialSecurityNumber') socialSecurityNumber: string,

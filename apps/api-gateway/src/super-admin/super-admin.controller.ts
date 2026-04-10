@@ -26,8 +26,6 @@ import { JwtAuthGuard } from '../auth/guards';
 import { SuperAdminService } from './super-admin.service';
 
 @Controller('super-admin')
-@Roles(Role.SUPER_ADMIN)
-@UseGuards(JwtAuthGuard)
 export class SuperAdminController {
   constructor(private readonly superAdminService: SuperAdminService) {}
 
@@ -36,6 +34,8 @@ export class SuperAdminController {
     return await this.superAdminService.isUp();
   }
 
+  @Roles(Role.SUPER_ADMIN)
+  @UseGuards(JwtAuthGuard)
   @Get('doctors')
   async getAllDoctors(@Query() { page, limit }: PaginationRequest): Promise<
     PaginationResponse<{
@@ -61,6 +61,8 @@ export class SuperAdminController {
     return await this.superAdminService.getAllDoctors(paginationRequest);
   }
 
+  @Roles(Role.SUPER_ADMIN)
+  @UseGuards(JwtAuthGuard)
   @Get('patients')
   async getAllPatients(@Query() { page, limit }: PaginationRequest): Promise<
     PaginationResponse<{
@@ -84,6 +86,8 @@ export class SuperAdminController {
     return await this.superAdminService.getAllPatients(paginationRequest);
   }
 
+  @Roles(Role.SUPER_ADMIN)
+  @UseGuards(JwtAuthGuard)
   @Get('visits')
   async getAllVisits(@Query() { page, limit }: PaginationRequest): Promise<
     PaginationResponse<{
@@ -101,6 +105,8 @@ export class SuperAdminController {
     return await this.superAdminService.getAllVisits(paginationRequest);
   }
 
+  @Roles(Role.SUPER_ADMIN)
+  @UseGuards(JwtAuthGuard)
   @Post('clinic')
   async createClinic(
     @Req() req: Request,
@@ -110,11 +116,15 @@ export class SuperAdminController {
     return await this.superAdminService.createClinic(user.id, createClinicDto);
   }
 
+  @Roles(Role.SUPER_ADMIN)
+  @UseGuards(JwtAuthGuard)
   @Get('clinics')
   async getAllClinics() {
     return await this.superAdminService.getAllClinics();
   }
 
+  @Roles(Role.SUPER_ADMIN)
+  @UseGuards(JwtAuthGuard)
   @Get('patient/:id')
   async getPatientByGlobalId(
     @Param(
@@ -128,6 +138,8 @@ export class SuperAdminController {
     return await this.superAdminService.getPatientByGlobalId(globalId);
   }
 
+  @Roles(Role.SUPER_ADMIN)
+  @UseGuards(JwtAuthGuard)
   @Patch('patient/:id')
   async updatePatient(
     @Param(
@@ -145,6 +157,8 @@ export class SuperAdminController {
     );
   }
 
+  @Roles(Role.SUPER_ADMIN)
+  @UseGuards(JwtAuthGuard)
   @Get('doctor/:id')
   async getDoctorByGlobalId(
     @Param(
@@ -158,6 +172,8 @@ export class SuperAdminController {
     return await this.superAdminService.getDoctorByGlobalId(globalId);
   }
 
+  @Roles(Role.SUPER_ADMIN)
+  @UseGuards(JwtAuthGuard)
   @Patch('doctor/:id')
   async updateDoctor(
     @Param(
