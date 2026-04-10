@@ -181,3 +181,50 @@ jobs:
             docker compose -f docker-compose.prod.yml pull
             docker compose -f docker-compose.prod.yml up -d
             docker image prune -af
+  
+  # JOB 4: HEALTH CHECKS (Runs ONLY after successful deploy)
+  health-check:
+    needs: deploy
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wait for services to stabilize
+        run: sleep 15
+
+      - name: Check Auth Service
+        run: |
+          curl --fail --retry 5 --retry-delay 5 --retry-all-errors \
+            https://${{ secrets.PROD_HOST }}/auth
+
+      - name: Check API Gateway
+        run: |
+          curl --fail --retry 5 --retry-delay 5 --retry-all-errors \
+            https://${{ secrets.PROD_HOST }}
+
+      - name: Check Doctor Service
+        run: |
+          curl --fail --retry 5 --retry-delay 5 --retry-all-errors \
+            https://${{ secrets.PROD_HOST }}/doctor
+
+      - name: Check OCR Service
+        run: |
+          curl --fail --retry 5 --retry-delay 5 --retry-all-errors \
+            https://${{ secrets.PROD_HOST }}/ocr
+
+      - name: Check ASR Service
+        run: |
+          curl --fail --retry 5 --retry-delay 5 --retry-all-errors \
+            https://${{ secrets.PROD_HOST }}/asr
+
+      - name: Check Cloud Storage Service
+        run: |
+          curl --fail --retry 5 --retry-delay 5 --retry-all-errors \
+            https://${{ secrets.PROD_HOST }}/cloud-storage
+
+      - name: Check Super Admin Service
+        run: |
+          curl --fail --retry 5 --retry-delay 5 --retry-all-errors \
+            https://${{ secrets.PROD_HOST }}/super-admin
+
+      - name: All health checks passed ✅
+        run: echo "All services are healthy and running."
