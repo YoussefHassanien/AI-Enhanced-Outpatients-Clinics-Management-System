@@ -142,7 +142,7 @@ jobs:
           tags: ${{ secrets.DOCKER_USERNAME }}/cloud-storage-service:latest
       
       # Build and Push Super-Admin Service
-      - name: Build and Push Cloud-Storage
+      - name: Build and Push Super-Admin
         uses: docker/build-push-action@v6
         with:
           context: .
