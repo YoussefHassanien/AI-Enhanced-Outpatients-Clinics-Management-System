@@ -74,16 +74,15 @@ export class AuthService {
   }
 
   private async validateUser(
-    identifier: string,
+    email: string,
     password: string,
   ): Promise<User | null> {
-    // Identifier can be an email for staff or a username for patients
-    const formattedIdentifier = identifier.trim().toLowerCase();
+    email = email.trim().toLowerCase();
 
     const doctor = await this.doctorRepository.findOne({
       relations: { user: true },
       where: {
-        email: formattedIdentifier,
+        email,
         deletedAt: IsNull(),
         isApproved: true,
         user: Not(IsNull()),
@@ -99,7 +98,7 @@ export class AuthService {
     const admin = await this.adminRepository.findOne({
       relations: { user: true },
       where: {
-        email: formattedIdentifier,
+        email,
         deletedAt: IsNull(),
         user: Not(IsNull()),
       },
@@ -114,7 +113,7 @@ export class AuthService {
     const superAdmin = await this.superAdminRepository.findOne({
       relations: { user: true },
       where: {
-        email: formattedIdentifier,
+        email,
         deletedAt: IsNull(),
         user: Not(IsNull()),
       },
@@ -124,21 +123,6 @@ export class AuthService {
       this.logger.log('Validated a Super Admin');
 
       return superAdmin.user;
-    }
-
-    const patient = await this.patientRepository.findOne({
-      relations: { user: true },
-      where: {
-        username: identifier.trim(),
-        deletedAt: IsNull(),
-        user: Not(IsNull()),
-      },
-    });
-
-    if (patient && (await bcrypt.compare(password, patient.password))) {
-      this.logger.log('Validated a patient');
-
-      return patient.user;
     }
 
     this.logger.log('User is not validated');
@@ -619,25 +603,7 @@ export class AuthService {
     );
   }
 
-  private generateUsername(firstName: string, ssn: string): string {
-    const ssnSuffix = ssn.substring(ssn.length - 4);
-    const randomSuffix = Math.random().toString(36).substring(2, 6);
-    return `${firstName.toLowerCase()}_${ssnSuffix}_${randomSuffix}`;
-  }
-
-  private generatePassword(length = 12): string {
-    const charset =
-      'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+';
-    let retVal = '';
-    for (let i = 0, n = charset.length; i < length; ++i) {
-      retVal += charset.charAt(Math.floor(Math.random() * n));
-    }
-    return retVal;
-  }
-
-  async createPatient(
-    patientDto: CreatePatientDto,
-  ): Promise<{ globalId: string; username: string; password: string }> {
+  async createPatient(patientDto: CreatePatientDto): Promise<string> {
     const existingUser = await this.checkExistingUser(
       patientDto.socialSecurityNumber,
     );
@@ -645,13 +611,6 @@ export class AuthService {
     if (existingUser) {
       throw new RpcException(new ErrorResponse('User already exists!', 400));
     }
-
-    const username = this.generateUsername(
-      patientDto.firstName,
-      patientDto.socialSecurityNumber,
-    );
-    const plainPassword = this.generatePassword();
-    const hashedPassword = await bcrypt.hash(plainPassword, this.rounds);
 
     return await this.userRepository.manager.transaction(
       async (manager: EntityManager) => {
@@ -673,16 +632,10 @@ export class AuthService {
           user: createdUser,
           job: patientDto.job,
           address: patientDto.address,
-          username,
-          password: hashedPassword,
         });
         this.logger.log('Successfully inserted a patient');
 
-        return {
-          globalId: patient.globalId,
-          username: patient.username,
-          password: plainPassword,
-        };
+        return patient.globalId;
       },
     );
   }

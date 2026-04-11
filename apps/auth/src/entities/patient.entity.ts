@@ -1,16 +1,9 @@
 import { BaseEntity } from '@app/common';
-import { Column, Entity, Index, JoinColumn, OneToOne } from 'typeorm';
+import { Column, Entity, JoinColumn, OneToOne } from 'typeorm';
 import { User } from '.';
 
 @Entity('Patients')
 export class Patient extends BaseEntity {
-  @Column('varchar', { length: 128, unique: true })
-  @Index()
-  username: string;
-
-  @Column('varchar', { length: 256 })
-  password: string;
-
   @Column('varchar', { length: 512, nullable: true })
   address: string | null;
 
