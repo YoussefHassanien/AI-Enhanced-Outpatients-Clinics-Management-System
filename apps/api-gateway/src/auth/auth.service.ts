@@ -76,10 +76,14 @@ export class AuthService {
   async createPatient(createPatientDto: CreatePatientDto): Promise<{
     message: string;
     id: string;
+    username?: string;
+    password?: string;
   }> {
     return await lastValueFrom<{
       message: string;
       id: string;
+      username?: string;
+      password?: string;
     }>(
       this.authClient.send(
         { cmd: AuthPatterns.PATIENT_CREATE },

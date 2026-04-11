@@ -86,7 +86,12 @@ export class AuthController {
   @Post('patient/create')
   async createPatient(
     @Body() createPatientDto: CreatePatientDto,
-  ): Promise<{ message: string; id: string }> {
+  ): Promise<{
+    message: string;
+    id: string;
+    username?: string;
+    password?: string;
+  }> {
     return await this.authService.createPatient(createPatientDto);
   }
 }
