@@ -751,7 +751,7 @@ export class DoctorService {
 
     // Fetch all doctors in parallel
     const doctors = await Promise.all(
-      doctorsIds.map((id) => this.getDoctorById(id)),
+      doctorsIds.map((id) => this.getClinicalStaffByUserId(id)),
     );
 
     // Create doctors lookup map
@@ -849,7 +849,7 @@ export class DoctorService {
 
     // Fetch all doctors in parallel
     const doctors = await Promise.all(
-      doctorsIds.map((id) => this.getDoctorById(id)),
+      doctorsIds.map((id) => this.getClinicalStaffByUserId(id)),
     );
 
     // Create doctors lookup map
@@ -946,7 +946,7 @@ export class DoctorService {
 
     // Fetch all doctors in parallel
     const doctors = await Promise.all(
-      doctorsIds.map((id) => this.getDoctorById(id)),
+      doctorsIds.map((id) => this.getClinicalStaffByUserId(id)),
     );
 
     // Create doctors lookup map
