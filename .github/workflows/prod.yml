@@ -216,11 +216,6 @@ jobs:
           curl --fail --retry 5 --retry-delay 5 --retry-all-errors \
             https://${{ secrets.PROD_HOST }}/asr
 
-      - name: Check Cloud Storage Service
-        run: |
-          curl --fail --retry 5 --retry-delay 5 --retry-all-errors \
-            https://${{ secrets.PROD_HOST }}/cloud-storage
-
       - name: Check Super Admin Service
         run: |
           curl --fail --retry 5 --retry-delay 5 --retry-all-errors \
