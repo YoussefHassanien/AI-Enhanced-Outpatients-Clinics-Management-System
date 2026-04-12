@@ -93,7 +93,7 @@ describe('AuthController', () => {
           useValue: mockLoggingService,
         },
         {
-          provide: Microservices.ADMIN,
+          provide: Microservices.SUPER_ADMIN,
           useValue: mockAdminClient,
         },
       ],

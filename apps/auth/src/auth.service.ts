@@ -57,7 +57,8 @@ export class AuthService {
     @InjectRepository(SuperAdmin)
     private readonly superAdminRepository: Repository<SuperAdmin>,
     @Inject(CommonServices.LOGGING) logger: LoggingService,
-    @Inject(Microservices.ADMIN) private readonly adminClient: ClientProxy,
+    @Inject(Microservices.SUPER_ADMIN)
+    private readonly superAdminClient: ClientProxy,
   ) {
     this.hashingAlgorithm =
       this.configService.getOrThrow<Algorithm>('HASHING_ALGORITHM');
@@ -478,7 +479,7 @@ export class AuthService {
     }
 
     const clinic = await lastValueFrom<Clinic | null>(
-      this.adminClient.send(
+      this.superAdminClient.send(
         { cmd: SuperAdminPatterns.GET_CLINIC_BY_GLOBAL_ID },
         doctorDto.clinicId,
       ),
