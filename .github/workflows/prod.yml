@@ -150,7 +150,7 @@ jobs:
           push: true
           tags: ${{ secrets.DOCKER_USERNAME }}/super-admin-service:latest    
 
-  # JOB 3: DEPLOY TO EC2 (Runs ONLY on Pushes)
+  # JOB 3: DEPLOY (Runs ONLY on Pushes)
   deploy:
     needs: build-and-push
     if: github.event_name == 'push'
@@ -159,7 +159,7 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v6
 
-      - name: Copy config files to EC2
+      - name: Copy config files
         uses: appleboy/scp-action@v1
         with:
           host: ${{ secrets.EC2_HOST }}
@@ -169,7 +169,7 @@ jobs:
           target: '~/app'
           overwrite: true
 
-      - name: Deploy to EC2 via SSH
+      - name: Deploy via SSH
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.EC2_HOST }}

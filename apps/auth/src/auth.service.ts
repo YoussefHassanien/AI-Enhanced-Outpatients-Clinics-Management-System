@@ -517,7 +517,9 @@ export class AuthService {
           password: hashedPassword,
           speciality: doctorDto.speciality,
           phone: doctorDto.phone,
-          isApproved: doctorDto.role === Role.SUPER_ADMIN,
+          isApproved:
+            doctorDto.role === Role.SUPER_ADMIN ||
+            doctorDto.role === Role.ADMIN,
           clinicId: clinic.id,
         });
         this.logger.log('Successfully created a doctor');
