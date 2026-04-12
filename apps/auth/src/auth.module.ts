@@ -32,13 +32,15 @@ import { Admin, Doctor, Patient, SuperAdmin, User } from './entities';
     JwtModule.register({ global: true }),
     ClientsModule.registerAsync([
       {
-        name: Microservices.ADMIN,
+        name: Microservices.SUPER_ADMIN,
         imports: [ConfigModule],
         useFactory: (configService: ConfigService) => ({
           transport: Transport.RMQ,
           options: {
             urls: [configService.getOrThrow<string>('RABBIT_MQ_URL')],
-            queue: configService.getOrThrow<string>('RABBIT_MQ_ADMIN_QUEUE'),
+            queue: configService.getOrThrow<string>(
+              'RABBIT_MQ_SUPER_ADMIN_QUEUE',
+            ),
             queueOptions: {
               durable: true,
             },
