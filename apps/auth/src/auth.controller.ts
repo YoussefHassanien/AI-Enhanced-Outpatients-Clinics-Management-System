@@ -168,6 +168,26 @@ export class AuthController {
     return await this.authService.getAllPatients(paginationRequest);
   }
 
+  @MessagePattern({ cmd: AuthPatterns.GET_ALL_ADMINS })
+  async getAllAdmins(@Payload() paginationRequest: PaginationRequest): Promise<
+    PaginationResponse<{
+      id: string;
+      phone: string;
+      email: string;
+      speciality: string;
+      user: {
+        id: string;
+        socialSecurityNumber: bigint;
+        gender: Gender;
+        firstName: string;
+        lastName: string;
+        dateOfBirth: Date;
+      };
+    }>
+  > {
+    return await this.authService.getAllAdmins(paginationRequest);
+  }
+
   @MessagePattern({ cmd: AuthPatterns.GET_DOCTOR_BY_ID })
   async getDoctorById(
     @Payload(

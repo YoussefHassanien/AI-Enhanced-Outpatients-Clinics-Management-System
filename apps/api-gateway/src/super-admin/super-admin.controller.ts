@@ -63,6 +63,32 @@ export class SuperAdminController {
 
   @Roles(Role.SUPER_ADMIN)
   @UseGuards(JwtAuthGuard)
+  @Get('admins')
+  async getAllAdmins(@Query() { page, limit }: PaginationRequest): Promise<
+    PaginationResponse<{
+      id: string;
+      phone: string;
+      email: string;
+      speciality: string;
+      user: {
+        id: string;
+        socialSecurityNumber: bigint;
+        gender: Gender;
+        firstName: string;
+        lastName: string;
+        dateOfBirth: Date;
+      };
+    }>
+  > {
+    const paginationRequest: PaginationRequest = {
+      page,
+      limit,
+    };
+    return await this.superAdminService.getAllAdmins(paginationRequest);
+  }
+
+  @Roles(Role.SUPER_ADMIN)
+  @UseGuards(JwtAuthGuard)
   @Get('patients')
   async getAllPatients(@Query() { page, limit }: PaginationRequest): Promise<
     PaginationResponse<{

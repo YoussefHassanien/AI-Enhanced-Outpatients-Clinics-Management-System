@@ -22,6 +22,11 @@ export class SuperAdminController {
     return await this.superAdminService.getAllDoctors(paginationRequest);
   }
 
+  @MessagePattern({ cmd: SuperAdminPatterns.GET_ALL_ADMINS })
+  async getAllAdmins(@Payload() paginationRequest: PaginationRequest) {
+    return await this.superAdminService.getAllAdmins(paginationRequest);
+  }
+
   @MessagePattern({ cmd: SuperAdminPatterns.GET_ALL_PATIENTS })
   async getAllPatients(@Payload() paginationRequest: PaginationRequest) {
     return await this.superAdminService.getAllPatients(paginationRequest);

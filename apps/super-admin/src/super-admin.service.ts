@@ -82,6 +82,45 @@ export class SuperAdminService {
     );
   }
 
+  async getAllAdmins(paginationRequest: PaginationRequest): Promise<
+    PaginationResponse<{
+      id: string;
+      phone: string;
+      email: string;
+      speciality: string;
+      user: {
+        id: string;
+        socialSecurityNumber: bigint;
+        gender: Gender;
+        firstName: string;
+        lastName: string;
+        dateOfBirth: Date;
+      };
+    }>
+  > {
+    return await lastValueFrom<
+      PaginationResponse<{
+        id: string;
+        phone: string;
+        email: string;
+        speciality: string;
+        user: {
+          id: string;
+          socialSecurityNumber: bigint;
+          gender: Gender;
+          firstName: string;
+          lastName: string;
+          dateOfBirth: Date;
+        };
+      }>
+    >(
+      this.authClient.send(
+        { cmd: AuthPatterns.GET_ALL_ADMINS },
+        paginationRequest,
+      ),
+    );
+  }
+
   async getAllPatients(paginationRequest: PaginationRequest): Promise<
     PaginationResponse<{
       id: string;

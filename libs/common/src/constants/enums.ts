@@ -50,7 +50,8 @@ export enum AuthPatterns {
   GET_PATIENT_BY_SOCIAL_SECURITY_NUMBER = 'auth.getPatientBySocialSecurityNumber',
   DOCTOR_UPDATE = 'auth.doctor.update',
   GET_CLINICAL_STAFF_BY_USER_ID = 'auth.getClinicalStaffByUserId',
-  GET_CLINIC_DOCTORS = 'auht.clinic.doctors',
+  GET_CLINIC_DOCTORS = 'auth.clinic.doctors',
+  GET_ALL_ADMINS = 'auth.superAdmin.admins',
 }
 
 export enum DoctorPatterns {
@@ -110,6 +111,7 @@ export enum SuperAdminPatterns {
   GET_PATIENT_BY_GLOBAL_ID = 'superAdmin.getPatientByGlobalId',
   GET_DOCTOR_BY_GLOBAL_ID = 'superAdmin.getDoctorByGlobalId',
   UPDATE_DOCTOR = 'superAdmin.updateDoctor',
+  GET_ALL_ADMINS = 'superAdmin.getAllAdmins',
 }
 
 export enum AsrPatterns {

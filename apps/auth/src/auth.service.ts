@@ -831,6 +831,101 @@ export class AuthService {
     return response;
   }
 
+  async getAllAdmins(paginationRequest: PaginationRequest): Promise<
+    PaginationResponse<{
+      id: string;
+      phone: string;
+      email: string;
+      speciality: string;
+      user: {
+        id: string;
+        socialSecurityNumber: bigint;
+        gender: Gender;
+        firstName: string;
+        lastName: string;
+        dateOfBirth: Date;
+      };
+    }>
+  > {
+    const count = await this.adminRepository.count({
+      where: {
+        deletedAt: IsNull(),
+        user: {
+          deletedAt: IsNull(),
+        },
+      },
+      relations: { user: true },
+    });
+    this.logger.log(`Admins count is ${count}`);
+
+    const admins = await this.adminRepository.find({
+      relations: {
+        user: true,
+      },
+      select: {
+        user: {
+          firstName: true,
+          lastName: true,
+          dateOfBirth: true,
+          socialSecurityNumber: true,
+          globalId: true,
+          gender: true,
+        },
+        id: true,
+        globalId: true,
+        phone: true,
+        email: true,
+        speciality: true,
+      },
+      where: {
+        deletedAt: IsNull(),
+        user: {
+          deletedAt: IsNull(),
+        },
+      },
+      skip: (paginationRequest.page - 1) * paginationRequest.limit,
+      take: paginationRequest.limit,
+    });
+    this.logger.log(
+      `Successfully retrieved ${paginationRequest.limit} admins from page: ${paginationRequest.page - 1}`,
+    );
+
+    const response: PaginationResponse<{
+      id: string;
+      phone: string;
+      email: string;
+      speciality: string;
+      user: {
+        id: string;
+        socialSecurityNumber: bigint;
+        gender: Gender;
+        firstName: string;
+        lastName: string;
+        dateOfBirth: Date;
+      };
+    }> = {
+      items: admins.map((admin) => ({
+        id: admin.globalId,
+        phone: admin.phone,
+        email: admin.email,
+        speciality: admin.speciality,
+        user: {
+          id: admin.user.globalId,
+          firstName: admin.user.firstName,
+          lastName: admin.user.lastName,
+          gender: admin.user.gender,
+          dateOfBirth: admin.user.dateOfBirth,
+          socialSecurityNumber: admin.user.socialSecurityNumber,
+        },
+      })),
+      page: paginationRequest.page,
+      totalItems: count,
+      totalPages: Math.ceil(count / paginationRequest.limit),
+    };
+
+    return response;
+  }
+
   async getPatientById(id: number): Promise<Patient | null> {
     return await this.patientRepository.findOne({
       relations: { user: true },
