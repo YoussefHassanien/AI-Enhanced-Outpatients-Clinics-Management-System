@@ -28,9 +28,10 @@ import {
   CreatePatientDto,
   CreateUserDto,
   CredentialsResponseDto,
-  LoginDto,
+  StaffLoginDto,
   UpdateDoctorInternalDto,
   UpdatePatientInternalDto,
+  PatientLoginDto
 } from './dtos';
 import { Admin, Doctor, Patient, SuperAdmin, User } from './entities';
 
@@ -73,10 +74,10 @@ export class AuthService {
     this.logger = logger;
   }
 
-  private async validateUser(
+  private async getStaffAuthRecordByEmail(
     email: string,
-    password: string,
-  ): Promise<User | null> {
+  ): Promise<{ user: User; hashedPassword: string } | null> {
+
     email = email.trim().toLowerCase();
 
     const doctor = await this.doctorRepository.findOne({
@@ -89,10 +90,12 @@ export class AuthService {
       },
     });
 
-    if (doctor && (await bcrypt.compare(password, doctor.password))) {
-      this.logger.log('Validated a doctor');
-
-      return doctor.user;
+    if (doctor) {
+      this.logger.log('Doctor found');
+      return {
+        user: doctor.user,
+        hashedPassword: doctor.password,
+      };
     }
 
     const admin = await this.adminRepository.findOne({
@@ -104,10 +107,12 @@ export class AuthService {
       },
     });
 
-    if (admin && (await bcrypt.compare(password, admin.password))) {
-      this.logger.log('Validated an admin');
-
-      return admin.user;
+    if (admin) {
+      this.logger.log('Admin found');
+      return {
+        user: admin.user,
+        hashedPassword: admin.password,
+      };
     }
 
     const superAdmin = await this.superAdminRepository.findOne({
@@ -119,14 +124,24 @@ export class AuthService {
       },
     });
 
-    if (superAdmin && (await bcrypt.compare(password, superAdmin.password))) {
-      this.logger.log('Validated a Super Admin');
-
-      return superAdmin.user;
+    if (superAdmin) {
+      this.logger.log('Super admin found');
+      return {
+        user: superAdmin.user,
+        hashedPassword: superAdmin.password,
+      };
     }
 
-    this.logger.log('User is not validated');
+    this.logger.log('Staff user not found');
+
     return null;
+  }
+
+  private async validatePassword(
+    password: string,
+    hashedPassword: string,
+  ): Promise<boolean> {
+    return bcrypt.compare(password, hashedPassword);
   }
 
   private async generateCredentials(
@@ -328,23 +343,62 @@ export class AuthService {
     return 'Auth service is up';
   }
 
-  async login(loginDto: LoginDto): Promise<{
+  async loginStaff(LoginDto: StaffLoginDto) {
+    const staff = await this.getStaffAuthRecordByEmail(LoginDto.email);
+
+    if (!staff) {
+      throw new RpcException(new ErrorResponse('Invalid credentials', 401));
+    }
+
+    const isValid = await this.validatePassword(
+      LoginDto.password,
+      staff.hashedPassword,
+    );
+
+    if (!isValid) {
+      throw new RpcException(new ErrorResponse('Invalid credentials', 401));
+    }
+
+    const credentials = await this.generateCredentials(staff.user);
+
+    return {
+      ...credentials,
+      role: staff.user.role,
+    };
+  }
+
+  async loginPatient(
+    loginDto: PatientLoginDto,
+  ): Promise<{
     role: Role;
     name: string;
     language: Language;
     token: string;
   }> {
-    const user = await this.validateUser(loginDto.email, loginDto.password);
 
-    if (!user) {
+    const patient = await this.getPatientAuthBySocialSecurityNumber(
+      loginDto.socialSecurityNumber,
+      true,
+    );
+
+    if (!patient) {
       throw new RpcException(new ErrorResponse('Invalid credentials', 401));
     }
 
-    const credentials = await this.generateCredentials(user);
+    const isValid = await bcrypt.compare(
+      loginDto.password,
+      patient.password,
+    );
+
+    if (!isValid) {
+      throw new RpcException(new ErrorResponse('Invalid credentials', 401));
+    }
+
+    const credentials = await this.generateCredentials(patient.user);
 
     return {
       ...credentials,
-      role: user.role,
+      role: patient.user.role,
     };
   }
 
@@ -603,7 +657,20 @@ export class AuthService {
     );
   }
 
-  async createPatient(patientDto: CreatePatientDto): Promise<string> {
+  private generatePassword(length = 8): string {
+    const charset =
+      'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+';
+    let retVal = '';
+    for (let i = 0, n = charset.length; i < length; ++i) {
+      retVal += charset.charAt(Math.floor(Math.random() * n));
+    }
+    return retVal;
+  }
+
+  async createPatient(patientDto: CreatePatientDto): Promise<{
+    globalId: string;
+    password: string;
+  }> {
     const existingUser = await this.checkExistingUser(
       patientDto.socialSecurityNumber,
     );
@@ -611,6 +678,9 @@ export class AuthService {
     if (existingUser) {
       throw new RpcException(new ErrorResponse('User already exists!', 400));
     }
+
+    const plainPassword = this.generatePassword();
+    const hashedPassword = await bcrypt.hash(plainPassword, this.rounds);
 
     return await this.userRepository.manager.transaction(
       async (manager: EntityManager) => {
@@ -632,10 +702,11 @@ export class AuthService {
           user: createdUser,
           job: patientDto.job,
           address: patientDto.address,
+          password: hashedPassword,
         });
         this.logger.log('Successfully inserted a patient');
 
-        return patient.globalId;
+        return { globalId: patient.globalId, password: plainPassword };
       },
     );
   }
@@ -943,11 +1014,14 @@ export class AuthService {
     return { message: 'Patient data is successfully updated' };
   }
 
-  async getPatientBySocialSecurityNumber(
+  private async getPatientAuthBySocialSecurityNumber(
     socialSecurityNumber: string,
+    includePassword = false,
   ): Promise<Patient | null> {
+
     this.validateSocialSecurityNumber(socialSecurityNumber);
-    return await this.patientRepository.findOne({
+
+    const patient = await this.patientRepository.findOne({
       relations: {
         user: true,
       },
@@ -967,14 +1041,29 @@ export class AuthService {
           gender: true,
           dateOfBirth: true,
           socialSecurityNumber: true,
+          role: true,
+          language: true,
         },
         address: true,
         job: true,
         id: true,
         globalId: true,
         createdAt: true,
+        password: includePassword ? true : false,
       },
     });
+
+    return patient;
+  }
+
+  async getPatientBySocialSecurityNumber(
+    socialSecurityNumber: string,
+  ): Promise<Patient | null> {
+
+    return this.getPatientAuthBySocialSecurityNumber(
+      socialSecurityNumber,
+      false,
+    );
   }
 
   async getDoctorByGlobalId(globalId: string): Promise<Doctor | null> {

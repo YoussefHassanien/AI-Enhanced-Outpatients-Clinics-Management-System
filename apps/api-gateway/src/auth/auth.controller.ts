@@ -14,7 +14,8 @@ import {
   CreateAdminDto,
   CreateDoctorDto,
   CreatePatientDto,
-  LoginDto,
+  PatientLoginDto,
+  StaffLoginDto,
 } from '../../../auth/src/dtos';
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './guards';
@@ -24,7 +25,7 @@ export class AuthController {
   constructor(
     private readonly authService: AuthService,
     private readonly configService: ConfigService,
-  ) {}
+  ) { }
 
   @Get()
   async isUp(): Promise<string> {
@@ -32,15 +33,46 @@ export class AuthController {
   }
 
   @Post('login')
-  async login(
-    @Body() loginDto: LoginDto,
+  async staffLogin(
+    @Body() loginDto: StaffLoginDto,
     @Res({ passthrough: true }) res: Response,
   ): Promise<{
     name: string;
     language: Language;
     role: Role;
   }> {
-    const result = await this.authService.login(loginDto);
+    const result = await this.authService.staffLogin(loginDto);
+
+    const cookiesExpirationTime = this.configService.getOrThrow<number>(
+      'COOKIES_EXPIRATION_TIME',
+    );
+    const environment = this.configService.get<string>('ENVIRONMENT');
+
+    res.cookie('accessToken', result.token, {
+      httpOnly: true,
+      signed: true,
+      secure: environment === Environment.PRODUCTION,
+      sameSite: environment === Environment.PRODUCTION ? 'none' : 'lax',
+      expires: new Date(Date.now() + cookiesExpirationTime),
+    });
+
+    return {
+      name: result.name,
+      language: result.language,
+      role: result.role,
+    };
+  }
+
+  @Post('login/patient')
+  async patientLogin(
+    @Body() loginDto: PatientLoginDto,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<{
+    name: string;
+    language: Language;
+    role: Role;
+  }> {
+    const result = await this.authService.patientLogin(loginDto);
 
     const cookiesExpirationTime = this.configService.getOrThrow<number>(
       'COOKIES_EXPIRATION_TIME',
@@ -86,7 +118,11 @@ export class AuthController {
   @Post('patient/create')
   async createPatient(
     @Body() createPatientDto: CreatePatientDto,
-  ): Promise<{ message: string; id: string }> {
+  ): Promise<{
+    message: string;
+    id: string;
+    password?: string;
+  }> {
     return await this.authService.createPatient(createPatientDto);
   }
 }

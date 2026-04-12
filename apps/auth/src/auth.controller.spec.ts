@@ -18,7 +18,7 @@ import {
   CreateAdminDto,
   CreateDoctorInternalDto,
   CreatePatientDto,
-  LoginDto,
+  StaffLoginDto,
 } from './dtos';
 import { Admin, Doctor, Patient, SuperAdmin, User } from './entities';
 
@@ -111,8 +111,8 @@ describe('AuthController', () => {
     });
   });
 
-  describe(AuthPatterns.LOGIN, () => {
-    const loginDto: LoginDto = {
+  describe(AuthPatterns.LOGIN_STAFF, () => {
+    const loginDto: StaffLoginDto = {
       email: 'test@test.com',
       password: 'password',
     };

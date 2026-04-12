@@ -8,7 +8,8 @@ import {
   CreateDoctorDto,
   CreateDoctorInternalDto,
   CreatePatientDto,
-  LoginDto,
+  PatientLoginDto,
+  StaffLoginDto,
 } from '../../../auth/src/dtos';
 import { User } from '../../../auth/src/entities';
 
@@ -16,7 +17,7 @@ import { User } from '../../../auth/src/entities';
 export class AuthService {
   constructor(
     @Inject(Microservices.AUTH) private readonly authClient: ClientProxy,
-  ) {}
+  ) { }
 
   async isUp(): Promise<string> {
     return await lastValueFrom<string>(
@@ -24,7 +25,7 @@ export class AuthService {
     );
   }
 
-  async login(loginDto: LoginDto): Promise<{
+  async staffLogin(loginDto: StaffLoginDto): Promise<{
     role: Role;
     name: string;
     language: Language;
@@ -35,7 +36,21 @@ export class AuthService {
       name: string;
       language: Language;
       token: string;
-    }>(this.authClient.send({ cmd: AuthPatterns.LOGIN }, loginDto));
+    }>(this.authClient.send({ cmd: AuthPatterns.LOGIN_STAFF }, loginDto));
+  }
+
+  async patientLogin(loginDto: PatientLoginDto): Promise<{
+    role: Role;
+    name: string;
+    language: Language;
+    token: string;
+  }> {
+    return await lastValueFrom<{
+      role: Role;
+      name: string;
+      language: Language;
+      token: string;
+    }>(this.authClient.send({ cmd: AuthPatterns.LOGIN_PATIENT }, loginDto));
   }
 
   async createAdmin(createAdminDto: CreateAdminDto): Promise<{
@@ -76,10 +91,12 @@ export class AuthService {
   async createPatient(createPatientDto: CreatePatientDto): Promise<{
     message: string;
     id: string;
+    password?: string;
   }> {
     return await lastValueFrom<{
       message: string;
       id: string;
+      password: string;
     }>(
       this.authClient.send(
         { cmd: AuthPatterns.PATIENT_CREATE },

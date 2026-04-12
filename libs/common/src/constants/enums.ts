@@ -33,7 +33,8 @@ export enum Microservices {
 
 export enum AuthPatterns {
   IS_UP = 'auth.isUp',
-  LOGIN = 'auth.login',
+  LOGIN_STAFF = 'auth.login.staff',
+  LOGIN_PATIENT = 'auth.login.patient',
   ADMIN_CREATE = 'auth.admin.create',
   DOCTOR_CREATE = 'auth.doctor.create',
   PATIENT_CREATE = 'auth.patient.create',
@@ -51,6 +52,7 @@ export enum AuthPatterns {
   DOCTOR_UPDATE = 'auth.doctor.update',
   GET_CLINICAL_STAFF_BY_USER_ID = 'auth.getClinicalStaffByUserId',
   GET_CLINIC_DOCTORS = 'auht.clinic.doctors',
+
 }
 
 export enum DoctorPatterns {

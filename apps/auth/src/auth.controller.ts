@@ -15,29 +15,40 @@ import {
   CreateAdminDto,
   CreateDoctorInternalDto,
   CreatePatientDto,
-  LoginDto,
+  StaffLoginDto,
   UpdateDoctorInternalDto,
   UpdatePatientInternalDto,
+  PatientLoginDto
 } from './dtos';
 import { Admin, Doctor, Patient, User } from './entities';
 
 @Controller()
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(private readonly authService: AuthService) { }
 
   @MessagePattern({ cmd: AuthPatterns.IS_UP })
   isUp(): string {
     return this.authService.isUp();
   }
 
-  @MessagePattern({ cmd: AuthPatterns.LOGIN })
-  async login(@Payload() loginDto: LoginDto): Promise<{
+  @MessagePattern({ cmd: AuthPatterns.LOGIN_STAFF })
+  async loginStaff(@Payload() loginDto: StaffLoginDto): Promise<{
     role: Role;
     name: string;
     language: Language;
     token: string;
   }> {
-    return await this.authService.login(loginDto);
+    return await this.authService.loginStaff(loginDto);
+  }
+
+  @MessagePattern({ cmd: AuthPatterns.LOGIN_PATIENT })
+  async loginPatient(@Payload() loginDto: PatientLoginDto): Promise<{
+    role: Role;
+    name: string;
+    language: Language;
+    token: string;
+  }> {
+    return await this.authService.loginPatient(loginDto);
   }
 
   @MessagePattern({ cmd: AuthPatterns.ADMIN_CREATE })
@@ -67,11 +78,19 @@ export class AuthController {
   @MessagePattern({ cmd: AuthPatterns.PATIENT_CREATE })
   async patientCreate(
     @Payload() createPatientDto: CreatePatientDto,
-  ): Promise<{ message: string; id: string }> {
-    const patientGlobalId =
+  ): Promise<{
+    message: string;
+    id: string;
+    password?: string;
+  }> {
+    const { globalId, password } =
       await this.authService.createPatient(createPatientDto);
 
-    return { message: 'Patient is successfully created', id: patientGlobalId };
+    return {
+      message: 'Patient is successfully created',
+      id: globalId,
+      password,
+    };
   }
 
   @MessagePattern({ cmd: AuthPatterns.GET_USER })
