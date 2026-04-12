@@ -1,8 +1,7 @@
 export enum Role {
   SUPER_ADMIN,
-  ADMIN,
-  PATIENT,
   DOCTOR,
+  PATIENT,
 }
 
 export enum Language {
@@ -24,7 +23,6 @@ export enum Gender {
 export enum Microservices {
   AUTH = 'AUTH_MICROSERVICE',
   DOCTOR = 'DOCTOR_MICROSERVICE',
-  ADMIN = 'ADMIN_MICROSERVICE',
   SUPER_ADMIN = 'SUPER_ADMIN_MICROSERVICE',
   ASR = 'ASR_MICROSERVICE',
   OCR = 'OCR_MICROSERVICE',
@@ -75,27 +73,6 @@ export enum CommonServices {
   LOGGING = 'WINSTON_LOGGER',
 }
 
-export enum AdminPatterns {
-  IS_UP = 'admin.isUp',
-  GET_DOCTOR_BY_GLOBAL_ID = 'admin.getDoctorByGlobalId',
-  GET_PATIENT_BY_GLOBAL_ID = 'admin.getPatientByGlobalId',
-  GET_CLINIC_DOCTORS = 'admin.getClinicDoctors',
-  GET_CLINIC_PATIENTS = 'admin.getClinicPatients',
-  GET_CLINIC_VISITS = 'admin.getClinicVisits',
-  VISIT_CREATE = 'admin.visit.create',
-  MEDICATION_CREATE = 'admin.medication.create',
-  LAB_UPLOAD = 'admin.lab.upload',
-  SCAN_UPLOAD = 'admin.scan.upload',
-  GET_ADMIN_PATIENTS = 'admin.patients',
-  GET_ADMIN_VISITS = 'admin.visits',
-  SEARCH_FOR_PATIENT_BY_SOCIAL_SECURITY_NUMBER = 'admin.searchForPatientBySocilaSecurityNumber',
-  GET_PATIENT_VISITS = 'admin.patient.visits',
-  GET_PATIENT_MEDICATIONS = 'admin.patient.medications',
-  GET_PATIENT_LABS = 'admin.patient.labs',
-  GET_PATIENT_SCANS = 'admin.patient.scans',
-  GET_ADMIN_CLINIC = 'admin.clinic',
-}
-
 export enum SuperAdminPatterns {
   IS_UP = 'superAdmin.isUp',
   GET_ALL_DOCTORS = 'superAdmin.getAllDoctors',
@@ -110,6 +87,20 @@ export enum SuperAdminPatterns {
   GET_PATIENT_BY_GLOBAL_ID = 'superAdmin.getPatientByGlobalId',
   GET_DOCTOR_BY_GLOBAL_ID = 'superAdmin.getDoctorByGlobalId',
   UPDATE_DOCTOR = 'superAdmin.updateDoctor',
+  GET_CLINIC_DOCTORS = 'superAdmin.getClinicDoctors',
+  GET_CLINIC_PATIENTS = 'superAdmin.getClinicPatients',
+  GET_CLINIC_VISITS = 'superAdmin.getClinicVisits',
+  VISIT_CREATE = 'superAdmin.visit.create',
+  MEDICATION_CREATE = 'superAdmin.medication.create',
+  LAB_UPLOAD = 'superAdmin.lab.upload',
+  SCAN_UPLOAD = 'superAdmin.scan.upload',
+  GET_SUPER_ADMIN_PATIENTS = 'superAdmin.patients',
+  GET_SUPER_ADMIN_VISITS = 'superAdmin.visits',
+  SEARCH_FOR_PATIENT_BY_SOCIAL_SECURITY_NUMBER = 'superAdmin.searchForPatientBySocilaSecurityNumber',
+  GET_PATIENT_VISITS = 'superAdmin.patient.visits',
+  GET_PATIENT_MEDICATIONS = 'superAdmin.patient.medications',
+  GET_PATIENT_LABS = 'superAdmin.patient.labs',
+  GET_PATIENT_SCANS = 'superAdmin.patient.scans',
 }
 
 export enum AsrPatterns {
