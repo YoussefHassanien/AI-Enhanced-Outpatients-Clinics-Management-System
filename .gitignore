@@ -58,6 +58,9 @@ report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 # Temporary ASR uploads
 /tmp/asr_uploads
 
+# Ignore heavy Docker bind mounts for ASR model caching
+/asr_model_cache/
+
 # OCR
 apps/ocr/runs
 apps/ocr/__pycache__
