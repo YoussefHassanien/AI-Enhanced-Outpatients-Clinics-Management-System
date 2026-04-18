@@ -388,6 +388,7 @@ export class AuthService {
       select: {
         updatedAt: false,
         deletedAt: false,
+        createdAt: false,
         password: false,
         user: {
           id: true,

@@ -1017,32 +1017,13 @@ export class DoctorService {
     if (!doctor) {
       throw new RpcException(
         new ErrorResponse(
-          'There is no doctor or admin associated with this userId',
+          'There is no doctor associated with this userId',
           404,
         ),
       );
     }
 
-    let clinicId = 0;
-    if ('clinicId' in doctor && doctor.clinicId !== undefined) {
-      clinicId = doctor.clinicId;
-    } else {
-      if (!createVisitInternalDto.clinicId) {
-        throw new RpcException(new ErrorResponse('clinicId is required for this user', 400));
-      }
-      const clinic = await lastValueFrom<Clinic | null>(
-        this.superAdminClient.send(
-          { cmd: SuperAdminPatterns.GET_CLINIC_BY_GLOBAL_ID },
-          createVisitInternalDto.clinicId,
-        ),
-      );
-      if (!clinic) {
-        throw new RpcException(new ErrorResponse('Clinic not found!', 404));
-      }
-      clinicId = clinic.id;
-    }
-
-    const clinic = await this.getClinicById(clinicId);
+    const clinic = await this.getClinicById(doctor.clinicId);
 
     if (!clinic) {
       throw new RpcException(new ErrorResponse('Clinic not found!', 404));
@@ -1069,7 +1050,7 @@ export class DoctorService {
       diagnosesAudioUrl: null,
       patientId: patient.id,
       userId: doctor.user.id,
-      clinicId: clinicId,
+      clinicId: clinic.id,
     });
 
     if (createVisitInternalDto.diagnoses) {
