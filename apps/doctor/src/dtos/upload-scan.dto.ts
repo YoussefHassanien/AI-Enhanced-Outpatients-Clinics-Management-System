@@ -42,4 +42,12 @@ export class UploadScanDto {
   })
   @IsUUID()
   patientId: string;
+
+  @ApiProperty({
+    description: 'The clinic id of this scan',
+    example: '0281ba4f-7592-477e-9d02-f2641aa89221',
+  })
+  @IsUUID()
+  @IsOptional()
+  clinicId?: string;
 }

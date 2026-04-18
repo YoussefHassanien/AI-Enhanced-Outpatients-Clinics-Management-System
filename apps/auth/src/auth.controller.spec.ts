@@ -15,12 +15,11 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import {
-  CreateAdminDto,
   CreateDoctorInternalDto,
   CreatePatientDto,
   LoginDto,
 } from './dtos';
-import { Admin, Doctor, Patient, SuperAdmin, User } from './entities';
+import { Doctor, Patient, SuperAdmin, User } from './entities';
 
 describe('AuthController', () => {
   let authController: AuthController;
@@ -81,10 +80,6 @@ describe('AuthController', () => {
           useValue: mockRepository,
         },
         {
-          provide: getRepositoryToken(Admin),
-          useValue: mockRepository,
-        },
-        {
           provide: getRepositoryToken(SuperAdmin),
           useValue: mockRepository,
         },
@@ -135,17 +130,6 @@ describe('AuthController', () => {
       expect(await authController.login(loginDto)).toEqual(result);
     });
 
-    it('should return login response for ADMIN', async () => {
-      const result: LoginResponse = {
-        role: Role.ADMIN,
-        name: 'Jane Doe',
-        language: Language.ENGLISH,
-        token: 'admin-token',
-      };
-      jest.spyOn(authService, 'login').mockResolvedValue(result);
-      expect(await authController.login(loginDto)).toEqual(result);
-    });
-
     it('should return login response for SUPER_ADMIN', async () => {
       const result: LoginResponse = {
         role: Role.SUPER_ADMIN,
@@ -155,17 +139,6 @@ describe('AuthController', () => {
       };
       jest.spyOn(authService, 'login').mockResolvedValue(result);
       expect(await authController.login(loginDto)).toEqual(result);
-    });
-  });
-
-  describe(AuthPatterns.ADMIN_CREATE, () => {
-    it('should create an admin', async () => {
-      const createAdminDto: CreateAdminDto = {} as any;
-      const id = 'admin-uuid';
-      jest.spyOn(authService, 'createAdmin').mockResolvedValue(id);
-
-      const result = await authController.adminCreate(createAdminDto);
-      expect(result).toEqual({ message: 'Admin is successfully created', id });
     });
   });
 
@@ -225,12 +198,6 @@ describe('AuthController', () => {
 
     it('should return a doctor user', async () => {
       const user = { ...baseUser, role: Role.DOCTOR };
-      jest.spyOn(authService, 'getUser').mockResolvedValue(user);
-      expect(await authController.getUser(id)).toEqual(user);
-    });
-
-    it('should return an admin user', async () => {
-      const user = { ...baseUser, role: Role.ADMIN };
       jest.spyOn(authService, 'getUser').mockResolvedValue(user);
       expect(await authController.getUser(id)).toEqual(user);
     });
@@ -302,28 +269,6 @@ describe('AuthController', () => {
     it('should return null', async () => {
       jest.spyOn(authService, 'getPatientByGlobalId').mockResolvedValue(null);
       expect(await authController.getPatientByGlobalId(globalId)).toBeNull();
-    });
-  });
-
-  describe(AuthPatterns.GET_ADMIN_BY_USER_ID, () => {
-    const id = 1;
-    const adminId = 4;
-    const admin = {
-      id: adminId,
-      globalId: 'admin-uuid',
-      email: 'admin@test.com',
-      phone: '+212345678912',
-      user: { id } as User,
-    } as Admin;
-
-    it('should return an admin', async () => {
-      jest.spyOn(authService, 'getAdminByUserId').mockResolvedValue(admin);
-      expect(await authController.getAdminByUserId(id)).toEqual(admin);
-    });
-
-    it('should return null', async () => {
-      jest.spyOn(authService, 'getAdminByUserId').mockResolvedValue(null);
-      expect(await authController.getAdminByUserId(id)).toBeNull();
     });
   });
 });

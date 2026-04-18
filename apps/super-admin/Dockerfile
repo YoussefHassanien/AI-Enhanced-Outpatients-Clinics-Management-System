@@ -13,7 +13,8 @@ COPY tsconfig.json tsconfig.build.json nest-cli.json ./
 COPY ./apps/super-admin /app/apps/super-admin
 COPY ./apps/auth/src/entities /app/apps/auth/src/entities
 COPY ./apps/auth/src/dtos /app/apps/auth/src/dtos
-COPY ./apps/admin/src/dtos /app/apps/admin/src/dtos
+COPY ./apps/doctor/src/constants /app/apps/doctor/src/constants
+COPY ./apps/doctor/src/dtos /app/apps/doctor/src/dtos
 COPY ./libs /app/libs
 
 # install all deps including dev and build

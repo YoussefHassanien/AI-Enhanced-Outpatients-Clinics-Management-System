@@ -33,7 +33,6 @@ services:
       - doctor
       - ocr
       - asr
-      - admin
       - super-admin
       - cloud-storage
     command: node api-gateway/main
@@ -57,20 +56,6 @@ services:
     volumes:
       - ./logs:/app/logs
       - ./tmp/asr_uploads:/app/tmp/asr_uploads
-
-  admin:
-    build:
-      context: .
-      dockerfile: ./apps/admin/Dockerfile
-    env_file:
-      - ./apps/admin/.env
-    depends_on:
-      - rabbitmq
-    command: node admin/main
-    networks:
-      - services-network
-    volumes:
-      - ./logs:/app/logs
 
   super-admin:
     build:

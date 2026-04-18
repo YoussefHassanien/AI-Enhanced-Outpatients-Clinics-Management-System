@@ -14,7 +14,7 @@ import { DataSource } from 'typeorm';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { EnvironmentVariables } from './constants';
-import { Admin, Doctor, Patient, SuperAdmin, User } from './entities';
+import { Doctor, Patient, SuperAdmin, User } from './entities';
 
 @Module({
   imports: [
@@ -28,7 +28,7 @@ import { Admin, Doctor, Patient, SuperAdmin, User } from './entities';
       envFilePath: './apps/auth/.env',
     }),
     TypeOrmModule.forRootAsync(dataSourceAsyncOptions),
-    TypeOrmModule.forFeature([User, Patient, Doctor, Admin, SuperAdmin]),
+    TypeOrmModule.forFeature([User, Patient, Doctor, SuperAdmin]),
     JwtModule.register({ global: true }),
     ClientsModule.registerAsync([
       {

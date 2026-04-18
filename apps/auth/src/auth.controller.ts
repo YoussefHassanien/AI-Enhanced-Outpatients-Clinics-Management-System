@@ -9,17 +9,16 @@ import {
 } from '@app/common';
 import { Controller, ParseIntPipe, ParseUUIDPipe } from '@nestjs/common';
 import { MessagePattern, Payload, RpcException } from '@nestjs/microservices';
-import { ClinicInternalPaginationRequestDto } from '../../admin/src/dtos';
+import { ClinicInternalPaginationRequestDto } from '../../super-admin/src/dtos';
 import { AuthService } from './auth.service';
 import {
-  CreateAdminDto,
   CreateDoctorInternalDto,
   CreatePatientDto,
   LoginDto,
   UpdateDoctorInternalDto,
   UpdatePatientInternalDto,
 } from './dtos';
-import { Admin, Doctor, Patient, User } from './entities';
+import { Doctor, Patient, SuperAdmin, User } from './entities';
 
 @Controller()
 export class AuthController {
@@ -40,14 +39,7 @@ export class AuthController {
     return await this.authService.login(loginDto);
   }
 
-  @MessagePattern({ cmd: AuthPatterns.ADMIN_CREATE })
-  async adminCreate(
-    @Payload() createAdminDto: CreateAdminDto,
-  ): Promise<{ message: string; id: string }> {
-    const adminGlobalId = await this.authService.createAdmin(createAdminDto);
 
-    return { message: 'Admin is successfully created', id: adminGlobalId };
-  }
 
   @MessagePattern({ cmd: AuthPatterns.DOCTOR_CREATE })
   async doctorCreate(
@@ -113,18 +105,6 @@ export class AuthController {
     return await this.authService.getPatientByGlobalId(patientGlobalId);
   }
 
-  @MessagePattern({ cmd: AuthPatterns.GET_ADMIN_BY_USER_ID })
-  async getAdminByUserId(
-    @Payload(
-      new ParseIntPipe({
-        exceptionFactory: () =>
-          new RpcException(new ErrorResponse('Invalid id', 400)),
-      }),
-    )
-    adminUserId: number,
-  ): Promise<Admin | null> {
-    return await this.authService.getAdminByUserId(adminUserId);
-  }
 
   @MessagePattern({ cmd: AuthPatterns.GET_ALL_DOCTORS })
   async getAllDoctors(@Payload() paginationRequest: PaginationRequest): Promise<
@@ -240,7 +220,7 @@ export class AuthController {
       }),
     )
     clinicalStaffUserId: number,
-  ): Promise<Doctor | Admin | null> {
+  ): Promise<Doctor | SuperAdmin | null> {
     return await this.authService.getClinicalStaffByUserId(clinicalStaffUserId);
   }
 

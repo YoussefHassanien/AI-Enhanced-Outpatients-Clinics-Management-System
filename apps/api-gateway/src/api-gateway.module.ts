@@ -8,7 +8,6 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_FILTER } from '@nestjs/core';
 import { minutes, ThrottlerModule } from '@nestjs/throttler';
-import { AdminModule } from './admin/admin.module';
 import { ApiGatewayController } from './api-gateway.controller';
 import { AuthModule } from './auth/auth.module';
 import { EnvironmentVariables } from './constants';
@@ -38,7 +37,6 @@ import { OcrModule } from './ocr/ocr.module';
     ]),
     AuthModule,
     DoctorModule,
-    AdminModule,
     SuperAdminModule,
     AsrModule,
     OcrModule,

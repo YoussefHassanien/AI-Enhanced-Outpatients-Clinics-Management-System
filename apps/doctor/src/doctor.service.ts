@@ -17,9 +17,9 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { lastValueFrom } from 'rxjs';
 import { IsNull, Repository } from 'typeorm';
 import { v4 as uuidv4 } from 'uuid';
-import { ClinicInternalPaginationRequestDto } from '../../admin/src/dtos';
+import { ClinicInternalPaginationRequestDto } from '../../super-admin/src/dtos';
 import { TranscribeAudioInternalDto } from '../../asr/src/dtos';
-import { Admin, Doctor, Patient } from '../../auth/src/entities';
+import { SuperAdmin, Doctor, Patient } from '../../auth/src/entities';
 import {
   LabAudioInternalDto,
   LabPhotoInternalDto,
@@ -293,8 +293,8 @@ export class DoctorService {
 
   private async getClinicalStaffByUserId(
     doctorUserId: number,
-  ): Promise<Doctor | Admin | null> {
-    const doctor = await lastValueFrom<Doctor | Admin | null>(
+  ): Promise<Doctor | SuperAdmin | null> {
+    const doctor = await lastValueFrom<Doctor | SuperAdmin | null>(
       this.authClient.send(
         { cmd: AuthPatterns.GET_CLINICAL_STAFF_BY_USER_ID },
         doctorUserId,
@@ -1020,7 +1020,14 @@ export class DoctorService {
     this.logger.log('Patient is found');
 
     const doctor = await this.getClinicalStaffByUserId(createVisitInternalDto.doctorUserId);
-    if (!doctor) throw new RpcException(new ErrorResponse('There is no doctor...', 404));
+    if (!doctor) {
+      throw new RpcException(
+        new ErrorResponse(
+          'There is no doctor associated with this userId',
+          404,
+        ),
+      );
+    }
     this.logger.log('Clinical staff member is found');
 
     this.logger.log('Fetching clinic...');
@@ -1039,7 +1046,7 @@ export class DoctorService {
       diagnosesAudioUrl: null,
       patientId: patient.id,
       userId: doctor.user.id,
-      clinicId: doctor.clinicId,
+      clinicId: clinic.id,
     });
 
     if (createVisitInternalDto.diagnoses) visit.diagnoses = createVisitInternalDto.diagnoses;
