@@ -21,7 +21,7 @@ export class OcrController {
     return await this.ocrService.isUp();
   }
 
-  @Roles(Role.SUPER_ADMIN, Role.ADMIN, Role.DOCTOR)
+  @Roles(Role.SUPER_ADMIN, Role.DOCTOR)
   @UseGuards(JwtAuthGuard)
   @UseInterceptors(FileInterceptor('image'))
   @Post('process-id')
