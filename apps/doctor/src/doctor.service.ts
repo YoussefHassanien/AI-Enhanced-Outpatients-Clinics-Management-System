@@ -38,6 +38,7 @@ import {
   UploadScanInternalDto,
 } from './dtos';
 import { Lab, Medication, Scan, Visit } from './entities';
+import * as fs from 'fs/promises';
 
 @Injectable()
 export class DoctorService {
@@ -243,6 +244,18 @@ export class DoctorService {
   private async extractTextFromAudio(
     transcribeAudioDto: TranscribeAudioInternalDto,
   ): Promise<string> {
+    if (transcribeAudioDto.filePath) {
+      try {
+        const audioBuffer = await fs.readFile(
+          transcribeAudioDto.filePath as string,
+        );
+        transcribeAudioDto.audio_base64 = audioBuffer.toString('base64');
+      } catch (error) {
+        this.logger.error(`Failed to read audio file: ${error.message}`);
+        throw new RpcException(new ErrorResponse('Failed to process audio file', 500));
+      }
+    }
+
     const text = await lastValueFrom<{ transcription: string }>(
       this.asrClient.send(
         { cmd: AsrPatterns.TRANSCRIBE_AUDIO },
@@ -518,9 +531,9 @@ export class DoctorService {
         patientIds[index],
         patient
           ? {
-              name: `${patient.user.firstName} ${patient.user.lastName}`,
-              id: patient.globalId,
-            }
+            name: `${patient.user.firstName} ${patient.user.lastName}`,
+            id: patient.globalId,
+          }
           : { name: 'UNKNOWN', id: 'UNKNOWN' },
       ]),
     );
@@ -631,9 +644,9 @@ export class DoctorService {
         doctorsUserId[index],
         doctor
           ? {
-              name: `${doctor.user.firstName} ${doctor.user.lastName}`,
-              speciality: doctor?.speciality ?? 'UNKNOWN',
-            }
+            name: `${doctor.user.firstName} ${doctor.user.lastName}`,
+            speciality: doctor?.speciality ?? 'UNKNOWN',
+          }
           : { name: 'UNKNOWN', speciality: 'UNKNOWN' },
       ]),
     );
@@ -760,9 +773,9 @@ export class DoctorService {
         doctorsIds[index],
         doctor
           ? {
-              name: `${doctor.user.firstName} ${doctor.user.lastName}`,
-              speciality: doctor.speciality,
-            }
+            name: `${doctor.user.firstName} ${doctor.user.lastName}`,
+            speciality: doctor.speciality,
+          }
           : { name: 'UNKNOWN', speciality: 'UNKNOWN' },
       ]),
     );
@@ -858,9 +871,9 @@ export class DoctorService {
         doctorsIds[index],
         doctor
           ? {
-              name: `${doctor.user.firstName} ${doctor.user.lastName}`,
-              speciality: doctor.speciality,
-            }
+            name: `${doctor.user.firstName} ${doctor.user.lastName}`,
+            speciality: doctor.speciality,
+          }
           : { name: 'UNKNOWN', speciality: 'UNKNOWN' },
       ]),
     );
@@ -955,9 +968,9 @@ export class DoctorService {
         doctorsIds[index],
         doctor
           ? {
-              name: `${doctor.user.firstName} ${doctor.user.lastName}`,
-              speciality: doctor.speciality,
-            }
+            name: `${doctor.user.firstName} ${doctor.user.lastName}`,
+            speciality: doctor.speciality,
+          }
           : { name: 'UNKNOWN', speciality: 'UNKNOWN' },
       ]),
     );
@@ -1002,18 +1015,11 @@ export class DoctorService {
   async createVisit(
     createVisitInternalDto: CreateVisitInternalDto,
   ): Promise<void> {
-    const patient = await this.getPatientByGlobalId(
-      createVisitInternalDto.patientId,
-    );
+    const patient = await this.getPatientByGlobalId(createVisitInternalDto.patientId);
+    if (!patient) throw new RpcException(new ErrorResponse('Patient not found!', 404));
+    this.logger.log('Patient is found');
 
-    if (!patient) {
-      throw new RpcException(new ErrorResponse('Patient not found!', 404));
-    }
-
-    const doctor = await this.getClinicalStaffByUserId(
-      createVisitInternalDto.doctorUserId,
-    );
-
+    const doctor = await this.getClinicalStaffByUserId(createVisitInternalDto.doctorUserId);
     if (!doctor) {
       throw new RpcException(
         new ErrorResponse(
@@ -1022,25 +1028,15 @@ export class DoctorService {
         ),
       );
     }
+    this.logger.log('Clinical staff member is found');
 
+    this.logger.log('Fetching clinic...');
     const clinic = await this.getClinicById(doctor.clinicId);
+    if (!clinic) throw new RpcException(new ErrorResponse('Clinic not found!', 404));
+    this.logger.log('Clinic is found');
 
-    if (!clinic) {
-      throw new RpcException(new ErrorResponse('Clinic not found!', 404));
-    }
-
-    // If no written diagnoses provided, require audio to be present
-    if (
-      !createVisitInternalDto.diagnoses &&
-      (!createVisitInternalDto.audioFilePath ||
-        !createVisitInternalDto.audioMimetype)
-    ) {
-      throw new RpcException(
-        new ErrorResponse(
-          'Either audio or written diagnoses must be provided',
-          400,
-        ),
-      );
+    if (!createVisitInternalDto.diagnoses && (!createVisitInternalDto.audioFilePath || !createVisitInternalDto.audioMimetype)) {
+      throw new RpcException(new ErrorResponse('Either audio or written diagnoses must be provided', 400));
     }
 
     const visitGlobalId = uuidv4();
@@ -1053,36 +1049,28 @@ export class DoctorService {
       clinicId: clinic.id,
     });
 
-    if (createVisitInternalDto.diagnoses) {
-      visit.diagnoses = createVisitInternalDto.diagnoses;
-    }
+    if (createVisitInternalDto.diagnoses) visit.diagnoses = createVisitInternalDto.diagnoses;
 
-    if (
-      createVisitInternalDto.audioFilePath &&
-      createVisitInternalDto.audioMimetype
-    ) {
+    if (createVisitInternalDto.audioFilePath && createVisitInternalDto.audioMimetype) {
       const visitAudioInternalDto = new VisitAudioInternalDto(
-        visitGlobalId,
-        patient.globalId,
-        createVisitInternalDto.audioFilePath,
-        createVisitInternalDto.audioMimetype,
+        visitGlobalId, patient.globalId, createVisitInternalDto.audioFilePath, createVisitInternalDto.audioMimetype,
       );
 
-      visit.diagnosesAudioUrl = await this.uploadVisitAudio(
-        visitAudioInternalDto,
-      );
+      this.logger.log('Sending audio to Cloud Storage...');
+      visit.diagnosesAudioUrl = await this.uploadVisitAudio(visitAudioInternalDto);
+      this.logger.log('Cloud Storage replied successfully');
 
       if (!createVisitInternalDto.diagnoses) {
         const transcribeAudioDto = new TranscribeAudioInternalDto();
         transcribeAudioDto.filePath = createVisitInternalDto.audioFilePath;
 
+        this.logger.log('Sending audio to Python ASR worker...');
         visit.diagnoses = await this.extractTextFromAudio(transcribeAudioDto);
         this.logger.log('Diagnoses is successfully extracted from visit audio');
+        this.logger.log('ASR worker replied successfully');
       }
 
-      await this.deleteCloudStorageTemporaryFile(
-        createVisitInternalDto.audioFilePath,
-      );
+      await this.deleteCloudStorageTemporaryFile(createVisitInternalDto.audioFilePath);
     }
 
     await this.visitsRepository.insert(visit);
@@ -1396,9 +1384,9 @@ export class DoctorService {
         patientIds[index],
         patient
           ? {
-              name: `${patient.user.firstName} ${patient.user.lastName}`,
-              id: patient.globalId,
-            }
+            name: `${patient.user.firstName} ${patient.user.lastName}`,
+            id: patient.globalId,
+          }
           : { name: 'UNKNOWN', id: 'UNKNOWN' },
       ]),
     );
@@ -1408,10 +1396,10 @@ export class DoctorService {
         doctorUserIds[index],
         doctor
           ? {
-              name: `${doctor.user.firstName} ${doctor.user.lastName}`,
-              id: doctor.globalId,
-              speciality: doctor.speciality,
-            }
+            name: `${doctor.user.firstName} ${doctor.user.lastName}`,
+            id: doctor.globalId,
+            speciality: doctor.speciality,
+          }
           : { name: 'UNKNOWN', id: 'UNKNOWN', speciality: 'UNKNOWN' },
       ]),
     );

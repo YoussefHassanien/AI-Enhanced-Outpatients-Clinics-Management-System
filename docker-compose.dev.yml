@@ -79,12 +79,19 @@ services:
       - ./apps/asr/.env
     depends_on:
       - rabbitmq
-    command: node asr/main
+    command: ['python3', 'run_consumer.py']
     networks:
       - services-network
     volumes:
-      - ./logs:/app/logs
-      - ./tmp/asr_uploads:/app/tmp/asr_uploads
+      - ./logs/asr:/app/logs
+      - ./asr_model_cache:/app/models
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
   ocr:
     build:
       context: .
