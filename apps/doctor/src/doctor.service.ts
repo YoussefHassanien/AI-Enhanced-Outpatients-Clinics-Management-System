@@ -251,6 +251,7 @@ export class DoctorService {
         );
         transcribeAudioDto.audio_base64 = audioBuffer.toString('base64');
       } catch (error) {
+        // @ts-ignore
         this.logger.error(`Failed to read audio file: ${error.message}`);
         throw new RpcException(new ErrorResponse('Failed to process audio file', 500));
       }
