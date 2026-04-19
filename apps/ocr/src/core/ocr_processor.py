@@ -9,6 +9,16 @@ from ..config import logger
 from dotenv import load_dotenv
 from typing import List, Dict, Tuple
 
+try:
+    import torch
+except Exception:
+    torch = None
+
+try:
+    from ultralytics import YOLO
+except Exception:
+    YOLO = None
+
 # Load environment variables
 load_dotenv()
 
@@ -20,6 +30,8 @@ RUNS_DIR = os.path.join(SCRIPT_DIR, 'runs')
 
 # Model paths (in models/ directory)
 MODELS_DIR = os.path.join(SCRIPT_DIR, 'models')
+CLASS_MODEL_PT = os.path.join(MODELS_DIR, 'egyId_weights.pt')
+ID_MODEL_PT = os.path.join(MODELS_DIR, 'best.pt')
 CLASS_MODEL_XML = os.path.join(MODELS_DIR, 'Class_openvino_model',
                                'egyId_weights.xml')
 CLASS_MODEL_METADATA = os.path.join(MODELS_DIR, 'Class_openvino_model',
@@ -41,6 +53,45 @@ _ID_MODEL = None
 _ID_MODEL_METADATA = None
 _OCR_MODEL = None
 _OV_CORE = None
+_INFERENCE_BACKEND = None
+
+
+def is_cuda_available() -> bool:
+    try:
+        if torch is None:
+            return False
+        return torch.cuda.is_available()
+    except Exception:
+        return False
+
+
+def get_inference_backend() -> str:
+    global _INFERENCE_BACKEND
+
+    if _INFERENCE_BACKEND is not None:
+        return _INFERENCE_BACKEND
+
+    pt_models_exist = os.path.exists(CLASS_MODEL_PT) and os.path.exists(ID_MODEL_PT)
+    cuda_available = is_cuda_available()
+
+    if cuda_available and YOLO is not None and pt_models_exist:
+        _INFERENCE_BACKEND = 'pt'
+        logger.info('CUDA GPU detected. Using PyTorch/YOLO `.pt` models.')
+        return _INFERENCE_BACKEND
+
+    if cuda_available and YOLO is None:
+        logger.warning(
+            'CUDA GPU detected but `ultralytics` is unavailable. Falling back to OpenVINO CPU.'
+        )
+    elif cuda_available and not pt_models_exist:
+        logger.warning(
+            'CUDA GPU detected but `.pt` model files are missing. Falling back to OpenVINO CPU.'
+        )
+    else:
+        logger.info('CUDA GPU not detected. Using OpenVINO CPU models.')
+
+    _INFERENCE_BACKEND = 'openvino'
+    return _INFERENCE_BACKEND
 
 
 def get_openvino_core():
@@ -283,12 +334,62 @@ class OpenVINOYOLOModel:
         return detections
 
 
+class PyTorchYOLOModel:
+    """Wrapper for Ultralytics YOLO `.pt` model"""
+
+    def __init__(self, model_path: str):
+        if YOLO is None:
+            raise RuntimeError('ultralytics is not available for `.pt` inference')
+
+        self.device = 'cuda:0' if is_cuda_available() else 'cpu'
+        self.model = YOLO(model_path)
+        self.model.to(self.device)
+        self.names = self.model.names
+
+        logger.info(f"Loaded PyTorch model: {os.path.basename(model_path)}")
+        logger.info(f"PyTorch inference device: {self.device}")
+
+    def predict(self,
+                image: np.ndarray,
+                conf: float = 0.25,
+                iou: float = 0.45) -> List[Dict]:
+        result = self.model.predict(
+            source=image,
+            conf=conf,
+            iou=iou,
+            verbose=False,
+            device=self.device,
+        )[0]
+
+        detections = []
+        if result.boxes is None:
+            return detections
+
+        boxes = result.boxes.xyxy.cpu().numpy()
+        classes = result.boxes.cls.cpu().numpy().astype(int)
+        confidences = result.boxes.conf.cpu().numpy()
+
+        for index, box in enumerate(boxes):
+            detections.append({
+                'box': box.tolist(),
+                'confidence': float(confidences[index]),
+                'class': int(classes[index]),
+            })
+
+        return detections
+
+
 def get_class_model():
     """Lazy load classification model (singleton pattern)"""
     global _CLASS_MODEL
     if _CLASS_MODEL is None:
-        logger.info("Loading Egyptian ID classification model (OpenVINO)...")
-        _CLASS_MODEL = OpenVINOYOLOModel(CLASS_MODEL_XML, CLASS_MODEL_METADATA)
+        backend = get_inference_backend()
+        if backend == 'pt':
+            logger.info('Loading Egyptian ID segmentation model (`.pt`)...')
+            _CLASS_MODEL = PyTorchYOLOModel(CLASS_MODEL_PT)
+        else:
+            logger.info('Loading Egyptian ID classification model (OpenVINO)...')
+            _CLASS_MODEL = OpenVINOYOLOModel(CLASS_MODEL_XML, CLASS_MODEL_METADATA)
         logger.info("Classification model loaded")
     return _CLASS_MODEL
 
@@ -297,8 +398,13 @@ def get_id_model():
     """Lazy load ID digit detection model (singleton pattern)"""
     global _ID_MODEL
     if _ID_MODEL is None:
-        logger.info("Loading ID digit detection model (OpenVINO)...")
-        _ID_MODEL = OpenVINOYOLOModel(ID_MODEL_XML, ID_MODEL_METADATA)
+        backend = get_inference_backend()
+        if backend == 'pt':
+            logger.info('Loading ID digit detection model (`.pt`)...')
+            _ID_MODEL = PyTorchYOLOModel(ID_MODEL_PT)
+        else:
+            logger.info('Loading ID digit detection model (OpenVINO)...')
+            _ID_MODEL = OpenVINOYOLOModel(ID_MODEL_XML, ID_MODEL_METADATA)
         logger.info("ID digit model loaded")
     return _ID_MODEL
 
@@ -319,6 +425,7 @@ def get_ocr_model():
 def preload_models():
     """Preload all models at startup"""
     logger.info("Preloading all models...")
+    logger.info(f"Selected inference backend: {get_inference_backend()}")
     get_ocr_model()
     get_class_model()
     get_id_model()

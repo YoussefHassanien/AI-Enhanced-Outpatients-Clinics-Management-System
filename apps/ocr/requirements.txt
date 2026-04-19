@@ -4,5 +4,7 @@ paddleocr>=2.7.0
 paddlepaddle==3.2.2
 python-dotenv>=1.0.0
 openvino==2025.4.0
+torch>=2.3.0
+ultralytics>=8.3.0
 pika>=1.3.0
 pyyaml>=6.0
