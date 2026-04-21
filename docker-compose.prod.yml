@@ -76,6 +76,13 @@ services:
     volumes:
       - ./logs/ocr:/app/logs
       - paddleocr-cache:/root/.paddlex
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
 
   asr:
     image: youssefhassanien1/asr-service:latest

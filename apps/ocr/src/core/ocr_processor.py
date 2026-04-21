@@ -1,6 +1,7 @@
 import shutil
 import cv2
 import os
+import time
 import numpy as np
 import yaml
 from paddleocr import PaddleOCR
@@ -18,6 +19,11 @@ try:
     from ultralytics import YOLO
 except Exception:
     YOLO = None
+
+try:
+    import paddle
+except Exception:
+    paddle = None
 
 # Load environment variables
 load_dotenv()
@@ -44,6 +50,7 @@ ID_MODEL_METADATA = os.path.join(MODELS_DIR, 'ID_openvino_model',
 CONFIDENCE_THRESHOLD = float(os.getenv('CONFIDENCE_THRESHOLD', '0.6'))
 ID_DIGIT_CONFIDENCE = float(os.getenv('ID_DIGIT_CONFIDENCE', '0.25'))
 IMAGE_SIZE = int(os.getenv('IMAGE_SIZE', '640'))
+PADDLE_GPU_ENABLED = os.getenv('PADDLE_GPU_ENABLED', 'true').lower() == 'true'
 
 # ===== MODEL INITIALIZATION =====
 # Global models - loaded once and reused (singleton pattern)
@@ -413,11 +420,34 @@ def get_ocr_model():
     """Lazy load PaddleOCR model (singleton pattern)"""
     global _OCR_MODEL
     if _OCR_MODEL is None:
-        logger.info("Loading PaddleOCR model...")
+        paddle_gpu_available = False
+        if paddle is not None:
+            try:
+                paddle_gpu_available = paddle.is_compiled_with_cuda()
+            except Exception:
+                paddle_gpu_available = False
+
+        use_paddle_gpu = PADDLE_GPU_ENABLED and paddle_gpu_available
+
+        if PADDLE_GPU_ENABLED and not paddle_gpu_available:
+            logger.warning(
+                'PADDLE_GPU_ENABLED=true but Paddle CUDA runtime is unavailable. Using CPU for PaddleOCR.'
+            )
+
+        if paddle is not None:
+            try:
+                paddle.set_device('gpu' if use_paddle_gpu else 'cpu')
+            except Exception:
+                logger.warning('Failed to set Paddle device explicitly. Proceeding with default device.')
+
+        paddle_device = 'gpu' if use_paddle_gpu else 'cpu'
+        logger.info(f"Loading PaddleOCR model on {paddle_device.upper()}...")
         _OCR_MODEL = PaddleOCR(lang='ar',
                                use_doc_orientation_classify=False,
                                use_doc_unwarping=False,
-                               use_textline_orientation=False)
+                               use_textline_orientation=False,
+                               device=paddle_device)
+        logger.info(f"PaddleOCR device: {paddle_device.upper()}")
         logger.info("PaddleOCR model loaded")
     return _OCR_MODEL
 
@@ -669,24 +699,31 @@ def process_id_card(image_path: str, request_id: str):
         request_id: Unique identifier for this request (for isolated folders)
     """
     save_dir = None
+    pipeline_start = time.perf_counter()
 
     try:
         # Run YOLO detection with unique request ID
         logger.info(f"[{request_id}] Starting ID card processing pipeline")
 
+        detect_start = time.perf_counter()
         detections, save_dir = predict_id(image_path, request_id)
+        detect_ms = (time.perf_counter() - detect_start) * 1000
 
         logger.info(
             f"[{request_id}] YOLO detection completed, ({len(detections)} objects found)"
         )
+        logger.info(f"[{request_id}] Timing - yolo_detection: {detect_ms:.2f} ms")
 
         if not save_dir:
             raise ValueError("Failed to process image")
 
         # Save cropped regions
         try:
+            crop_start = time.perf_counter()
             save_top_right_boxes(image_path, save_dir, detections)
+            crop_ms = (time.perf_counter() - crop_start) * 1000
             logger.debug(f"[{request_id}] Cropping completed")
+            logger.info(f"[{request_id}] Timing - crop_regions: {crop_ms:.2f} ms")
         except ValueError as e:
             if "No boxes detected" in str(e) or "Not enough boxes" in str(e):
                 logger.warning(f"[{request_id}] Invalid ID card photo: {e}")
@@ -709,17 +746,26 @@ def process_id_card(image_path: str, request_id: str):
         logger.info(f"[{request_id}] Running PaddleOCR on text fields")
         ocr = get_ocr_model()
 
+        first_ocr_start = time.perf_counter()
         first = ' '.join(
             reversed(ocr.predict(firstname_img_path)[0]['rec_texts']))
+        first_ocr_ms = (time.perf_counter() - first_ocr_start) * 1000
         logger.debug(f"[{request_id}] First name OCR finished")
+        logger.info(f"[{request_id}] Timing - ocr_first_name: {first_ocr_ms:.2f} ms")
 
+        second_ocr_start = time.perf_counter()
         second = ' '.join(
             reversed(ocr.predict(secondname_img_path)[0]['rec_texts']))
+        second_ocr_ms = (time.perf_counter() - second_ocr_start) * 1000
         logger.debug(f"[{request_id}] Second name OCR: finished")
+        logger.info(f"[{request_id}] Timing - ocr_second_name: {second_ocr_ms:.2f} ms")
 
+        location_ocr_start = time.perf_counter()
         loc = ' '.join(reversed(
             ocr.predict(location_img_path)[0]['rec_texts']))
+        location_ocr_ms = (time.perf_counter() - location_ocr_start) * 1000
         logger.debug(f"[{request_id}] Location OCR: finished")
+        logger.info(f"[{request_id}] Timing - ocr_location: {location_ocr_ms:.2f} ms")
 
         logger.info(f"[{request_id}] PaddleOCR completed")
 
@@ -727,11 +773,16 @@ def process_id_card(image_path: str, request_id: str):
         id_number = ""
         if os.path.exists(id_img_path):
             logger.debug(f"[{request_id}] Extracting national ID number")
+            id_extract_start = time.perf_counter()
             id_number, _ = extract_digits_from_id(
                 id_img_path, conf_threshold=ID_DIGIT_CONFIDENCE)
+            id_extract_ms = (time.perf_counter() - id_extract_start) * 1000
             logger.debug(
                 f"[{request_id}] ID extraction completed, {id_number[:4]}****")
+            logger.info(f"[{request_id}] Timing - id_extraction: {id_extract_ms:.2f} ms")
 
+        total_ms = (time.perf_counter() - pipeline_start) * 1000
+        logger.info(f"[{request_id}] Timing - total_pipeline: {total_ms:.2f} ms")
         logger.info(f"[{request_id}] ✓ Processing pipeline complete")
 
         return {
