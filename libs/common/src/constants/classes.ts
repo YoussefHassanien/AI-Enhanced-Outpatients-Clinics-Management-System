@@ -50,4 +50,12 @@ export class PaginationRequest {
   @IsPositive()
   @IsOptional()
   limit: number = 30;
+
+  @IsOptional()
+  @Type(() => Boolean)
+  includeDeleted?: boolean;
+
+  @IsOptional()
+  @Type(() => Boolean)
+  onlyDeleted?: boolean;
 }

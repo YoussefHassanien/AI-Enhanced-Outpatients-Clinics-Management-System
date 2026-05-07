@@ -13,7 +13,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { ClientProxy, RpcException } from '@nestjs/microservices';
 import { InjectRepository } from '@nestjs/typeorm';
 import { lastValueFrom } from 'rxjs';
-import { IsNull, Repository } from 'typeorm';
+import { IsNull, Not, Repository } from 'typeorm';
 import {
   UpdateDoctorInternalDto,
   UpdatePatientInternalDto,
@@ -28,12 +28,17 @@ import {
   CreateMedicationInternalDto,
   CreateVisitInternalDto,
   DoctorInternalPaginationRequestDto,
+  UpdateLabInternalDto,
+  UpdateMedicationInternalDto,
+  UpdateScanInternalDto,
+  UpdateVisitInternalDto,
   UploadLabInternalDto,
   UploadScanInternalDto,
 } from '../../doctor/src/dtos';
 import {
   ClinicInternalPaginationRequestDto,
   CreateClinicInternalDto,
+  UpdateClinicInternalDto,
 } from './dtos';
 import { Clinic } from './entities';
 
@@ -215,29 +220,119 @@ export class SuperAdminService {
     };
   }
 
-  async getAllClinics(): Promise<
-    { id: string; name: string; speciality: string; createdAt: Date }[]
+  async updateClinic(
+    updateClinicInternalDto: UpdateClinicInternalDto,
+  ): Promise<{
+    id: string;
+    name: string;
+    speciality: string;
+  }> {
+    const clinic = await this.clinicRepository.findOne({
+      where: { globalId: updateClinicInternalDto.id, deletedAt: IsNull() },
+    });
+
+    if (!clinic) {
+      throw new RpcException(new ErrorResponse('Clinic not found!', 404));
+    }
+
+    if (updateClinicInternalDto.name) {
+      clinic.name = updateClinicInternalDto.name;
+    }
+
+    if (updateClinicInternalDto.speciality) {
+      clinic.speciality = updateClinicInternalDto.speciality;
+    }
+
+    await this.clinicRepository.save(clinic);
+    this.logger.log('Successfully updated clinic');
+
+    return {
+      id: clinic.globalId,
+      name: clinic.name,
+      speciality: clinic.speciality,
+    };
+  }
+
+  async deleteClinic(id: string): Promise<{ message: string }> {
+    const clinic = await this.clinicRepository.findOne({
+      where: { globalId: id, deletedAt: IsNull() },
+    });
+
+    if (!clinic) {
+      throw new RpcException(new ErrorResponse('Clinic not found!', 404));
+    }
+
+    await this.clinicRepository.softDelete(clinic.id);
+    this.logger.log('Successfully deleted clinic');
+    return { message: 'Clinic deleted successfully' };
+  }
+
+  async restoreClinic(id: string): Promise<{ message: string }> {
+    const clinic = await this.clinicRepository.findOne({
+      where: { globalId: id },
+      withDeleted: true, // Include both active & soft-deleted records (TypeORM excludes soft-deleted records by default)
+    });
+
+    if (!clinic) {
+      throw new RpcException(new ErrorResponse('Clinic not found!', 404));
+    }
+
+    if (!clinic.deletedAt) {
+      throw new RpcException(
+        new ErrorResponse('Clinic is already active!', 400),
+      );
+    }
+
+    await this.clinicRepository.restore(clinic.id);
+    this.logger.log('Successfully restored clinic');
+    return { message: 'Clinic restored successfully' };
+  }
+
+  async getAllClinics(paginationRequest: PaginationRequest): Promise<
+    PaginationResponse<{ id: string; name: string; speciality: string; createdAt: Date }>
   > {
-    const clinics = await this.clinicRepository.find({
+    const whereCondition: any = {};
+
+    if (paginationRequest.onlyDeleted) {
+      whereCondition.deletedAt = Not(IsNull());
+    } else if (!paginationRequest.includeDeleted) {
+      whereCondition.deletedAt = IsNull();
+    }
+
+    const [clinics, count] = await this.clinicRepository.findAndCount({
       select: {
         name: true,
         speciality: true,
         globalId: true,
         createdAt: true,
       },
-      where: {
-        deletedAt: IsNull(),
-      },
+      where: whereCondition,
+      skip: (paginationRequest.page - 1) * paginationRequest.limit,
+      take: paginationRequest.limit,
+      withDeleted:
+        paginationRequest.includeDeleted || paginationRequest.onlyDeleted,
     });
 
-    return clinics.map((clinic) => {
-      return {
-        id: clinic.globalId,
-        name: clinic.name,
-        speciality: clinic.speciality,
-        createdAt: clinic.createdAt,
-      };
-    });
+    const response: PaginationResponse<{
+      id: string;
+      name: string;
+      speciality: string;
+      createdAt: Date;
+    }> = {
+      items: clinics.map((clinic) => {
+        return {
+          id: clinic.globalId,
+          name: clinic.name,
+          speciality: clinic.speciality,
+          createdAt: clinic.createdAt,
+        };
+      }),
+      page: paginationRequest.page,
+      totalItems: count,
+      totalPages: Math.ceil(count / paginationRequest.limit),
+    };
+
+    return response;
   }
 
   async getAllClinicsWithId(): Promise<
@@ -363,10 +458,19 @@ export class SuperAdminService {
   async updateDoctor(
     updateDoctorInternalDto: UpdateDoctorInternalDto,
   ): Promise<{ message: string }> {
+    return await lastValueFrom<{ message: string }>(
+      this.authClient.send(
+        { cmd: AuthPatterns.DOCTOR_UPDATE },
+        updateDoctorInternalDto,
+      ),
+    );
+  }
+
+  async deleteDoctor(globalId: string): Promise<{ message: string }> {
     const doctor = await lastValueFrom<Doctor | null>(
       this.authClient.send(
         { cmd: AuthPatterns.GET_DOCTOR_BY_GLOBAL_ID },
-        updateDoctorInternalDto.globalId,
+        globalId,
       ),
     );
 
@@ -375,9 +479,56 @@ export class SuperAdminService {
     }
 
     return await lastValueFrom<{ message: string }>(
-      this.authClient.send(
-        { cmd: AuthPatterns.DOCTOR_UPDATE },
-        updateDoctorInternalDto,
+      this.authClient.send({ cmd: AuthPatterns.DOCTOR_DELETE }, globalId),
+    );
+  }
+
+  async restoreDoctor(globalId: string): Promise<{ message: string }> {
+    return await lastValueFrom<{ message: string }>(
+      this.authClient.send({ cmd: AuthPatterns.DOCTOR_RESTORE }, globalId),
+    );
+  }
+
+  async updateVisit(
+    updateVisitInternalDto: UpdateVisitInternalDto,
+  ): Promise<{ message: string }> {
+    return await lastValueFrom<{ message: string }>(
+      this.doctorClient.send(
+        { cmd: DoctorPatterns.VISIT_UPDATE },
+        updateVisitInternalDto,
+      ),
+    );
+  }
+
+  async updateMedication(
+    updateMedicationInternalDto: UpdateMedicationInternalDto,
+  ): Promise<{ message: string }> {
+    return await lastValueFrom<{ message: string }>(
+      this.doctorClient.send(
+        { cmd: DoctorPatterns.MEDICATION_UPDATE },
+        updateMedicationInternalDto,
+      ),
+    );
+  }
+
+  async updateLab(
+    updateLabInternalDto: UpdateLabInternalDto,
+  ): Promise<{ message: string }> {
+    return await lastValueFrom<{ message: string }>(
+      this.doctorClient.send(
+        { cmd: DoctorPatterns.LAB_UPDATE },
+        updateLabInternalDto,
+      ),
+    );
+  }
+
+  async updateScan(
+    updateScanInternalDto: UpdateScanInternalDto,
+  ): Promise<{ message: string }> {
+    return await lastValueFrom<{ message: string }>(
+      this.doctorClient.send(
+        { cmd: DoctorPatterns.SCAN_UPDATE },
+        updateScanInternalDto,
       ),
     );
   }
@@ -706,10 +857,7 @@ export class SuperAdminService {
     }
 
     const clinicInternalPaginationRequestDto =
-      new ClinicInternalPaginationRequestDto(
-        paginationRequest,
-        clinic.id,
-      );
+      new ClinicInternalPaginationRequestDto(paginationRequest, clinic.id);
 
     return lastValueFrom(
       this.doctorClient.send(
@@ -743,10 +891,7 @@ export class SuperAdminService {
     }
 
     const clinicInternalPaginationRequestDto =
-      new ClinicInternalPaginationRequestDto(
-        paginationRequest,
-        clinic.id,
-      );
+      new ClinicInternalPaginationRequestDto(paginationRequest, clinic.id);
 
     const response = await lastValueFrom<PaginationResponse<Doctor>>(
       this.authClient.send(
@@ -793,10 +938,7 @@ export class SuperAdminService {
     }
 
     const clinicInternalPaginationRequestDto =
-      new ClinicInternalPaginationRequestDto(
-        paginationRequest,
-        clinic.id,
-      );
+      new ClinicInternalPaginationRequestDto(paginationRequest, clinic.id);
 
     return lastValueFrom(
       this.doctorClient.send(

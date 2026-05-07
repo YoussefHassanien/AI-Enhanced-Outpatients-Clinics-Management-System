@@ -15,7 +15,13 @@ import {
   UpdateDoctorInternalDto,
   UpdatePatientInternalDto,
 } from '../../auth/src/dtos';
-import { CreateClinicInternalDto } from './dtos';
+import {
+  UpdateLabInternalDto,
+  UpdateMedicationInternalDto,
+  UpdateScanInternalDto,
+  UpdateVisitInternalDto,
+} from '../../doctor/src/dtos';
+import { CreateClinicInternalDto, UpdateClinicInternalDto } from './dtos';
 import { SuperAdminService } from './super-admin.service';
 import {
   CreateMedicationInternalDto,
@@ -27,7 +33,7 @@ import {
 
 @Controller()
 export class SuperAdminController {
-  constructor(private readonly superAdminService: SuperAdminService) {}
+  constructor(private readonly superAdminService: SuperAdminService) { }
 
   @MessagePattern({ cmd: SuperAdminPatterns.IS_UP })
   isUp(): string {
@@ -63,11 +69,35 @@ export class SuperAdminController {
     return await this.superAdminService.createClinic(createClinicInternalDto);
   }
 
+  @MessagePattern({ cmd: SuperAdminPatterns.UPDATE_CLINIC })
+  async updateClinic(
+    @Payload() updateClinicInternalDto: UpdateClinicInternalDto,
+  ): Promise<{ id: string; name: string; speciality: string }> {
+    return await this.superAdminService.updateClinic(updateClinicInternalDto);
+  }
+
+  @MessagePattern({ cmd: SuperAdminPatterns.DELETE_CLINIC })
+  async deleteClinic(@Payload() id: string): Promise<{ message: string }> {
+    return await this.superAdminService.deleteClinic(id);
+  }
+
+  @MessagePattern({ cmd: SuperAdminPatterns.RESTORE_CLINIC })
+  async restoreClinic(@Payload() id: string): Promise<{ message: string }> {
+    return await this.superAdminService.restoreClinic(id);
+  }
+
   @MessagePattern({ cmd: SuperAdminPatterns.GET_ALL_CLINICS })
-  async getAllClinics(): Promise<
-    { id: string; name: string; speciality: string; createdAt: Date }[]
+  async getAllClinics(
+    @Payload() paginationRequest: PaginationRequest,
+  ): Promise<
+    PaginationResponse<{
+      id: string;
+      name: string;
+      speciality: string;
+      createdAt: Date;
+    }>
   > {
-    return await this.superAdminService.getAllClinics();
+    return await this.superAdminService.getAllClinics(paginationRequest);
   }
 
   @MessagePattern({ cmd: SuperAdminPatterns.GET_ALL_CLINICS_WITH_ID })
@@ -98,6 +128,16 @@ export class SuperAdminController {
     @Payload() updateDoctorInternalDto: UpdateDoctorInternalDto,
   ) {
     return await this.superAdminService.updateDoctor(updateDoctorInternalDto);
+  }
+
+  @MessagePattern({ cmd: SuperAdminPatterns.DELETE_DOCTOR })
+  async deleteDoctor(@Payload() globalId: string) {
+    return await this.superAdminService.deleteDoctor(globalId);
+  }
+
+  @MessagePattern({ cmd: SuperAdminPatterns.RESTORE_DOCTOR })
+  async restoreDoctor(@Payload() globalId: string) {
+    return await this.superAdminService.restoreDoctor(globalId);
   }
 
   @MessagePattern({ cmd: SuperAdminPatterns.GET_CLINIC_BY_GLOBAL_ID })
@@ -146,7 +186,7 @@ export class SuperAdminController {
   async getSuperAdminPatients(
     @Payload()
     doctorInternalPaginationRequestDto: DoctorInternalPaginationRequestDto,
-  ) : Promise<
+  ): Promise<
     PaginationResponse<{
       id: string;
       name: string;
@@ -166,7 +206,7 @@ export class SuperAdminController {
   async getSuperAdminVisits(
     @Payload()
     doctorInternalPaginationRequestDto: DoctorInternalPaginationRequestDto,
-  ) : Promise<
+  ): Promise<
     PaginationResponse<{
       id: string;
       diagnoses: string;
@@ -208,6 +248,34 @@ export class SuperAdminController {
   @EventPattern({ cmd: SuperAdminPatterns.SCAN_UPLOAD })
   uploadScan(@Payload() uploadScanInternalDto: UploadScanInternalDto): void {
     this.superAdminService.uploadScan(uploadScanInternalDto);
+  }
+
+  @MessagePattern({ cmd: SuperAdminPatterns.VISIT_UPDATE })
+  async visitUpdate(
+    @Payload() updateVisitInternalDto: UpdateVisitInternalDto,
+  ): Promise<{ message: string }> {
+    return await this.superAdminService.updateVisit(updateVisitInternalDto);
+  }
+
+  @MessagePattern({ cmd: SuperAdminPatterns.MEDICATION_UPDATE })
+  async medicationUpdate(
+    @Payload() updateMedicationInternalDto: UpdateMedicationInternalDto,
+  ): Promise<{ message: string }> {
+    return await this.superAdminService.updateMedication(updateMedicationInternalDto);
+  }
+
+  @MessagePattern({ cmd: SuperAdminPatterns.LAB_UPDATE })
+  async labUpdate(
+    @Payload() updateLabInternalDto: UpdateLabInternalDto,
+  ): Promise<{ message: string }> {
+    return await this.superAdminService.updateLab(updateLabInternalDto);
+  }
+
+  @MessagePattern({ cmd: SuperAdminPatterns.SCAN_UPDATE })
+  async scanUpdate(
+    @Payload() updateScanInternalDto: UpdateScanInternalDto,
+  ): Promise<{ message: string }> {
+    return await this.superAdminService.updateScan(updateScanInternalDto);
   }
 
   @MessagePattern({
@@ -313,7 +381,10 @@ export class SuperAdminController {
   @MessagePattern({ cmd: SuperAdminPatterns.GET_CLINIC_VISITS })
   async getClinicVisits(
     @Payload()
-    data: { clinicGlobalId: string; paginationRequest: PaginationRequest },
+    data: {
+      clinicGlobalId: string;
+      paginationRequest: PaginationRequest;
+    },
   ): Promise<
     PaginationResponse<{
       id: string;
@@ -340,7 +411,10 @@ export class SuperAdminController {
   @MessagePattern({ cmd: SuperAdminPatterns.GET_CLINIC_DOCTORS })
   async getClinicDoctors(
     @Payload()
-    data: { clinicGlobalId: string; paginationRequest: PaginationRequest },
+    data: {
+      clinicGlobalId: string;
+      paginationRequest: PaginationRequest;
+    },
   ): Promise<
     PaginationResponse<{
       id: string;
@@ -364,7 +438,10 @@ export class SuperAdminController {
   @MessagePattern({ cmd: SuperAdminPatterns.GET_CLINIC_PATIENTS })
   async getClinicPatients(
     @Payload()
-    data: { clinicGlobalId: string; paginationRequest: PaginationRequest },
+    data: {
+      clinicGlobalId: string;
+      paginationRequest: PaginationRequest;
+    },
   ): Promise<
     PaginationResponse<{
       id: string;

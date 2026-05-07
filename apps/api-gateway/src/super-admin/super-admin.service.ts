@@ -23,6 +23,8 @@ import { Doctor, Patient } from '../../../auth/src/entities';
 import {
   CreateClinicDto,
   CreateClinicInternalDto,
+  UpdateClinicDto,
+  UpdateClinicInternalDto,
 } from '../../../super-admin/src/dtos';
 import {
   CreateMedicationDto,
@@ -34,6 +36,14 @@ import {
   UploadLabInternalDto,
   UploadScanDto,
   UploadScanInternalDto,
+  UpdateLabDto,
+  UpdateLabInternalDto,
+  UpdateMedicationDto,
+  UpdateMedicationInternalDto,
+  UpdateScanDto,
+  UpdateScanInternalDto,
+  UpdateVisitDto,
+  UpdateVisitInternalDto,
 } from '../../../doctor/src/dtos';
 
 @Injectable()
@@ -41,7 +51,7 @@ export class SuperAdminService {
   constructor(
     @Inject(Microservices.SUPER_ADMIN)
     private readonly superAdminClient: ClientProxy,
-  ) {}
+  ) { }
 
   async isUp(): Promise<string> {
     return await lastValueFrom<string>(
@@ -194,15 +204,59 @@ export class SuperAdminService {
     );
   }
 
-  async getAllClinics(): Promise<
-    { id: string; name: string; speciality: string; createdAt: Date }[]
+  async updateClinic(
+    id: string,
+    updateClinicDto: UpdateClinicDto,
+  ): Promise<{ id: string; name: string; speciality: string }> {
+    const updateClinicInternalDto = new UpdateClinicInternalDto(
+      id,
+      updateClinicDto,
+    );
+    return await lastValueFrom<{
+      id: string;
+      name: string;
+      speciality: string;
+    }>(
+      this.superAdminClient.send(
+        { cmd: SuperAdminPatterns.UPDATE_CLINIC },
+        updateClinicInternalDto,
+      ),
+    );
+  }
+
+  async deleteClinic(id: string): Promise<{ message: string }> {
+    return await lastValueFrom<{ message: string }>(
+      this.superAdminClient.send({ cmd: SuperAdminPatterns.DELETE_CLINIC }, id),
+    );
+  }
+
+  async restoreClinic(id: string): Promise<{ message: string }> {
+    return await lastValueFrom<{ message: string }>(
+      this.superAdminClient.send({ cmd: SuperAdminPatterns.RESTORE_CLINIC }, id),
+    );
+  }
+
+  async getAllClinics(
+    paginationRequest: PaginationRequest,
+  ): Promise<
+    PaginationResponse<{
+      id: string;
+      name: string;
+      speciality: string;
+      createdAt: Date;
+    }>
   > {
     return await lastValueFrom<
-      { id: string; name: string; speciality: string; createdAt: Date }[]
+      PaginationResponse<{
+        id: string;
+        name: string;
+        speciality: string;
+        createdAt: Date;
+      }>
     >(
       this.superAdminClient.send(
         { cmd: SuperAdminPatterns.GET_ALL_CLINICS },
-        {},
+        paginationRequest,
       ),
     );
   }
@@ -238,6 +292,106 @@ export class SuperAdminService {
       this.superAdminClient.send(
         { cmd: SuperAdminPatterns.UPDATE_DOCTOR },
         updateDoctorInternalDto,
+      ),
+    );
+  }
+
+  async deleteDoctor(globalId: string): Promise<{ message: string }> {
+    return await lastValueFrom<{ message: string }>(
+      this.superAdminClient.send(
+        { cmd: SuperAdminPatterns.DELETE_DOCTOR },
+        globalId,
+      ),
+    );
+  }
+
+  async restoreDoctor(globalId: string): Promise<{ message: string }> {
+    return await lastValueFrom<{ message: string }>(
+      this.superAdminClient.send(
+        { cmd: SuperAdminPatterns.RESTORE_DOCTOR },
+        globalId,
+      ),
+    );
+  }
+
+  async updateVisit(
+    id: string,
+    updateVisitDto: UpdateVisitDto,
+    audio?: Express.Multer.File,
+  ): Promise<{ message: string }> {
+    const updateVisitInternalDto = new UpdateVisitInternalDto(
+      id,
+      updateVisitDto,
+      audio?.path,
+      audio?.mimetype,
+    );
+    return await lastValueFrom<{ message: string }>(
+      this.superAdminClient.send(
+        { cmd: SuperAdminPatterns.VISIT_UPDATE },
+        updateVisitInternalDto,
+      ),
+    );
+  }
+
+  async updateMedication(
+    id: string,
+    updateMedicationDto: UpdateMedicationDto,
+    audio?: Express.Multer.File,
+  ): Promise<{ message: string }> {
+    const updateMedicationInternalDto = new UpdateMedicationInternalDto(
+      id,
+      updateMedicationDto,
+      audio?.path,
+      audio?.mimetype,
+    );
+    return await lastValueFrom<{ message: string }>(
+      this.superAdminClient.send(
+        { cmd: SuperAdminPatterns.MEDICATION_UPDATE },
+        updateMedicationInternalDto,
+      ),
+    );
+  }
+
+  async updateLab(
+    id: string,
+    updateLabDto: UpdateLabDto,
+    image?: Express.Multer.File,
+    audio?: Express.Multer.File,
+  ): Promise<{ message: string }> {
+    const updateLabInternalDto = new UpdateLabInternalDto(
+      id,
+      updateLabDto,
+      image?.path,
+      image?.mimetype,
+      audio?.path,
+      audio?.mimetype,
+    );
+    return await lastValueFrom<{ message: string }>(
+      this.superAdminClient.send(
+        { cmd: SuperAdminPatterns.LAB_UPDATE },
+        updateLabInternalDto,
+      ),
+    );
+  }
+
+  async updateScan(
+    id: string,
+    updateScanDto: UpdateScanDto,
+    image?: Express.Multer.File,
+    audio?: Express.Multer.File,
+  ): Promise<{ message: string }> {
+    const updateScanInternalDto = new UpdateScanInternalDto(
+      id,
+      updateScanDto,
+      image?.path,
+      image?.mimetype,
+      audio?.path,
+      audio?.mimetype,
+    );
+    return await lastValueFrom<{ message: string }>(
+      this.superAdminClient.send(
+        { cmd: SuperAdminPatterns.SCAN_UPDATE },
+        updateScanInternalDto,
       ),
     );
   }
@@ -482,7 +636,9 @@ export class SuperAdminService {
       createdAt: Date;
     }>(
       this.superAdminClient.send(
-        { cmd: SuperAdminPatterns.SEARCH_FOR_PATIENT_BY_SOCIAL_SECURITY_NUMBER },
+        {
+          cmd: SuperAdminPatterns.SEARCH_FOR_PATIENT_BY_SOCIAL_SECURITY_NUMBER,
+        },
         socialSecurityNumber,
       ),
     );
