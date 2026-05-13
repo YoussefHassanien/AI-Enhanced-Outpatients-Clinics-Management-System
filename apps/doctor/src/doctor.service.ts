@@ -17,9 +17,9 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { lastValueFrom } from 'rxjs';
 import { IsNull, Repository } from 'typeorm';
 import { v4 as uuidv4 } from 'uuid';
-import { ClinicInternalPaginationRequestDto } from '../../admin/src/dtos';
+import { ClinicInternalPaginationRequestDto } from '../../super-admin/src/dtos';
 import { TranscribeAudioInternalDto } from '../../asr/src/dtos';
-import { Admin, Doctor, Patient } from '../../auth/src/entities';
+import { SuperAdmin, Doctor, Patient } from '../../auth/src/entities';
 import {
   LabAudioInternalDto,
   LabPhotoInternalDto,
@@ -34,10 +34,15 @@ import {
   CreateMedicationInternalDto,
   CreateVisitInternalDto,
   DoctorInternalPaginationRequestDto,
+  UpdateLabInternalDto,
+  UpdateMedicationInternalDto,
+  UpdateScanInternalDto,
+  UpdateVisitInternalDto,
   UploadLabInternalDto,
   UploadScanInternalDto,
 } from './dtos';
 import { Lab, Medication, Scan, Visit } from './entities';
+import * as fs from 'fs/promises';
 
 @Injectable()
 export class DoctorService {
@@ -243,6 +248,18 @@ export class DoctorService {
   private async extractTextFromAudio(
     transcribeAudioDto: TranscribeAudioInternalDto,
   ): Promise<string> {
+    if (transcribeAudioDto.filePath) {
+      try {
+        const audioBuffer = await fs.readFile(
+          transcribeAudioDto.filePath as string,
+        );
+        transcribeAudioDto.audio_base64 = audioBuffer.toString('base64');
+      } catch (error) {
+        this.logger.error(`Failed to read audio file: ${error.message}`);
+        throw new RpcException(new ErrorResponse('Failed to process audio file', 500));
+      }
+    }
+
     const text = await lastValueFrom<{ transcription: string }>(
       this.asrClient.send(
         { cmd: AsrPatterns.TRANSCRIBE_AUDIO },
@@ -280,8 +297,8 @@ export class DoctorService {
 
   private async getClinicalStaffByUserId(
     doctorUserId: number,
-  ): Promise<Doctor | Admin | null> {
-    const doctor = await lastValueFrom<Doctor | Admin | null>(
+  ): Promise<Doctor | SuperAdmin | null> {
+    const doctor = await lastValueFrom<Doctor | SuperAdmin | null>(
       this.authClient.send(
         { cmd: AuthPatterns.GET_CLINICAL_STAFF_BY_USER_ID },
         doctorUserId,
@@ -1002,45 +1019,28 @@ export class DoctorService {
   async createVisit(
     createVisitInternalDto: CreateVisitInternalDto,
   ): Promise<void> {
-    const patient = await this.getPatientByGlobalId(
-      createVisitInternalDto.patientId,
-    );
+    const patient = await this.getPatientByGlobalId(createVisitInternalDto.patientId);
+    if (!patient) throw new RpcException(new ErrorResponse('Patient not found!', 404));
+    this.logger.log('Patient is found');
 
-    if (!patient) {
-      throw new RpcException(new ErrorResponse('Patient not found!', 404));
-    }
-
-    const doctor = await this.getClinicalStaffByUserId(
-      createVisitInternalDto.doctorUserId,
-    );
-
+    const doctor = await this.getClinicalStaffByUserId(createVisitInternalDto.doctorUserId);
     if (!doctor) {
       throw new RpcException(
         new ErrorResponse(
-          'There is no doctor or admin associated with this userId',
+          'There is no doctor associated with this userId',
           404,
         ),
       );
     }
+    this.logger.log('Clinical staff member is found');
 
+    this.logger.log('Fetching clinic...');
     const clinic = await this.getClinicById(doctor.clinicId);
+    if (!clinic) throw new RpcException(new ErrorResponse('Clinic not found!', 404));
+    this.logger.log('Clinic is found');
 
-    if (!clinic) {
-      throw new RpcException(new ErrorResponse('Clinic not found!', 404));
-    }
-
-    // If no written diagnoses provided, require audio to be present
-    if (
-      !createVisitInternalDto.diagnoses &&
-      (!createVisitInternalDto.audioFilePath ||
-        !createVisitInternalDto.audioMimetype)
-    ) {
-      throw new RpcException(
-        new ErrorResponse(
-          'Either audio or written diagnoses must be provided',
-          400,
-        ),
-      );
+    if (!createVisitInternalDto.diagnoses && (!createVisitInternalDto.audioFilePath || !createVisitInternalDto.audioMimetype)) {
+      throw new RpcException(new ErrorResponse('Either audio or written diagnoses must be provided', 400));
     }
 
     const visitGlobalId = uuidv4();
@@ -1050,39 +1050,31 @@ export class DoctorService {
       diagnosesAudioUrl: null,
       patientId: patient.id,
       userId: doctor.user.id,
-      clinicId: doctor.clinicId,
+      clinicId: clinic.id,
     });
 
-    if (createVisitInternalDto.diagnoses) {
-      visit.diagnoses = createVisitInternalDto.diagnoses;
-    }
+    if (createVisitInternalDto.diagnoses) visit.diagnoses = createVisitInternalDto.diagnoses;
 
-    if (
-      createVisitInternalDto.audioFilePath &&
-      createVisitInternalDto.audioMimetype
-    ) {
+    if (createVisitInternalDto.audioFilePath && createVisitInternalDto.audioMimetype) {
       const visitAudioInternalDto = new VisitAudioInternalDto(
-        visitGlobalId,
-        patient.globalId,
-        createVisitInternalDto.audioFilePath,
-        createVisitInternalDto.audioMimetype,
+        visitGlobalId, patient.globalId, createVisitInternalDto.audioFilePath, createVisitInternalDto.audioMimetype,
       );
 
-      visit.diagnosesAudioUrl = await this.uploadVisitAudio(
-        visitAudioInternalDto,
-      );
+      this.logger.log('Sending audio to Cloud Storage...');
+      visit.diagnosesAudioUrl = await this.uploadVisitAudio(visitAudioInternalDto);
+      this.logger.log('Cloud Storage replied successfully');
 
       if (!createVisitInternalDto.diagnoses) {
         const transcribeAudioDto = new TranscribeAudioInternalDto();
         transcribeAudioDto.filePath = createVisitInternalDto.audioFilePath;
 
+        this.logger.log('Sending audio to Python ASR worker...');
         visit.diagnoses = await this.extractTextFromAudio(transcribeAudioDto);
         this.logger.log('Diagnoses is successfully extracted from visit audio');
+        this.logger.log('ASR worker replied successfully');
       }
 
-      await this.deleteCloudStorageTemporaryFile(
-        createVisitInternalDto.audioFilePath,
-      );
+      await this.deleteCloudStorageTemporaryFile(createVisitInternalDto.audioFilePath);
     }
 
     await this.visitsRepository.insert(visit);
@@ -1158,6 +1150,277 @@ export class DoctorService {
 
     await this.medicationsRepository.insert(medication);
     this.logger.log('Successfully inserted medication');
+  }
+
+  async updateVisit(
+    updateVisitInternalDto: UpdateVisitInternalDto,
+  ): Promise<{ message: string }> {
+    const visit = await this.visitsRepository.findOne({
+      where: { globalId: updateVisitInternalDto.id, deletedAt: IsNull() },
+    });
+
+    if (!visit) {
+      throw new RpcException(new ErrorResponse('Visit not found!', 404));
+    }
+
+    if (updateVisitInternalDto.diagnoses) {
+      visit.diagnoses = updateVisitInternalDto.diagnoses;
+    }
+
+    if (
+      updateVisitInternalDto.audioFilePath &&
+      updateVisitInternalDto.audioMimetype
+    ) {
+      const patient = await this.getPatientById(visit.patientId);
+      if (!patient) {
+        throw new RpcException(new ErrorResponse('Patient not found!', 404));
+      }
+
+      const visitAudioInternalDto = new VisitAudioInternalDto(
+        visit.globalId,
+        patient.globalId,
+        updateVisitInternalDto.audioFilePath,
+        updateVisitInternalDto.audioMimetype,
+      );
+
+      visit.diagnosesAudioUrl = await this.uploadVisitAudio(
+        visitAudioInternalDto,
+      );
+
+      if (!updateVisitInternalDto.diagnoses) {
+        const transcribeAudioDto = new TranscribeAudioInternalDto();
+        transcribeAudioDto.filePath = updateVisitInternalDto.audioFilePath;
+
+        visit.diagnoses = await this.extractTextFromAudio(transcribeAudioDto);
+      }
+
+      await this.deleteCloudStorageTemporaryFile(
+        updateVisitInternalDto.audioFilePath,
+      );
+    }
+
+    await this.visitsRepository.save(visit);
+    this.logger.log('Successfully updated visit');
+    return { message: 'Visit updated successfully' };
+  }
+
+  async updateMedication(
+    updateMedicationInternalDto: UpdateMedicationInternalDto,
+  ): Promise<{ message: string }> {
+    const medication = await this.medicationsRepository.findOne({
+      where: {
+        globalId: updateMedicationInternalDto.id,
+        deletedAt: IsNull(),
+      },
+    });
+
+    if (!medication) {
+      throw new RpcException(new ErrorResponse('Medication not found!', 404));
+    }
+
+    if (updateMedicationInternalDto.name) {
+      medication.name = updateMedicationInternalDto.name;
+    }
+
+    if (updateMedicationInternalDto.dosage) {
+      medication.dosage = updateMedicationInternalDto.dosage;
+    }
+
+    if (updateMedicationInternalDto.period) {
+      medication.period = updateMedicationInternalDto.period;
+    }
+
+    if (updateMedicationInternalDto.comments) {
+      medication.comments = updateMedicationInternalDto.comments;
+    }
+
+    if (
+      updateMedicationInternalDto.audioFilePath &&
+      updateMedicationInternalDto.audioMimetype
+    ) {
+      const patient = await this.getPatientById(medication.patientId);
+      if (!patient) {
+        throw new RpcException(new ErrorResponse('Patient not found!', 404));
+      }
+
+      const medicationAudioInternalDto: MedicationAudioInternalDto = {
+        medicationGlobalId: medication.globalId,
+        patientGlobalId: patient.globalId,
+        audioFilePath: updateMedicationInternalDto.audioFilePath,
+        audioMimetype: updateMedicationInternalDto.audioMimetype,
+      };
+
+      medication.commentsAudioUrl = await this.uploadMedicationAudio(
+        medicationAudioInternalDto,
+      );
+
+      if (!updateMedicationInternalDto.comments) {
+        const transcribeAudioDto: TranscribeAudioInternalDto = {
+          filePath: updateMedicationInternalDto.audioFilePath,
+        };
+
+        medication.comments =
+          await this.extractTextFromAudio(transcribeAudioDto);
+      }
+
+      await this.deleteCloudStorageTemporaryFile(
+        updateMedicationInternalDto.audioFilePath,
+      );
+    }
+
+    await this.medicationsRepository.save(medication);
+    this.logger.log('Successfully updated medication');
+    return { message: 'Medication updated successfully' };
+  }
+
+  async updateLab(
+    updateLabInternalDto: UpdateLabInternalDto,
+  ): Promise<{ message: string }> {
+    const lab = await this.labsRepository.findOne({
+      where: { globalId: updateLabInternalDto.id, deletedAt: IsNull() },
+    });
+
+    if (!lab) {
+      throw new RpcException(new ErrorResponse('Lab not found!', 404));
+    }
+
+    if (updateLabInternalDto.name) {
+      lab.name = updateLabInternalDto.name;
+    }
+
+    if (updateLabInternalDto.comments) {
+      lab.comments = updateLabInternalDto.comments;
+    }
+
+    const patient = await this.getPatientById(lab.patientId);
+    if (!patient) {
+      throw new RpcException(new ErrorResponse('Patient not found!', 404));
+    }
+
+    if (
+      updateLabInternalDto.imageFilePath &&
+      updateLabInternalDto.imageMimetype
+    ) {
+      const labPhotoInternalDto: LabPhotoInternalDto = {
+        labGlobalId: lab.globalId,
+        patientGlobalId: patient.globalId,
+        imageFilePath: updateLabInternalDto.imageFilePath,
+        imageMimetype: updateLabInternalDto.imageMimetype,
+      };
+
+      lab.photoUrl = await this.uploadLabPhoto(labPhotoInternalDto);
+
+      await this.deleteCloudStorageTemporaryFile(
+        updateLabInternalDto.imageFilePath,
+      );
+    }
+
+    if (
+      updateLabInternalDto.audioFilePath &&
+      updateLabInternalDto.audioMimetype
+    ) {
+      const labAudioInternalDto: LabAudioInternalDto = {
+        labGlobalId: lab.globalId,
+        patientGlobalId: patient.globalId,
+        audioFilePath: updateLabInternalDto.audioFilePath,
+        audioMimetype: updateLabInternalDto.audioMimetype,
+      };
+
+      lab.commentsAudioUrl = await this.uploadLabAudio(labAudioInternalDto);
+
+      if (!updateLabInternalDto.comments) {
+        const transcribeAudioDto: TranscribeAudioInternalDto = {
+          filePath: updateLabInternalDto.audioFilePath,
+        };
+
+        lab.comments = await this.extractTextFromAudio(transcribeAudioDto);
+      }
+
+      await this.deleteCloudStorageTemporaryFile(
+        updateLabInternalDto.audioFilePath,
+      );
+    }
+
+    await this.labsRepository.save(lab);
+    this.logger.log('Successfully updated lab');
+    return { message: 'Lab updated successfully' };
+  }
+
+  async updateScan(
+    updateScanInternalDto: UpdateScanInternalDto,
+  ): Promise<{ message: string }> {
+    const scan = await this.scansRepository.findOne({
+      where: { globalId: updateScanInternalDto.id, deletedAt: IsNull() },
+    });
+
+    if (!scan) {
+      throw new RpcException(new ErrorResponse('Scan not found!', 404));
+    }
+
+    if (updateScanInternalDto.name) {
+      scan.name = updateScanInternalDto.name;
+    }
+
+    if (updateScanInternalDto.type) {
+      scan.type = updateScanInternalDto.type;
+    }
+
+    if (updateScanInternalDto.comments) {
+      scan.comments = updateScanInternalDto.comments;
+    }
+
+    const patient = await this.getPatientById(scan.patientId);
+    if (!patient) {
+      throw new RpcException(new ErrorResponse('Patient not found!', 404));
+    }
+
+    if (
+      updateScanInternalDto.imageFilePath &&
+      updateScanInternalDto.imageMimetype
+    ) {
+      const scanPhotoInternalDto: ScanPhotoInternalDto = {
+        scanGlobalId: scan.globalId,
+        patientGlobalId: patient.globalId,
+        imageFilePath: updateScanInternalDto.imageFilePath,
+        imageMimetype: updateScanInternalDto.imageMimetype,
+      };
+
+      scan.photoUrl = await this.uploadScanPhoto(scanPhotoInternalDto);
+
+      await this.deleteCloudStorageTemporaryFile(
+        updateScanInternalDto.imageFilePath,
+      );
+    }
+
+    if (
+      updateScanInternalDto.audioFilePath &&
+      updateScanInternalDto.audioMimetype
+    ) {
+      const scanAudioInternalDto = new ScanAudioInternalDto(
+        scan.globalId,
+        patient.globalId,
+        updateScanInternalDto.audioFilePath,
+        updateScanInternalDto.audioMimetype,
+      );
+
+      scan.commentsAudioUrl = await this.uploadScanAudio(scanAudioInternalDto);
+
+      if (!updateScanInternalDto.comments) {
+        const transcribeAudioDto: TranscribeAudioInternalDto = {
+          filePath: updateScanInternalDto.audioFilePath,
+        };
+
+        scan.comments = await this.extractTextFromAudio(transcribeAudioDto);
+      }
+
+      await this.deleteCloudStorageTemporaryFile(
+        updateScanInternalDto.audioFilePath,
+      );
+    }
+
+    await this.scansRepository.save(scan);
+    this.logger.log('Successfully updated scan');
+    return { message: 'Scan updated successfully' };
   }
 
   async uploadLab(uploadLabInternalDto: UploadLabInternalDto): Promise<void> {

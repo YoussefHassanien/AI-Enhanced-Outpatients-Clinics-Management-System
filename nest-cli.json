@@ -10,15 +10,6 @@
   "monorepo": true,
   "root": "apps/api-gateway",
   "projects": {
-    "admin": {
-      "type": "application",
-      "root": "apps/admin",
-      "entryFile": "main",
-      "sourceRoot": "apps/admin/src",
-      "compilerOptions": {
-        "tsConfigPath": "apps/admin/tsconfig.app.json"
-      }
-    },
     "api-gateway": {
       "type": "application",
       "root": "apps/api-gateway",
@@ -26,15 +17,6 @@
       "sourceRoot": "apps/api-gateway/src",
       "compilerOptions": {
         "tsConfigPath": "apps/api-gateway/tsconfig.app.json"
-      }
-    },
-    "asr": {
-      "type": "application",
-      "root": "apps/asr",
-      "entryFile": "main",
-      "sourceRoot": "apps/asr/src",
-      "compilerOptions": {
-        "tsConfigPath": "apps/asr/tsconfig.app.json"
       }
     },
     "auth": {

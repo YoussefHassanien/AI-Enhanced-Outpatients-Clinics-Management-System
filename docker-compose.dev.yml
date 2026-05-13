@@ -33,7 +33,6 @@ services:
       - doctor
       - ocr
       - asr
-      - admin
       - super-admin
       - cloud-storage
     command: node api-gateway/main
@@ -58,20 +57,6 @@ services:
       - ./logs:/app/logs
       - ./tmp/asr_uploads:/app/tmp/asr_uploads
 
-  admin:
-    build:
-      context: .
-      dockerfile: ./apps/admin/Dockerfile
-    env_file:
-      - ./apps/admin/.env
-    depends_on:
-      - rabbitmq
-    command: node admin/main
-    networks:
-      - services-network
-    volumes:
-      - ./logs:/app/logs
-
   super-admin:
     build:
       context: .
@@ -94,12 +79,19 @@ services:
       - ./apps/asr/.env
     depends_on:
       - rabbitmq
-    command: node asr/main
+    command: ['python3', 'run_consumer.py']
     networks:
       - services-network
     volumes:
-      - ./logs:/app/logs
-      - ./tmp/asr_uploads:/app/tmp/asr_uploads
+      - ./logs/asr:/app/logs
+      - ./asr_model_cache:/app/models
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
   ocr:
     build:
       context: .

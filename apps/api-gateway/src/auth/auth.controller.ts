@@ -71,7 +71,7 @@ export class AuthController {
     return await this.authService.createAdmin(createAdminDto);
   }
 
-  @Roles(Role.SUPER_ADMIN, Role.ADMIN)
+  @Roles(Role.SUPER_ADMIN)
   @UseGuards(JwtAuthGuard)
   @Post('doctor/create')
   async createDoctor(
@@ -81,7 +81,7 @@ export class AuthController {
     return await this.authService.createDoctor(createDoctorDto, req);
   }
 
-  @Roles(Role.SUPER_ADMIN, Role.ADMIN, Role.DOCTOR)
+  @Roles(Role.SUPER_ADMIN, Role.DOCTOR)
   @UseGuards(JwtAuthGuard)
   @Post('patient/create')
   async createPatient(

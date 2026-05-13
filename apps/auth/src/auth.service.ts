@@ -19,7 +19,7 @@ import * as bcrypt from 'bcrypt';
 import { Algorithm } from 'jsonwebtoken';
 import { lastValueFrom } from 'rxjs';
 import { EntityManager, IsNull, Not, Repository } from 'typeorm';
-import { ClinicInternalPaginationRequestDto } from '../../admin/src/dtos';
+import { ClinicInternalPaginationRequestDto } from '../../super-admin/src/dtos';
 import { Clinic } from '../../super-admin/src/entities';
 import { JwtPayload } from './constants';
 import {
@@ -32,7 +32,7 @@ import {
   UpdateDoctorInternalDto,
   UpdatePatientInternalDto,
 } from './dtos';
-import { Admin, Doctor, Patient, SuperAdmin, User } from './entities';
+import { Doctor, Patient, SuperAdmin, User } from './entities';
 
 @Injectable()
 export class AuthService {
@@ -52,8 +52,7 @@ export class AuthService {
     private readonly patientRepository: Repository<Patient>,
     @InjectRepository(Doctor)
     private readonly doctorRepository: Repository<Doctor>,
-    @InjectRepository(Admin)
-    private readonly adminRepository: Repository<Admin>,
+
     @InjectRepository(SuperAdmin)
     private readonly superAdminRepository: Repository<SuperAdmin>,
     @Inject(CommonServices.LOGGING) logger: LoggingService,
@@ -96,20 +95,7 @@ export class AuthService {
       return doctor.user;
     }
 
-    const admin = await this.adminRepository.findOne({
-      relations: { user: true },
-      where: {
-        email,
-        deletedAt: IsNull(),
-        user: Not(IsNull()),
-      },
-    });
 
-    if (admin && (await bcrypt.compare(password, admin.password))) {
-      this.logger.log('Validated an admin');
-
-      return admin.user;
-    }
 
     const superAdmin = await this.superAdminRepository.findOne({
       relations: { user: true },
@@ -272,27 +258,7 @@ export class AuthService {
     return doctor;
   }
 
-  private async checkExistingAdmin(
-    email: string,
-    phone: string,
-  ): Promise<Admin | null> {
-    email = email.trim().toLowerCase();
 
-    const admin = await this.adminRepository.findOne({
-      where: [
-        { email, deletedAt: IsNull() },
-        { phone, deletedAt: IsNull() },
-      ],
-    });
-
-    if (!admin) {
-      this.logger.log('Admin does not exist');
-      return null;
-    }
-
-    this.logger.log('Admin already exists');
-    return admin;
-  }
 
   private async checkExistingSuperAdmin(
     email: string,
@@ -416,12 +382,13 @@ export class AuthService {
     });
   }
 
-  async getAdminByUserId(userId: number): Promise<Admin | null> {
-    return await this.adminRepository.findOne({
+  async getSuperAdminByUserId(userId: number): Promise<SuperAdmin | null> {
+    return await this.superAdminRepository.findOne({
       relations: { user: true },
       select: {
         updatedAt: false,
         deletedAt: false,
+        createdAt: false,
         password: false,
         user: {
           id: true,
@@ -460,14 +427,7 @@ export class AuthService {
       throw new RpcException(new ErrorResponse('Doctor already exists!', 400));
     }
 
-    const existingAdmin = await this.checkExistingAdmin(
-      doctorDto.email,
-      doctorDto.phone,
-    );
 
-    if (existingAdmin) {
-      throw new RpcException(new ErrorResponse('Doctor already exists!', 400));
-    }
 
     const existingSuperAdmin = await this.checkExistingSuperAdmin(
       doctorDto.email,
@@ -518,8 +478,7 @@ export class AuthService {
           speciality: doctorDto.speciality,
           phone: doctorDto.phone,
           isApproved:
-            doctorDto.role === Role.SUPER_ADMIN ||
-            doctorDto.role === Role.ADMIN,
+            doctorDto.role === Role.SUPER_ADMIN,
           clinicId: clinic.id,
         });
         this.logger.log('Successfully created a doctor');
@@ -532,79 +491,7 @@ export class AuthService {
     );
   }
 
-  async createAdmin(adminDto: CreateAdminDto): Promise<string> {
-    const existingUser = await this.checkExistingUser(
-      adminDto.socialSecurityNumber,
-    );
 
-    if (existingUser) {
-      throw new RpcException(new ErrorResponse('Admin already exists!', 400));
-    }
-
-    const existingAdmin = await this.checkExistingAdmin(
-      adminDto.email,
-      adminDto.phone,
-    );
-
-    if (existingAdmin) {
-      throw new RpcException(new ErrorResponse('Admin already exists!', 400));
-    }
-
-    const existingSuperAdmin = await this.checkExistingSuperAdmin(
-      adminDto.email,
-      adminDto.phone,
-    );
-
-    if (existingSuperAdmin) {
-      throw new RpcException(new ErrorResponse('Admin already exists!', 400));
-    }
-
-    const existingDoctor = await this.checkExistingDoctor(
-      adminDto.email,
-      adminDto.phone,
-    );
-
-    if (existingDoctor) {
-      throw new RpcException(new ErrorResponse('Admin already exists!', 400));
-    }
-
-    return await this.userRepository.manager.transaction(
-      async (manager: EntityManager) => {
-        const createdUser = await this.createUser(
-          adminDto,
-          Role.ADMIN,
-          manager,
-        );
-
-        if (!createdUser) {
-          throw new RpcException(
-            new ErrorResponse('Failed to create a user!', 500),
-          );
-        }
-
-        const hashedPassword = await bcrypt.hash(
-          adminDto.password,
-          this.rounds,
-        );
-        this.logger.log("Successfully hashed admin's password");
-
-        const adminRepository = manager.getRepository(Admin);
-
-        const admin = adminRepository.create({
-          user: createdUser,
-          email: adminDto.email.trim().toLowerCase(),
-          password: hashedPassword,
-          phone: adminDto.phone,
-        });
-        this.logger.log('Successfully created an admin');
-
-        await adminRepository.insert(admin);
-        this.logger.log('Successfully inserted an admin');
-
-        return admin.globalId;
-      },
-    );
-  }
 
   async createPatient(patientDto: CreatePatientDto): Promise<string> {
     const existingUser = await this.checkExistingUser(
@@ -660,18 +547,15 @@ export class AuthService {
       };
     }>
   > {
-    const count = await this.doctorRepository.count({
-      where: {
-        deletedAt: IsNull(),
-        user: {
-          deletedAt: IsNull(),
-        },
-      },
-      relations: { user: true },
-    });
-    this.logger.log(`Doctors count is ${count}`);
+    const whereCondition: any = {};
 
-    const doctors = await this.doctorRepository.find({
+    if (paginationRequest.onlyDeleted) {
+      whereCondition.deletedAt = Not(IsNull());
+    } else if (!paginationRequest.includeDeleted) {
+      whereCondition.deletedAt = IsNull();
+    }
+
+    const [doctors, count] = await this.doctorRepository.findAndCount({
       relations: {
         user: true,
       },
@@ -691,17 +575,15 @@ export class AuthService {
         speciality: true,
         isApproved: true,
       },
-      where: {
-        deletedAt: IsNull(),
-        user: {
-          deletedAt: IsNull(),
-        },
-      },
+      where: whereCondition,
       skip: (paginationRequest.page - 1) * paginationRequest.limit,
       take: paginationRequest.limit,
+      withDeleted:
+        paginationRequest.includeDeleted || paginationRequest.onlyDeleted,
     });
+    this.logger.log(`Doctors count is ${count}`);
     this.logger.log(
-      `Successfully retrieved ${paginationRequest.limit} doctors from page: ${paginationRequest.page - 1}`,
+      `Successfully retrieved ${paginationRequest.limit} doctors from page: ${paginationRequest.page}`,
     );
 
     const response: PaginationResponse<{
@@ -1029,14 +911,12 @@ export class AuthService {
         email,
       });
 
-      const adminConflict = await this.adminRepository.findOneBy({
-        email,
-      });
+
       const superAdminConflict = await this.superAdminRepository.findOneBy({
         email,
       });
 
-      if (doctorConflict || adminConflict || superAdminConflict) {
+      if (doctorConflict || superAdminConflict) {
         throw new RpcException(new ErrorResponse('Email already exists!', 400));
       }
     }
@@ -1052,14 +932,12 @@ export class AuthService {
         phone,
       });
 
-      const adminConflict = await this.adminRepository.findOneBy({
-        phone,
-      });
+
       const superAdminConflict = await this.superAdminRepository.findOneBy({
         phone,
       });
 
-      if (doctorConflict || adminConflict || superAdminConflict) {
+      if (doctorConflict || superAdminConflict) {
         throw new RpcException(new ErrorResponse('Phone already exists!', 400));
       }
     }
@@ -1114,12 +992,55 @@ export class AuthService {
     return { message: 'Doctor data is successfully updated' };
   }
 
+  async deleteDoctor(globalId: string): Promise<{ message: string }> {
+    const doctor = await this.doctorRepository.findOne({
+      where: { globalId, deletedAt: IsNull() },
+      relations: { user: true },
+    });
+
+    if (!doctor) {
+      throw new RpcException(new ErrorResponse('Doctor not found!', 404));
+    }
+
+    await this.doctorRepository.softDelete(doctor.id);
+    if (doctor.user) {
+      await this.userRepository.softDelete(doctor.user.id);
+    }
+
+    this.logger.log('Successfully deleted a doctor and their user account');
+    return { message: 'Doctor deleted successfully' };
+  }
+
+  async restoreDoctor(globalId: string): Promise<{ message: string }> {
+    const doctor = await this.doctorRepository.findOne({
+      where: { globalId },
+      relations: { user: true },
+      withDeleted: true,
+    });
+
+    if (!doctor) {
+      throw new RpcException(new ErrorResponse('Doctor not found!', 404));
+    }
+
+    if (!doctor.deletedAt) {
+      throw new RpcException(new ErrorResponse('Doctor is already active!', 400));
+    }
+
+    await this.doctorRepository.restore(doctor.id);
+    if (doctor.user) {
+      await this.userRepository.restore(doctor.user.id);
+    }
+
+    this.logger.log('Successfully restored a doctor and their user account');
+    return { message: 'Doctor restored successfully' };
+  }
+
   async getClinicalStaffByUserId(
     userId: number,
-  ): Promise<Doctor | Admin | null> {
+  ): Promise<Doctor | SuperAdmin | null> {
     const doctor = await this.getDoctorByUserId(userId);
 
-    return doctor ? doctor : await this.getAdminByUserId(userId);
+    return doctor ? doctor : await this.getSuperAdminByUserId(userId);
   }
 
   async getClinicDoctors(
