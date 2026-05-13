@@ -54,6 +54,7 @@ async function bootstrap() {
       },
     }),
   );
+
   app.useLogger(logger);
   app.use(LoggingMiddleware(configService, 'api-gateway'));
   app.enableCors({
