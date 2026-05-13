@@ -13,13 +13,17 @@ import {
   CreateMedicationInternalDto,
   CreateVisitInternalDto,
   DoctorInternalPaginationRequestDto,
+  UpdateLabInternalDto,
+  UpdateMedicationInternalDto,
+  UpdateScanInternalDto,
+  UpdateVisitInternalDto,
   UploadLabInternalDto,
   UploadScanInternalDto,
 } from './dtos';
 
 @Controller()
 export class DoctorController {
-  constructor(private readonly doctorService: DoctorService) {}
+  constructor(private readonly doctorService: DoctorService) { }
 
   @MessagePattern({ cmd: DoctorPatterns.IS_UP })
   isUp(): string {
@@ -33,11 +37,25 @@ export class DoctorController {
     await this.doctorService.createVisit(createVisitInternalDto);
   }
 
+  @MessagePattern({ cmd: DoctorPatterns.VISIT_UPDATE })
+  async visitUpdate(
+    @Payload() updateVisitInternalDto: UpdateVisitInternalDto,
+  ): Promise<{ message: string }> {
+    return await this.doctorService.updateVisit(updateVisitInternalDto);
+  }
+
   @EventPattern({ cmd: DoctorPatterns.MEDICATION_CREATE })
   async medicationCreate(
     @Payload() createMedicationInternalDto: CreateMedicationInternalDto,
   ): Promise<void> {
     await this.doctorService.createMedication(createMedicationInternalDto);
+  }
+
+  @MessagePattern({ cmd: DoctorPatterns.MEDICATION_UPDATE })
+  async medicationUpdate(
+    @Payload() updateMedicationInternalDto: UpdateMedicationInternalDto,
+  ): Promise<{ message: string }> {
+    return await this.doctorService.updateMedication(updateMedicationInternalDto);
   }
 
   @MessagePattern({ cmd: DoctorPatterns.GET_ALL_VISITS })
@@ -213,11 +231,25 @@ export class DoctorController {
     await this.doctorService.uploadLab(uploadLabInternalDto);
   }
 
+  @MessagePattern({ cmd: DoctorPatterns.LAB_UPDATE })
+  async labUpdate(
+    @Payload() updateLabInternalDto: UpdateLabInternalDto,
+  ): Promise<{ message: string }> {
+    return await this.doctorService.updateLab(updateLabInternalDto);
+  }
+
   @EventPattern({ cmd: DoctorPatterns.SCAN_UPLOAD })
   async uploadScan(
     @Payload() uploadScanInternalDto: UploadScanInternalDto,
   ): Promise<void> {
     await this.doctorService.uploadScan(uploadScanInternalDto);
+  }
+
+  @MessagePattern({ cmd: DoctorPatterns.SCAN_UPDATE })
+  async scanUpdate(
+    @Payload() updateScanInternalDto: UpdateScanInternalDto,
+  ): Promise<{ message: string }> {
+    return await this.doctorService.updateScan(updateScanInternalDto);
   }
 
   @MessagePattern({

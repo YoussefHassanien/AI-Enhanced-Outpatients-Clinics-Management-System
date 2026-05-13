@@ -547,18 +547,15 @@ export class AuthService {
       };
     }>
   > {
-    const count = await this.doctorRepository.count({
-      where: {
-        deletedAt: IsNull(),
-        user: {
-          deletedAt: IsNull(),
-        },
-      },
-      relations: { user: true },
-    });
-    this.logger.log(`Doctors count is ${count}`);
+    const whereCondition: any = {};
 
-    const doctors = await this.doctorRepository.find({
+    if (paginationRequest.onlyDeleted) {
+      whereCondition.deletedAt = Not(IsNull());
+    } else if (!paginationRequest.includeDeleted) {
+      whereCondition.deletedAt = IsNull();
+    }
+
+    const [doctors, count] = await this.doctorRepository.findAndCount({
       relations: {
         user: true,
       },
@@ -578,17 +575,15 @@ export class AuthService {
         speciality: true,
         isApproved: true,
       },
-      where: {
-        deletedAt: IsNull(),
-        user: {
-          deletedAt: IsNull(),
-        },
-      },
+      where: whereCondition,
       skip: (paginationRequest.page - 1) * paginationRequest.limit,
       take: paginationRequest.limit,
+      withDeleted:
+        paginationRequest.includeDeleted || paginationRequest.onlyDeleted,
     });
+    this.logger.log(`Doctors count is ${count}`);
     this.logger.log(
-      `Successfully retrieved ${paginationRequest.limit} doctors from page: ${paginationRequest.page - 1}`,
+      `Successfully retrieved ${paginationRequest.limit} doctors from page: ${paginationRequest.page}`,
     );
 
     const response: PaginationResponse<{
@@ -995,6 +990,49 @@ export class AuthService {
     );
 
     return { message: 'Doctor data is successfully updated' };
+  }
+
+  async deleteDoctor(globalId: string): Promise<{ message: string }> {
+    const doctor = await this.doctorRepository.findOne({
+      where: { globalId, deletedAt: IsNull() },
+      relations: { user: true },
+    });
+
+    if (!doctor) {
+      throw new RpcException(new ErrorResponse('Doctor not found!', 404));
+    }
+
+    await this.doctorRepository.softDelete(doctor.id);
+    if (doctor.user) {
+      await this.userRepository.softDelete(doctor.user.id);
+    }
+
+    this.logger.log('Successfully deleted a doctor and their user account');
+    return { message: 'Doctor deleted successfully' };
+  }
+
+  async restoreDoctor(globalId: string): Promise<{ message: string }> {
+    const doctor = await this.doctorRepository.findOne({
+      where: { globalId },
+      relations: { user: true },
+      withDeleted: true,
+    });
+
+    if (!doctor) {
+      throw new RpcException(new ErrorResponse('Doctor not found!', 404));
+    }
+
+    if (!doctor.deletedAt) {
+      throw new RpcException(new ErrorResponse('Doctor is already active!', 400));
+    }
+
+    await this.doctorRepository.restore(doctor.id);
+    if (doctor.user) {
+      await this.userRepository.restore(doctor.user.id);
+    }
+
+    this.logger.log('Successfully restored a doctor and their user account');
+    return { message: 'Doctor restored successfully' };
   }
 
   async getClinicalStaffByUserId(

@@ -25,6 +25,7 @@ import {
   UploadedFiles,
   UseGuards,
   UseInterceptors,
+  Delete,
 } from '@nestjs/common';
 import {
   FileFieldsInterceptor,
@@ -36,7 +37,10 @@ import { extname } from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import { UpdateDoctorDto, UpdatePatientDto } from '../../../auth/src/dtos';
 import { User } from '../../../auth/src/entities';
-import { CreateClinicDto } from '../../../super-admin/src/dtos';
+import {
+  CreateClinicDto,
+  UpdateClinicDto,
+} from '../../../super-admin/src/dtos';
 import { JwtAuthGuard } from '../auth/guards';
 import { SuperAdminService } from './super-admin.service';
 import {
@@ -44,6 +48,10 @@ import {
   CreateVisitDto,
   UploadLabDto,
   UploadScanDto,
+  UpdateLabDto,
+  UpdateMedicationDto,
+  UpdateScanDto,
+  UpdateVisitDto,
 } from '../../../doctor/src/dtos';
 
 @Controller('super-admin')
@@ -58,7 +66,7 @@ export class SuperAdminController {
   @Roles(Role.SUPER_ADMIN)
   @UseGuards(JwtAuthGuard)
   @Get('doctors')
-  async getAllDoctors(@Query() { page, limit }: PaginationRequest): Promise<
+  async getAllDoctors(@Query() paginationRequest: PaginationRequest): Promise<
     PaginationResponse<{
       id: string;
       phone: string;
@@ -75,10 +83,6 @@ export class SuperAdminController {
       };
     }>
   > {
-    const paginationRequest: PaginationRequest = {
-      page,
-      limit,
-    };
     return await this.superAdminService.getAllDoctors(paginationRequest);
   }
 
@@ -139,9 +143,35 @@ export class SuperAdminController {
 
   @Roles(Role.SUPER_ADMIN)
   @UseGuards(JwtAuthGuard)
+  @Patch('clinic/:id')
+  async updateClinic(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() updateClinicDto: UpdateClinicDto,
+  ) {
+    return await this.superAdminService.updateClinic(id, updateClinicDto);
+  }
+
+  @Roles(Role.SUPER_ADMIN)
+  @UseGuards(JwtAuthGuard)
+  @Delete('clinic/:id')
+  async deleteClinic(@Param('id', ParseUUIDPipe) id: string) {
+    return await this.superAdminService.deleteClinic(id);
+  }
+
+  @Roles(Role.SUPER_ADMIN)
+  @UseGuards(JwtAuthGuard)
+  @Patch('clinic/:id/restore')
+  async restoreClinic(
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<{ message: string }> {
+    return await this.superAdminService.restoreClinic(id);
+  }
+
+  @Roles(Role.SUPER_ADMIN)
+  @UseGuards(JwtAuthGuard)
   @Get('clinics')
-  async getAllClinics() {
-    return await this.superAdminService.getAllClinics();
+  async getAllClinics(@Query() paginationRequest: PaginationRequest) {
+    return await this.superAdminService.getAllClinics(paginationRequest);
   }
 
   @Roles(Role.SUPER_ADMIN)
@@ -208,6 +238,150 @@ export class SuperAdminController {
   ): Promise<{ message: string }> {
     return await this.superAdminService.updateDoctor(globalId, updateDoctorDto);
   }
+
+  @Roles(Role.SUPER_ADMIN)
+  @UseGuards(JwtAuthGuard)
+  @Delete('doctor/:id')
+  async deleteDoctor(
+    @Param(
+      'id',
+      new ParseUUIDPipe({
+        exceptionFactory: () => new BadRequestException('Invalid doctor ID'),
+      }),
+    )
+    globalId: string,
+  ): Promise<{ message: string }> {
+    return await this.superAdminService.deleteDoctor(globalId);
+  }
+
+  @Roles(Role.SUPER_ADMIN)
+  @UseGuards(JwtAuthGuard)
+  @Patch('doctor/:id/restore')
+  async restoreDoctor(
+    @Param(
+      'id',
+      new ParseUUIDPipe({
+        exceptionFactory: () => new BadRequestException('Invalid doctor ID'),
+      }),
+    )
+    globalId: string,
+  ): Promise<{ message: string }> {
+    return await this.superAdminService.restoreDoctor(globalId);
+  }
+
+  
+    @Roles(Role.SUPER_ADMIN)
+    @UseGuards(JwtAuthGuard)
+    @Patch('visit/:id')
+    @UseInterceptors(
+      FileInterceptor('audio', {
+        storage: diskStorage({
+          destination: process.env.ASR_TMP_DIR,
+          filename: (req, file, cb) => {
+            const randomName = uuidv4();
+            cb(null, `${randomName}${extname(file.originalname)}`);
+          },
+        }),
+      }),
+    )
+    async updateVisit(
+      @Param('id', ParseUUIDPipe) id: string,
+      @Body() updateVisitDto: UpdateVisitDto,
+      @UploadedFile() audio?: Express.Multer.File,
+    ): Promise<{ message: string }> {
+      return await this.superAdminService.updateVisit(id, updateVisitDto, audio);
+    }
+  
+    @Roles(Role.SUPER_ADMIN)
+    @UseGuards(JwtAuthGuard)
+    @Patch('medication/:id')
+    @UseInterceptors(
+      FileInterceptor('audio', {
+        storage: diskStorage({
+          destination: process.env.ASR_TMP_DIR,
+          filename: (req, file, cb) => {
+            const randomName = uuidv4();
+            cb(null, `${randomName}${extname(file.originalname)}`);
+          },
+        }),
+      }),
+    )
+    async updateMedication(
+      @Param('id', ParseUUIDPipe) id: string,
+      @Body() updateMedicationDto: UpdateMedicationDto,
+      @UploadedFile() audio?: Express.Multer.File,
+    ): Promise<{ message: string }> {
+      return await this.superAdminService.updateMedication(id, updateMedicationDto, audio);
+    }
+  
+    @Roles(Role.SUPER_ADMIN)
+    @UseGuards(JwtAuthGuard)
+    @Patch('lab/:id')
+    @UseInterceptors(
+      FileFieldsInterceptor(
+        [
+          { name: 'image', maxCount: 1 },
+          { name: 'audio', maxCount: 1 },
+        ],
+        {
+          storage: diskStorage({
+            destination: process.env.ASR_TMP_DIR,
+            filename: (req, file, cb) => {
+              const randomName = uuidv4();
+              cb(null, `${randomName}${extname(file.originalname)}`);
+            },
+          }),
+        },
+      ),
+    )
+    async updateLab(
+      @Param('id', ParseUUIDPipe) id: string,
+      @Body() updateLabDto: UpdateLabDto,
+      @UploadedFiles()
+      files: { image?: Express.Multer.File[]; audio?: Express.Multer.File[] },
+    ): Promise<{ message: string }> {
+      return await this.superAdminService.updateLab(
+        id,
+        updateLabDto,
+        files.image?.[0],
+        files.audio?.[0],
+      );
+    }
+  
+    @Roles(Role.SUPER_ADMIN)
+    @UseGuards(JwtAuthGuard)
+    @Patch('scan/:id')
+    @UseInterceptors(
+      FileFieldsInterceptor(
+        [
+          { name: 'image', maxCount: 1 },
+          { name: 'audio', maxCount: 1 },
+        ],
+        {
+          storage: diskStorage({
+            destination: process.env.ASR_TMP_DIR,
+            filename: (req, file, cb) => {
+              const randomName = uuidv4();
+              cb(null, `${randomName}${extname(file.originalname)}`);
+            },
+          }),
+        },
+      ),
+    )
+    async updateScan(
+      @Param('id', ParseUUIDPipe) id: string,
+      @Body() updateScanDto: UpdateScanDto,
+      @UploadedFiles()
+      files: { image?: Express.Multer.File[]; audio?: Express.Multer.File[] },
+    ): Promise<{ message: string }> {
+      return await this.superAdminService.updateScan(
+        id,
+        updateScanDto,
+        files.image?.[0],
+        files.audio?.[0],
+      );
+    }
+    
   // ============================================== //
   //     Methods migrated from Admin Controller     //
   // ============================================== //

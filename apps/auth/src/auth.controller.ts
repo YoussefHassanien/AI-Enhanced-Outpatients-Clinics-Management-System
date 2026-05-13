@@ -211,6 +211,20 @@ export class AuthController {
     return await this.authService.updateDoctor(updateDoctorInternalDto);
   }
 
+  @MessagePattern({ cmd: AuthPatterns.DOCTOR_DELETE })
+  async deleteDoctor(
+    @Payload() globalId: string,
+  ): Promise<{ message: string }> {
+    return await this.authService.deleteDoctor(globalId);
+  }
+
+  @MessagePattern({ cmd: AuthPatterns.DOCTOR_RESTORE })
+  async restoreDoctor(
+    @Payload() globalId: string,
+  ): Promise<{ message: string }> {
+    return await this.authService.restoreDoctor(globalId);
+  }
+
   @MessagePattern({ cmd: AuthPatterns.GET_CLINICAL_STAFF_BY_USER_ID })
   async getClinicalStaffByUserId(
     @Payload(
