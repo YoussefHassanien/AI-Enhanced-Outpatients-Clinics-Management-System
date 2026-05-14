@@ -39,8 +39,6 @@ export class AuthController {
     return await this.authService.login(loginDto);
   }
 
-
-
   @MessagePattern({ cmd: AuthPatterns.DOCTOR_CREATE })
   async doctorCreate(
     @Payload() createDoctorDto: CreateDoctorInternalDto,
@@ -104,7 +102,6 @@ export class AuthController {
   ): Promise<Patient | null> {
     return await this.authService.getPatientByGlobalId(patientGlobalId);
   }
-
 
   @MessagePattern({ cmd: AuthPatterns.GET_ALL_DOCTORS })
   async getAllDoctors(@Payload() paginationRequest: PaginationRequest): Promise<

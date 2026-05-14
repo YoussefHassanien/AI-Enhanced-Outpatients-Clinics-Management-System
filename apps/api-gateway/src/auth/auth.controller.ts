@@ -64,15 +64,6 @@ export class AuthController {
 
   @Roles(Role.SUPER_ADMIN)
   @UseGuards(JwtAuthGuard)
-  @Post('admin/create')
-  async createAdmin(
-    @Body() createAdminDto: CreateAdminDto,
-  ): Promise<{ message: string; id: string }> {
-    return await this.authService.createAdmin(createAdminDto);
-  }
-
-  @Roles(Role.SUPER_ADMIN)
-  @UseGuards(JwtAuthGuard)
   @Post('doctor/create')
   async createDoctor(
     @Body() createDoctorDto: CreateDoctorDto,
