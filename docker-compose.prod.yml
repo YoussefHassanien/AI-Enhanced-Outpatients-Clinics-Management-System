@@ -24,7 +24,7 @@ services:
     image: youssefhassanien1/api-gateway:latest
     env_file: ./api-gateway.env
     ports:
-      - 4000
+      - 5000
     depends_on:
       - rabbitmq
       - auth

@@ -150,6 +150,13 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v6
 
+        # NEW STEP: Bring the GitHub Runner onto your Tailnet
+      - name: Connect to Tailscale
+        uses: tailscale/github-action@v2
+        with:
+          authkey: ${{ secrets.TAILSCALE_AUTHKEY }}
+          version: latest
+
       - name: Copy config files
         uses: appleboy/scp-action@v1
         with:
