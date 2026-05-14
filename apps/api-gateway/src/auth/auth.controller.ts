@@ -11,7 +11,6 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { Request, Response } from 'express';
 import {
-  CreateAdminDto,
   CreateDoctorDto,
   CreatePatientDto,
   LoginDto,

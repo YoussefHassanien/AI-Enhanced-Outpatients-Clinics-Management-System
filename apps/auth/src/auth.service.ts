@@ -23,7 +23,6 @@ import { ClinicInternalPaginationRequestDto } from '../../super-admin/src/dtos';
 import { Clinic } from '../../super-admin/src/entities';
 import { JwtPayload } from './constants';
 import {
-  CreateAdminDto,
   CreateDoctorInternalDto,
   CreatePatientDto,
   CreateUserDto,
@@ -94,8 +93,6 @@ export class AuthService {
 
       return doctor.user;
     }
-
-
 
     const superAdmin = await this.superAdminRepository.findOne({
       relations: { user: true },
@@ -257,8 +254,6 @@ export class AuthService {
     this.logger.log('Doctor already exists');
     return doctor;
   }
-
-
 
   private async checkExistingSuperAdmin(
     email: string,
@@ -427,8 +422,6 @@ export class AuthService {
       throw new RpcException(new ErrorResponse('Doctor already exists!', 400));
     }
 
-
-
     const existingSuperAdmin = await this.checkExistingSuperAdmin(
       doctorDto.email,
       doctorDto.phone,
@@ -477,8 +470,7 @@ export class AuthService {
           password: hashedPassword,
           speciality: doctorDto.speciality,
           phone: doctorDto.phone,
-          isApproved:
-            doctorDto.role === Role.SUPER_ADMIN,
+          isApproved: doctorDto.role === Role.SUPER_ADMIN,
           clinicId: clinic.id,
         });
         this.logger.log('Successfully created a doctor');
@@ -490,8 +482,6 @@ export class AuthService {
       },
     );
   }
-
-
 
   async createPatient(patientDto: CreatePatientDto): Promise<string> {
     const existingUser = await this.checkExistingUser(
@@ -911,7 +901,6 @@ export class AuthService {
         email,
       });
 
-
       const superAdminConflict = await this.superAdminRepository.findOneBy({
         email,
       });
@@ -931,7 +920,6 @@ export class AuthService {
       const doctorConflict = await this.doctorRepository.findOneBy({
         phone,
       });
-
 
       const superAdminConflict = await this.superAdminRepository.findOneBy({
         phone,
@@ -1023,7 +1011,9 @@ export class AuthService {
     }
 
     if (!doctor.deletedAt) {
-      throw new RpcException(new ErrorResponse('Doctor is already active!', 400));
+      throw new RpcException(
+        new ErrorResponse('Doctor is already active!', 400),
+      );
     }
 
     await this.doctorRepository.restore(doctor.id);
