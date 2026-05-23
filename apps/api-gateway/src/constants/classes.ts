@@ -67,10 +67,6 @@ export class EnvironmentVariables {
   RABBIT_MQ_DOCTOR_QUEUE: string;
 
   @IsString()
-  @Equals('admin')
-  RABBIT_MQ_ADMIN_QUEUE: string;
-
-  @IsString()
   @Equals('super-admin')
   RABBIT_MQ_SUPER_ADMIN_QUEUE: string;
 
