@@ -11,7 +11,6 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { Request, Response } from 'express';
 import {
-  CreateAdminDto,
   CreateDoctorDto,
   CreatePatientDto,
   LoginDto,
@@ -60,15 +59,6 @@ export class AuthController {
       language: result.language,
       role: result.role,
     };
-  }
-
-  @Roles(Role.SUPER_ADMIN)
-  @UseGuards(JwtAuthGuard)
-  @Post('admin/create')
-  async createAdmin(
-    @Body() createAdminDto: CreateAdminDto,
-  ): Promise<{ message: string; id: string }> {
-    return await this.authService.createAdmin(createAdminDto);
   }
 
   @Roles(Role.SUPER_ADMIN)

@@ -1,5 +1,4 @@
 export * from './base-staff.dto';
-export * from './create-admin.dto';
 export * from './create-doctor-internal.dto';
 export * from './create-doctor.dto';
 export * from './create-patient.dto';

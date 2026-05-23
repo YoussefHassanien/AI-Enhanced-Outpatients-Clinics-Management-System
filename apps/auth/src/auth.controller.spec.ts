@@ -14,11 +14,7 @@ import { Test } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
-import {
-  CreateDoctorInternalDto,
-  CreatePatientDto,
-  LoginDto,
-} from './dtos';
+import { CreateDoctorInternalDto, CreatePatientDto, LoginDto } from './dtos';
 import { Doctor, Patient, SuperAdmin, User } from './entities';
 
 describe('AuthController', () => {

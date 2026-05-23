@@ -105,15 +105,6 @@ jobs:
           push: true
           tags: ${{ secrets.DOCKER_USERNAME }}/doctor-service:latest
 
-      # Build and Push Admin Service
-      - name: Build and Push Admin
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: apps/admin/Dockerfile
-          push: true
-          tags: ${{ secrets.DOCKER_USERNAME }}/admin-service:latest
-
       # Build and Push Ocr Service
       - name: Build and Push Ocr
         uses: docker/build-push-action@v6
@@ -158,6 +149,12 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v6
+
+        # NEW STEP: Bring the GitHub Runner onto your Tailnet
+      - name: Connect to Tailscale
+        uses: tailscale/github-action@v3
+        with:
+          authkey: ${{ secrets.TAILSCALE_AUTHKEY }}
 
       - name: Copy config files
         uses: appleboy/scp-action@v1

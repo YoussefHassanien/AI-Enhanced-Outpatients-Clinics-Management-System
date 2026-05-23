@@ -4,7 +4,6 @@ import { ClientProxy } from '@nestjs/microservices';
 import { Request } from 'express';
 import { lastValueFrom } from 'rxjs';
 import {
-  CreateAdminDto,
   CreateDoctorDto,
   CreateDoctorInternalDto,
   CreatePatientDto,
@@ -36,18 +35,6 @@ export class AuthService {
       language: Language;
       token: string;
     }>(this.authClient.send({ cmd: AuthPatterns.LOGIN }, loginDto));
-  }
-
-  async createAdmin(createAdminDto: CreateAdminDto): Promise<{
-    message: string;
-    id: string;
-  }> {
-    return await lastValueFrom<{
-      message: string;
-      id: string;
-    }>(
-      this.authClient.send({ cmd: AuthPatterns.ADMIN_CREATE }, createAdminDto),
-    );
   }
 
   async createDoctor(

@@ -24,7 +24,7 @@ services:
     image: youssefhassanien1/api-gateway:latest
     env_file: ./api-gateway.env
     ports:
-      - 4000
+      - "5000:5000"
     depends_on:
       - rabbitmq
       - auth
@@ -109,20 +109,6 @@ services:
     volumes:
       - ./logs:/app/logs
       - ./tmp/asr_uploads:/app/tmp/asr_uploads
-
-  nginx:
-    image: nginx:latest
-    ports:
-      - '80:80'
-      - '443:443'
-    volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf
-      - /etc/letsencrypt:/etc/letsencrypt
-      - ./logs:/var/log/nginx
-    depends_on:
-      - api-gateway
-    networks:
-      - services-network
 
 volumes:
   paddleocr-cache:
