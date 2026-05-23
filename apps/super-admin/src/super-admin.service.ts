@@ -142,13 +142,18 @@ export class SuperAdminService {
     PaginationResponse<{
       id: string;
       diagnoses: string;
+      diagnosesAudioUrl: string | null;
       patient: {
-        name: string;
         id: string;
+        name: string;
       };
       doctor: {
-        name: string;
         id: string;
+        name: string;
+      };
+      clinic: {
+        id: string;
+        name: string;
       };
       createdAt: Date;
     }>
@@ -157,6 +162,7 @@ export class SuperAdminService {
       PaginationResponse<{
         id: string;
         diagnoses: string;
+        diagnosesAudioUrl: string | null;
         patient: {
           name: string;
           id: string;
@@ -164,6 +170,10 @@ export class SuperAdminService {
         doctor: {
           name: string;
           id: string;
+        };
+        clinic: {
+          id: string;
+          name: string;
         };
         createdAt: Date;
       }>

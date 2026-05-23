@@ -56,7 +56,7 @@ import {
 
 @Controller('super-admin')
 export class SuperAdminController {
-  constructor(private readonly superAdminService: SuperAdminService) {}
+  constructor(private readonly superAdminService: SuperAdminService) { }
 
   @Get()
   async isUp(): Promise<string> {
@@ -118,8 +118,19 @@ export class SuperAdminController {
     PaginationResponse<{
       id: string;
       diagnoses: string;
-      patientId: string;
-      doctorId: string;
+      diagnosesAudioUrl: string | null;
+      patient: {
+        id: string;
+        name: string;
+      };
+      doctor: {
+        id: string;
+        name: string;
+      };
+      clinic: {
+        id: string;
+        name: string;
+      };
       createdAt: Date;
     }>
   > {
@@ -269,12 +280,61 @@ export class SuperAdminController {
     return await this.superAdminService.restoreDoctor(globalId);
   }
 
-  
-    @Roles(Role.SUPER_ADMIN)
-    @UseGuards(JwtAuthGuard)
-    @Patch('visit/:id')
-    @UseInterceptors(
-      FileInterceptor('audio', {
+
+  @Roles(Role.SUPER_ADMIN)
+  @UseGuards(JwtAuthGuard)
+  @Patch('visit/:id')
+  @UseInterceptors(
+    FileInterceptor('audio', {
+      storage: diskStorage({
+        destination: process.env.ASR_TMP_DIR,
+        filename: (req, file, cb) => {
+          const randomName = uuidv4();
+          cb(null, `${randomName}${extname(file.originalname)}`);
+        },
+      }),
+    }),
+  )
+  async updateVisit(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() updateVisitDto: UpdateVisitDto,
+    @UploadedFile() audio?: Express.Multer.File,
+  ): Promise<{ message: string }> {
+    return await this.superAdminService.updateVisit(id, updateVisitDto, audio);
+  }
+
+  @Roles(Role.SUPER_ADMIN)
+  @UseGuards(JwtAuthGuard)
+  @Patch('medication/:id')
+  @UseInterceptors(
+    FileInterceptor('audio', {
+      storage: diskStorage({
+        destination: process.env.ASR_TMP_DIR,
+        filename: (req, file, cb) => {
+          const randomName = uuidv4();
+          cb(null, `${randomName}${extname(file.originalname)}`);
+        },
+      }),
+    }),
+  )
+  async updateMedication(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() updateMedicationDto: UpdateMedicationDto,
+    @UploadedFile() audio?: Express.Multer.File,
+  ): Promise<{ message: string }> {
+    return await this.superAdminService.updateMedication(id, updateMedicationDto, audio);
+  }
+
+  @Roles(Role.SUPER_ADMIN)
+  @UseGuards(JwtAuthGuard)
+  @Patch('lab/:id')
+  @UseInterceptors(
+    FileFieldsInterceptor(
+      [
+        { name: 'image', maxCount: 1 },
+        { name: 'audio', maxCount: 1 },
+      ],
+      {
         storage: diskStorage({
           destination: process.env.ASR_TMP_DIR,
           filename: (req, file, cb) => {
@@ -282,21 +342,33 @@ export class SuperAdminController {
             cb(null, `${randomName}${extname(file.originalname)}`);
           },
         }),
-      }),
-    )
-    async updateVisit(
-      @Param('id', ParseUUIDPipe) id: string,
-      @Body() updateVisitDto: UpdateVisitDto,
-      @UploadedFile() audio?: Express.Multer.File,
-    ): Promise<{ message: string }> {
-      return await this.superAdminService.updateVisit(id, updateVisitDto, audio);
-    }
-  
-    @Roles(Role.SUPER_ADMIN)
-    @UseGuards(JwtAuthGuard)
-    @Patch('medication/:id')
-    @UseInterceptors(
-      FileInterceptor('audio', {
+      },
+    ),
+  )
+  async updateLab(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() updateLabDto: UpdateLabDto,
+    @UploadedFiles()
+    files: { image?: Express.Multer.File[]; audio?: Express.Multer.File[] },
+  ): Promise<{ message: string }> {
+    return await this.superAdminService.updateLab(
+      id,
+      updateLabDto,
+      files.image?.[0],
+      files.audio?.[0],
+    );
+  }
+
+  @Roles(Role.SUPER_ADMIN)
+  @UseGuards(JwtAuthGuard)
+  @Patch('scan/:id')
+  @UseInterceptors(
+    FileFieldsInterceptor(
+      [
+        { name: 'image', maxCount: 1 },
+        { name: 'audio', maxCount: 1 },
+      ],
+      {
         storage: diskStorage({
           destination: process.env.ASR_TMP_DIR,
           filename: (req, file, cb) => {
@@ -304,84 +376,23 @@ export class SuperAdminController {
             cb(null, `${randomName}${extname(file.originalname)}`);
           },
         }),
-      }),
-    )
-    async updateMedication(
-      @Param('id', ParseUUIDPipe) id: string,
-      @Body() updateMedicationDto: UpdateMedicationDto,
-      @UploadedFile() audio?: Express.Multer.File,
-    ): Promise<{ message: string }> {
-      return await this.superAdminService.updateMedication(id, updateMedicationDto, audio);
-    }
-  
-    @Roles(Role.SUPER_ADMIN)
-    @UseGuards(JwtAuthGuard)
-    @Patch('lab/:id')
-    @UseInterceptors(
-      FileFieldsInterceptor(
-        [
-          { name: 'image', maxCount: 1 },
-          { name: 'audio', maxCount: 1 },
-        ],
-        {
-          storage: diskStorage({
-            destination: process.env.ASR_TMP_DIR,
-            filename: (req, file, cb) => {
-              const randomName = uuidv4();
-              cb(null, `${randomName}${extname(file.originalname)}`);
-            },
-          }),
-        },
-      ),
-    )
-    async updateLab(
-      @Param('id', ParseUUIDPipe) id: string,
-      @Body() updateLabDto: UpdateLabDto,
-      @UploadedFiles()
-      files: { image?: Express.Multer.File[]; audio?: Express.Multer.File[] },
-    ): Promise<{ message: string }> {
-      return await this.superAdminService.updateLab(
-        id,
-        updateLabDto,
-        files.image?.[0],
-        files.audio?.[0],
-      );
-    }
-  
-    @Roles(Role.SUPER_ADMIN)
-    @UseGuards(JwtAuthGuard)
-    @Patch('scan/:id')
-    @UseInterceptors(
-      FileFieldsInterceptor(
-        [
-          { name: 'image', maxCount: 1 },
-          { name: 'audio', maxCount: 1 },
-        ],
-        {
-          storage: diskStorage({
-            destination: process.env.ASR_TMP_DIR,
-            filename: (req, file, cb) => {
-              const randomName = uuidv4();
-              cb(null, `${randomName}${extname(file.originalname)}`);
-            },
-          }),
-        },
-      ),
-    )
-    async updateScan(
-      @Param('id', ParseUUIDPipe) id: string,
-      @Body() updateScanDto: UpdateScanDto,
-      @UploadedFiles()
-      files: { image?: Express.Multer.File[]; audio?: Express.Multer.File[] },
-    ): Promise<{ message: string }> {
-      return await this.superAdminService.updateScan(
-        id,
-        updateScanDto,
-        files.image?.[0],
-        files.audio?.[0],
-      );
-    }
-    
+      },
+    ),
+  )
+  async updateScan(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() updateScanDto: UpdateScanDto,
+    @UploadedFiles()
+    files: { image?: Express.Multer.File[]; audio?: Express.Multer.File[] },
+  ): Promise<{ message: string }> {
+    return await this.superAdminService.updateScan(
+      id,
+      updateScanDto,
+      files.image?.[0],
+      files.audio?.[0],
+    );
+  }
+
   // ============================================== //
   //     Methods migrated from Admin Controller     //
   // ============================================== //
