@@ -23,7 +23,6 @@ import { ClinicInternalPaginationRequestDto } from '../../super-admin/src/dtos';
 import { Clinic } from '../../super-admin/src/entities';
 import { JwtPayload } from './constants';
 import {
-  CreateAdminDto,
   CreateDoctorInternalDto,
   CreatePatientDto,
   CreateUserDto,
