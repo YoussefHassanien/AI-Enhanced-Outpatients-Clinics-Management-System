@@ -316,13 +316,25 @@ export class DoctorService {
     return doctor;
   }
 
-  async getAllVisits(paginationRequest: PaginationRequest): Promise<
+  async getAllVisits(
+    paginationRequest: PaginationRequest,
+  ): Promise<
     PaginationResponse<{
       id: string;
       diagnoses: string;
       diagnosesAudioUrl: string | null;
-      patientId: string;
-      doctorId: string;
+      patient: {
+        id: string;
+        name: string;
+      };
+      doctor: {
+        id: string;
+        name: string;
+      };
+      clinic: {
+        id: string;
+        name: string;
+      };
       createdAt: Date;
     }>
   > {
@@ -330,8 +342,10 @@ export class DoctorService {
       select: {
         globalId: true,
         diagnoses: true,
+        diagnosesAudioUrl: true,
         patientId: true,
         userId: true,
+        clinicId: true,
         createdAt: true,
       },
       where: {
@@ -339,26 +353,50 @@ export class DoctorService {
       },
       skip: (paginationRequest.page - 1) * paginationRequest.limit,
       take: paginationRequest.limit,
+      order: {
+        createdAt: 'DESC',
+      },
     });
+
     this.logger.log(`Visits count is ${count}`);
+
     this.logger.log(
       `Successfully retrieved ${paginationRequest.limit} visits from page: ${paginationRequest.page - 1}`,
     );
 
-    // Fetch patient and doctor global IDs via RPC
+    // Fetch patient and (doctor or admin) and clinic global IDs via RPC
     const items = await Promise.all(
       visits.map(async (visit) => {
-        const [patient, clinicalStaff] = await Promise.all([
+        const [patient, clinicalStaff, clinic] = await Promise.all([
           this.getPatientById(visit.patientId),
           this.getClinicalStaffByUserId(visit.userId),
+          this.getClinicById(visit.clinicId),
         ]);
 
         return {
           id: visit.globalId,
           diagnoses: visit.diagnoses,
           diagnosesAudioUrl: visit.diagnosesAudioUrl,
-          patientId: patient?.globalId ?? 'UNKNOWN',
-          doctorId: clinicalStaff?.globalId ?? 'UNKNOWN',
+
+          patient: {
+            id: patient?.globalId ?? 'UNKNOWN',
+            name: patient
+              ? `${patient.user.firstName} ${patient.user.lastName}`
+              : 'UNKNOWN',
+          },
+
+          doctor: {
+            id: clinicalStaff?.globalId ?? 'UNKNOWN',
+            name: clinicalStaff
+              ? `${clinicalStaff.user.firstName} ${clinicalStaff.user.lastName}`
+              : 'UNKNOWN',
+          },
+
+          clinic: {
+            id: clinic?.globalId ?? 'UNKNOWN',
+            name: clinic?.name ?? 'UNKNOWN',
+          },
+
           createdAt: visit.createdAt,
         };
       }),
@@ -368,8 +406,18 @@ export class DoctorService {
       id: string;
       diagnoses: string;
       diagnosesAudioUrl: string | null;
-      patientId: string;
-      doctorId: string;
+      patient: {
+        id: string;
+        name: string;
+      };
+      doctor: {
+        id: string;
+        name: string;
+      };
+      clinic: {
+        id: string;
+        name: string;
+      };
       createdAt: Date;
     }> = {
       page: paginationRequest.page,
@@ -535,9 +583,9 @@ export class DoctorService {
         patientIds[index],
         patient
           ? {
-              name: `${patient.user.firstName} ${patient.user.lastName}`,
-              id: patient.globalId,
-            }
+            name: `${patient.user.firstName} ${patient.user.lastName}`,
+            id: patient.globalId,
+          }
           : { name: 'UNKNOWN', id: 'UNKNOWN' },
       ]),
     );
@@ -648,9 +696,9 @@ export class DoctorService {
         doctorsUserId[index],
         doctor
           ? {
-              name: `${doctor.user.firstName} ${doctor.user.lastName}`,
-              speciality: doctor?.speciality ?? 'UNKNOWN',
-            }
+            name: `${doctor.user.firstName} ${doctor.user.lastName}`,
+            speciality: doctor?.speciality ?? 'UNKNOWN',
+          }
           : { name: 'UNKNOWN', speciality: 'UNKNOWN' },
       ]),
     );
@@ -777,9 +825,9 @@ export class DoctorService {
         doctorsIds[index],
         doctor
           ? {
-              name: `${doctor.user.firstName} ${doctor.user.lastName}`,
-              speciality: doctor.speciality,
-            }
+            name: `${doctor.user.firstName} ${doctor.user.lastName}`,
+            speciality: doctor.speciality,
+          }
           : { name: 'UNKNOWN', speciality: 'UNKNOWN' },
       ]),
     );
@@ -875,9 +923,9 @@ export class DoctorService {
         doctorsIds[index],
         doctor
           ? {
-              name: `${doctor.user.firstName} ${doctor.user.lastName}`,
-              speciality: doctor.speciality,
-            }
+            name: `${doctor.user.firstName} ${doctor.user.lastName}`,
+            speciality: doctor.speciality,
+          }
           : { name: 'UNKNOWN', speciality: 'UNKNOWN' },
       ]),
     );
@@ -972,9 +1020,9 @@ export class DoctorService {
         doctorsIds[index],
         doctor
           ? {
-              name: `${doctor.user.firstName} ${doctor.user.lastName}`,
-              speciality: doctor.speciality,
-            }
+            name: `${doctor.user.firstName} ${doctor.user.lastName}`,
+            speciality: doctor.speciality,
+          }
           : { name: 'UNKNOWN', speciality: 'UNKNOWN' },
       ]),
     );
@@ -1659,9 +1707,9 @@ export class DoctorService {
         patientIds[index],
         patient
           ? {
-              name: `${patient.user.firstName} ${patient.user.lastName}`,
-              id: patient.globalId,
-            }
+            name: `${patient.user.firstName} ${patient.user.lastName}`,
+            id: patient.globalId,
+          }
           : { name: 'UNKNOWN', id: 'UNKNOWN' },
       ]),
     );
@@ -1671,10 +1719,10 @@ export class DoctorService {
         doctorUserIds[index],
         doctor
           ? {
-              name: `${doctor.user.firstName} ${doctor.user.lastName}`,
-              id: doctor.globalId,
-              speciality: doctor.speciality,
-            }
+            name: `${doctor.user.firstName} ${doctor.user.lastName}`,
+            id: doctor.globalId,
+            speciality: doctor.speciality,
+          }
           : { name: 'UNKNOWN', id: 'UNKNOWN', speciality: 'UNKNOWN' },
       ]),
     );
