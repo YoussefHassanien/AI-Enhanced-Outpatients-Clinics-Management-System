@@ -63,8 +63,19 @@ export class DoctorController {
     PaginationResponse<{
       id: string;
       diagnoses: string;
-      patientId: string;
-      doctorId: string;
+      diagnosesAudioUrl: string | null;
+      patient: {
+        id: string;
+        name: string;
+      };
+      doctor: {
+        id: string;
+        name: string;
+      };
+      clinic: {
+        id: string;
+        name: string;
+      };
       createdAt: Date;
     }>
   > {
