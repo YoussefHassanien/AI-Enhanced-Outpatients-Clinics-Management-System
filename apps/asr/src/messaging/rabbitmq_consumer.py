@@ -87,8 +87,7 @@ class ASRConsumer:
             pattern = message.get('pattern', {})
             if pattern == 'asr.isUp' or (isinstance(pattern, dict) and pattern.get('cmd') == 'asr.isUp'):
                 logger.info(f"[{request_id}] Health check request received")
-                self._schedule_response(properties, {"status": 200, "message": "ASR service is up"})
-                self._schedule_ack(method.delivery_tag)
+                self._schedule_response(properties, {"status": 200, "message": "ASR service is up"})    
                 return
 
             # Extract payload
