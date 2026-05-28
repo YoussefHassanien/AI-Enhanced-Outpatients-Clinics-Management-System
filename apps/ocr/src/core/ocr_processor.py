@@ -299,6 +299,7 @@ class OpenVINOYOLOModel:
         self.stride = self.metadata.get('stride', 32)
 
         logger.info(f"Loaded OpenVINO model: {os.path.basename(model_path)}")
+        logger.info("OpenVINO inference device: CPU")
         logger.info(
             f"Input shape: {self.input_layer.shape}, Output shape: {self.output_layer.shape}"
         )
@@ -394,9 +395,11 @@ def get_class_model():
         if backend == 'pt':
             logger.info('Loading Egyptian ID segmentation model (`.pt`)...')
             _CLASS_MODEL = PyTorchYOLOModel(CLASS_MODEL_PT)
+            logger.info(f"YOLO classification device: {_CLASS_MODEL.device}")
         else:
             logger.info('Loading Egyptian ID classification model (OpenVINO)...')
             _CLASS_MODEL = OpenVINOYOLOModel(CLASS_MODEL_XML, CLASS_MODEL_METADATA)
+            logger.info("YOLO classification device: CPU")
         logger.info("Classification model loaded")
     return _CLASS_MODEL
 
@@ -409,9 +412,11 @@ def get_id_model():
         if backend == 'pt':
             logger.info('Loading ID digit detection model (`.pt`)...')
             _ID_MODEL = PyTorchYOLOModel(ID_MODEL_PT)
+            logger.info(f"YOLO ID detection device: {_ID_MODEL.device}")
         else:
             logger.info('Loading ID digit detection model (OpenVINO)...')
             _ID_MODEL = OpenVINOYOLOModel(ID_MODEL_XML, ID_MODEL_METADATA)
+            logger.info("YOLO ID detection device: CPU")
         logger.info("ID digit model loaded")
     return _ID_MODEL
 

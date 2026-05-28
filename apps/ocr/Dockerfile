@@ -10,7 +10,9 @@ ENV DEBIAN_FRONTEND=noninteractive
 WORKDIR /app
 
 # Install Python 3.11 and system dependencies for OpenCV / OpenVINO
-RUN apt-get update && apt-get install -y \
+RUN --mount=type=cache,target=/var/cache/apt \
+    --mount=type=cache,target=/var/lib/apt \
+    apt-get update && apt-get install -y \
     software-properties-common \
     && add-apt-repository ppa:deadsnakes/ppa \
     && apt-get update && apt-get install -y \
@@ -29,11 +31,14 @@ RUN apt-get update && apt-get install -y \
 COPY ./apps/ocr/requirements.txt .
 
 # Install PaddlePaddle GPU (from Paddle's own CUDA 12.6 index)
-RUN python -m pip install --no-cache-dir --upgrade pip \
-    && python -m pip install --no-cache-dir paddlepaddle-gpu==3.2.0 -i https://www.paddlepaddle.org.cn/packages/stable/cu126/
+# Leverage BuildKit cache so dependencies are reused across builds
+RUN --mount=type=cache,target=/root/.cache/pip \
+    python -m pip install --upgrade pip \
+    && python -m pip install paddlepaddle-gpu==3.2.0 -i https://www.paddlepaddle.org.cn/packages/stable/cu126/
 
 # Install remaining Python dependencies
-RUN python -m pip install --no-cache-dir -r requirements.txt
+RUN --mount=type=cache,target=/root/.cache/pip \
+    python -m pip install -r requirements.txt
 
 # Copy application code
 COPY ./apps/ocr/src ./src
@@ -47,3 +52,5 @@ RUN mkdir -p /app/logs
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
+ENV NVIDIA_VISIBLE_DEVICES=all
+ENV NVIDIA_DRIVER_CAPABILITIES=compute,utility
