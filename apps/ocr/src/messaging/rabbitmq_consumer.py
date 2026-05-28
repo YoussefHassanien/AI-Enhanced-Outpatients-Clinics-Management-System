@@ -3,6 +3,7 @@ RabbitMQ Consumer for Egyptian ID OCR Service
 Single-purpose: Process Egyptian ID front photos and extract information
 Queue: 'ocr'
 """
+
 import pika
 import json
 import base64
