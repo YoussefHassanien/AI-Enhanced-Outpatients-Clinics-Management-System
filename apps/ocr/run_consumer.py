@@ -10,6 +10,11 @@ from pathlib import Path
 project_root = Path(__file__).parent
 sys.path.insert(0, str(project_root))
 
+# Initialize logging before importing other modules
+from src.config.logger import setup_logging
+
+setup_logging()
+
 from src.messaging.rabbitmq_consumer import main
 
 if __name__ == "__main__":

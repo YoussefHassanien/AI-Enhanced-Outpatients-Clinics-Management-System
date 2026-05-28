@@ -5,14 +5,15 @@ __pycache__/
 *.so
 .Python
 *.egg-info/
+.eggs/
 dist/
 build/
 
-# # Environment
-# .env
-# .venv
-# env/
-# venv/
+# Environment
+.env
+.venv
+env/
+venv/
 
 # IDE
 .vscode/
@@ -30,6 +31,16 @@ runs/
 # Logs
 logs/
 *.log
+
+# Caches
+.cache/
+.pytest_cache/
+.mypy_cache/
+
+# Data (if applicable)
+data/
+datasets/
+exports/
 
 # OS
 .DS_Store
