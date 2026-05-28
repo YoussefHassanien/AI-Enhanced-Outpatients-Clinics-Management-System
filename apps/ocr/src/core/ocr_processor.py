@@ -1,6 +1,7 @@
 import shutil
 import cv2
 import os
+import time
 import numpy as np
 import yaml
 from paddleocr import PaddleOCR
@@ -8,6 +9,21 @@ from openvino import Core
 from ..config import logger
 from dotenv import load_dotenv
 from typing import List, Dict, Tuple
+
+try:
+    import torch
+except Exception:
+    torch = None
+
+try:
+    from ultralytics import YOLO
+except Exception:
+    YOLO = None
+
+try:
+    import paddle
+except Exception:
+    paddle = None
 
 # Load environment variables
 load_dotenv()
@@ -20,6 +36,8 @@ RUNS_DIR = os.path.join(SCRIPT_DIR, 'runs')
 
 # Model paths (in models/ directory)
 MODELS_DIR = os.path.join(SCRIPT_DIR, 'models')
+CLASS_MODEL_PT = os.path.join(MODELS_DIR, 'egyId_weights.pt')
+ID_MODEL_PT = os.path.join(MODELS_DIR, 'best.pt')
 CLASS_MODEL_XML = os.path.join(MODELS_DIR, 'Class_openvino_model',
                                'egyId_weights.xml')
 CLASS_MODEL_METADATA = os.path.join(MODELS_DIR, 'Class_openvino_model',
@@ -32,6 +50,7 @@ ID_MODEL_METADATA = os.path.join(MODELS_DIR, 'ID_openvino_model',
 CONFIDENCE_THRESHOLD = float(os.getenv('CONFIDENCE_THRESHOLD', '0.6'))
 ID_DIGIT_CONFIDENCE = float(os.getenv('ID_DIGIT_CONFIDENCE', '0.25'))
 IMAGE_SIZE = int(os.getenv('IMAGE_SIZE', '640'))
+PADDLE_GPU_ENABLED = os.getenv('PADDLE_GPU_ENABLED', 'true').lower() == 'true'
 
 # ===== MODEL INITIALIZATION =====
 # Global models - loaded once and reused (singleton pattern)
@@ -41,6 +60,45 @@ _ID_MODEL = None
 _ID_MODEL_METADATA = None
 _OCR_MODEL = None
 _OV_CORE = None
+_INFERENCE_BACKEND = None
+
+
+def is_cuda_available() -> bool:
+    try:
+        if torch is None:
+            return False
+        return torch.cuda.is_available()
+    except Exception:
+        return False
+
+
+def get_inference_backend() -> str:
+    global _INFERENCE_BACKEND
+
+    if _INFERENCE_BACKEND is not None:
+        return _INFERENCE_BACKEND
+
+    pt_models_exist = os.path.exists(CLASS_MODEL_PT) and os.path.exists(ID_MODEL_PT)
+    cuda_available = is_cuda_available()
+
+    if cuda_available and YOLO is not None and pt_models_exist:
+        _INFERENCE_BACKEND = 'pt'
+        logger.info('CUDA GPU detected. Using PyTorch/YOLO `.pt` models.')
+        return _INFERENCE_BACKEND
+
+    if cuda_available and YOLO is None:
+        logger.warning(
+            'CUDA GPU detected but `ultralytics` is unavailable. Falling back to OpenVINO CPU.'
+        )
+    elif cuda_available and not pt_models_exist:
+        logger.warning(
+            'CUDA GPU detected but `.pt` model files are missing. Falling back to OpenVINO CPU.'
+        )
+    else:
+        logger.info('CUDA GPU not detected. Using OpenVINO CPU models.')
+
+    _INFERENCE_BACKEND = 'openvino'
+    return _INFERENCE_BACKEND
 
 
 def get_openvino_core():
@@ -241,6 +299,7 @@ class OpenVINOYOLOModel:
         self.stride = self.metadata.get('stride', 32)
 
         logger.info(f"Loaded OpenVINO model: {os.path.basename(model_path)}")
+        logger.info("OpenVINO inference device: CPU")
         logger.info(
             f"Input shape: {self.input_layer.shape}, Output shape: {self.output_layer.shape}"
         )
@@ -283,12 +342,64 @@ class OpenVINOYOLOModel:
         return detections
 
 
+class PyTorchYOLOModel:
+    """Wrapper for Ultralytics YOLO `.pt` model"""
+
+    def __init__(self, model_path: str):
+        if YOLO is None:
+            raise RuntimeError('ultralytics is not available for `.pt` inference')
+
+        self.device = 'cuda:0' if is_cuda_available() else 'cpu'
+        self.model = YOLO(model_path)
+        self.model.to(self.device)
+        self.names = self.model.names
+
+        logger.info(f"Loaded PyTorch model: {os.path.basename(model_path)}")
+        logger.info(f"PyTorch inference device: {self.device}")
+
+    def predict(self,
+                image: np.ndarray,
+                conf: float = 0.25,
+                iou: float = 0.45) -> List[Dict]:
+        result = self.model.predict(
+            source=image,
+            conf=conf,
+            iou=iou,
+            verbose=False,
+            device=self.device,
+        )[0]
+
+        detections = []
+        if result.boxes is None:
+            return detections
+
+        boxes = result.boxes.xyxy.cpu().numpy()
+        classes = result.boxes.cls.cpu().numpy().astype(int)
+        confidences = result.boxes.conf.cpu().numpy()
+
+        for index, box in enumerate(boxes):
+            detections.append({
+                'box': box.tolist(),
+                'confidence': float(confidences[index]),
+                'class': int(classes[index]),
+            })
+
+        return detections
+
+
 def get_class_model():
     """Lazy load classification model (singleton pattern)"""
     global _CLASS_MODEL
     if _CLASS_MODEL is None:
-        logger.info("Loading Egyptian ID classification model (OpenVINO)...")
-        _CLASS_MODEL = OpenVINOYOLOModel(CLASS_MODEL_XML, CLASS_MODEL_METADATA)
+        backend = get_inference_backend()
+        if backend == 'pt':
+            logger.info('Loading Egyptian ID segmentation model (`.pt`)...')
+            _CLASS_MODEL = PyTorchYOLOModel(CLASS_MODEL_PT)
+            logger.info(f"YOLO classification device: {_CLASS_MODEL.device}")
+        else:
+            logger.info('Loading Egyptian ID classification model (OpenVINO)...')
+            _CLASS_MODEL = OpenVINOYOLOModel(CLASS_MODEL_XML, CLASS_MODEL_METADATA)
+            logger.info("YOLO classification device: CPU")
         logger.info("Classification model loaded")
     return _CLASS_MODEL
 
@@ -297,8 +408,15 @@ def get_id_model():
     """Lazy load ID digit detection model (singleton pattern)"""
     global _ID_MODEL
     if _ID_MODEL is None:
-        logger.info("Loading ID digit detection model (OpenVINO)...")
-        _ID_MODEL = OpenVINOYOLOModel(ID_MODEL_XML, ID_MODEL_METADATA)
+        backend = get_inference_backend()
+        if backend == 'pt':
+            logger.info('Loading ID digit detection model (`.pt`)...')
+            _ID_MODEL = PyTorchYOLOModel(ID_MODEL_PT)
+            logger.info(f"YOLO ID detection device: {_ID_MODEL.device}")
+        else:
+            logger.info('Loading ID digit detection model (OpenVINO)...')
+            _ID_MODEL = OpenVINOYOLOModel(ID_MODEL_XML, ID_MODEL_METADATA)
+            logger.info("YOLO ID detection device: CPU")
         logger.info("ID digit model loaded")
     return _ID_MODEL
 
@@ -307,11 +425,34 @@ def get_ocr_model():
     """Lazy load PaddleOCR model (singleton pattern)"""
     global _OCR_MODEL
     if _OCR_MODEL is None:
-        logger.info("Loading PaddleOCR model...")
+        paddle_gpu_available = False
+        if paddle is not None:
+            try:
+                paddle_gpu_available = paddle.is_compiled_with_cuda()
+            except Exception:
+                paddle_gpu_available = False
+
+        use_paddle_gpu = PADDLE_GPU_ENABLED and paddle_gpu_available
+
+        if PADDLE_GPU_ENABLED and not paddle_gpu_available:
+            logger.warning(
+                'PADDLE_GPU_ENABLED=true but Paddle CUDA runtime is unavailable. Using CPU for PaddleOCR.'
+            )
+
+        if paddle is not None:
+            try:
+                paddle.set_device('gpu' if use_paddle_gpu else 'cpu')
+            except Exception:
+                logger.warning('Failed to set Paddle device explicitly. Proceeding with default device.')
+
+        paddle_device = 'gpu' if use_paddle_gpu else 'cpu'
+        logger.info(f"Loading PaddleOCR model on {paddle_device.upper()}...")
         _OCR_MODEL = PaddleOCR(lang='ar',
                                use_doc_orientation_classify=False,
                                use_doc_unwarping=False,
-                               use_textline_orientation=False)
+                               use_textline_orientation=False,
+                               device=paddle_device)
+        logger.info(f"PaddleOCR device: {paddle_device.upper()}")
         logger.info("PaddleOCR model loaded")
     return _OCR_MODEL
 
@@ -319,6 +460,7 @@ def get_ocr_model():
 def preload_models():
     """Preload all models at startup"""
     logger.info("Preloading all models...")
+    logger.info(f"Selected inference backend: {get_inference_backend()}")
     get_ocr_model()
     get_class_model()
     get_id_model()
@@ -562,24 +704,31 @@ def process_id_card(image_path: str, request_id: str):
         request_id: Unique identifier for this request (for isolated folders)
     """
     save_dir = None
+    pipeline_start = time.perf_counter()
 
     try:
         # Run YOLO detection with unique request ID
         logger.info(f"[{request_id}] Starting ID card processing pipeline")
 
+        detect_start = time.perf_counter()
         detections, save_dir = predict_id(image_path, request_id)
+        detect_ms = (time.perf_counter() - detect_start) * 1000
 
         logger.info(
             f"[{request_id}] YOLO detection completed, ({len(detections)} objects found)"
         )
+        logger.info(f"[{request_id}] Timing - yolo_detection: {detect_ms:.2f} ms")
 
         if not save_dir:
             raise ValueError("Failed to process image")
 
         # Save cropped regions
         try:
+            crop_start = time.perf_counter()
             save_top_right_boxes(image_path, save_dir, detections)
+            crop_ms = (time.perf_counter() - crop_start) * 1000
             logger.debug(f"[{request_id}] Cropping completed")
+            logger.info(f"[{request_id}] Timing - crop_regions: {crop_ms:.2f} ms")
         except ValueError as e:
             if "No boxes detected" in str(e) or "Not enough boxes" in str(e):
                 logger.warning(f"[{request_id}] Invalid ID card photo: {e}")
@@ -602,17 +751,26 @@ def process_id_card(image_path: str, request_id: str):
         logger.info(f"[{request_id}] Running PaddleOCR on text fields")
         ocr = get_ocr_model()
 
+        first_ocr_start = time.perf_counter()
         first = ' '.join(
             reversed(ocr.predict(firstname_img_path)[0]['rec_texts']))
+        first_ocr_ms = (time.perf_counter() - first_ocr_start) * 1000
         logger.debug(f"[{request_id}] First name OCR finished")
+        logger.info(f"[{request_id}] Timing - ocr_first_name: {first_ocr_ms:.2f} ms")
 
+        second_ocr_start = time.perf_counter()
         second = ' '.join(
             reversed(ocr.predict(secondname_img_path)[0]['rec_texts']))
+        second_ocr_ms = (time.perf_counter() - second_ocr_start) * 1000
         logger.debug(f"[{request_id}] Second name OCR: finished")
+        logger.info(f"[{request_id}] Timing - ocr_second_name: {second_ocr_ms:.2f} ms")
 
+        location_ocr_start = time.perf_counter()
         loc = ' '.join(reversed(
             ocr.predict(location_img_path)[0]['rec_texts']))
+        location_ocr_ms = (time.perf_counter() - location_ocr_start) * 1000
         logger.debug(f"[{request_id}] Location OCR: finished")
+        logger.info(f"[{request_id}] Timing - ocr_location: {location_ocr_ms:.2f} ms")
 
         logger.info(f"[{request_id}] PaddleOCR completed")
 
@@ -620,11 +778,16 @@ def process_id_card(image_path: str, request_id: str):
         id_number = ""
         if os.path.exists(id_img_path):
             logger.debug(f"[{request_id}] Extracting national ID number")
+            id_extract_start = time.perf_counter()
             id_number, _ = extract_digits_from_id(
                 id_img_path, conf_threshold=ID_DIGIT_CONFIDENCE)
+            id_extract_ms = (time.perf_counter() - id_extract_start) * 1000
             logger.debug(
                 f"[{request_id}] ID extraction completed, {id_number[:4]}****")
+            logger.info(f"[{request_id}] Timing - id_extraction: {id_extract_ms:.2f} ms")
 
+        total_ms = (time.perf_counter() - pipeline_start) * 1000
+        logger.info(f"[{request_id}] Timing - total_pipeline: {total_ms:.2f} ms")
         logger.info(f"[{request_id}] ✓ Processing pipeline complete")
 
         return {

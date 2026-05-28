@@ -1,0 +1,142 @@
+[
+  {
+    "Name": "createClinic",
+    "Method": "POST",
+    "Path": "/super-admin/clinic",
+    "Status": 201,
+    "Info": "OK"
+  },
+  {
+    "Name": "createMedication",
+    "Method": "POST",
+    "Path": "/super-admin/medication",
+    "Status": 201,
+    "Info": "OK"
+  },
+  {
+    "Name": "createVisit",
+    "Method": "POST",
+    "Path": "/super-admin/visit",
+    "Status": 201,
+    "Info": "OK"
+  },
+  {
+    "Name": "getAllClinics",
+    "Method": "GET",
+    "Path": "/super-admin/clinics",
+    "Status": 200,
+    "Info": "OK"
+  },
+  {
+    "Name": "getAllDoctors",
+    "Method": "GET",
+    "Path": "/super-admin/doctors?page=1&limit=10",
+    "Status": 200,
+    "Info": "OK"
+  },
+  {
+    "Name": "getAllPatients",
+    "Method": "GET",
+    "Path": "/super-admin/patients?page=1&limit=10",
+    "Status": 200,
+    "Info": "OK"
+  },
+  {
+    "Name": "getAllVisits",
+    "Method": "GET",
+    "Path": "/super-admin/visits?page=1&limit=10",
+    "Status": 200,
+    "Info": "OK"
+  },
+  {
+    "Name": "getDoctorById",
+    "Method": "GET",
+    "Path": "/super-admin/doctor/40ffffaa-eb79-420b-9c87-465bfc7e8c8d",
+    "Status": 200,
+    "Info": "OK"
+  },
+  {
+    "Name": "getManagedPatients",
+    "Method": "GET",
+    "Path": "/super-admin/managed-patients?page=1&limit=10",
+    "Status": 200,
+    "Info": "OK"
+  },
+  {
+    "Name": "getManagedVisits",
+    "Method": "GET",
+    "Path": "/super-admin/managed-visits?page=1&limit=10",
+    "Status": 200,
+    "Info": "OK"
+  },
+  {
+    "Name": "getPatientById",
+    "Method": "GET",
+    "Path": "/super-admin/patient/6e43b240-7dd9-4c4f-a793-72995063af22",
+    "Status": 200,
+    "Info": "OK"
+  },
+  {
+    "Name": "getPatientLabs",
+    "Method": "GET",
+    "Path": "/super-admin/patient/6e43b240-7dd9-4c4f-a793-72995063af22/labs",
+    "Status": 200,
+    "Info": "OK"
+  },
+  {
+    "Name": "getPatientMedications",
+    "Method": "GET",
+    "Path": "/super-admin/patient/6e43b240-7dd9-4c4f-a793-72995063af22/medications",
+    "Status": 200,
+    "Info": "OK"
+  },
+  {
+    "Name": "getPatientScans",
+    "Method": "GET",
+    "Path": "/super-admin/patient/6e43b240-7dd9-4c4f-a793-72995063af22/scans",
+    "Status": 200,
+    "Info": "OK"
+  },
+  {
+    "Name": "getPatientVisits",
+    "Method": "GET",
+    "Path": "/super-admin/patient/6e43b240-7dd9-4c4f-a793-72995063af22/visits",
+    "Status": 200,
+    "Info": "OK"
+  },
+  {
+    "Name": "isUp",
+    "Method": "GET",
+    "Path": "/super-admin",
+    "Status": 200,
+    "Info": "OK"
+  },
+  {
+    "Name": "login",
+    "Method": "POST",
+    "Path": "/auth/login",
+    "Status": 201,
+    "Info": "OK"
+  },
+  {
+    "Name": "searchPatientBySSN",
+    "Method": "GET",
+    "Path": "/super-admin/patient-search/30201011230002",
+    "Status": 200,
+    "Info": "OK"
+  },
+  {
+    "Name": "updateDoctor",
+    "Method": "PATCH",
+    "Path": "/super-admin/doctor/40ffffaa-eb79-420b-9c87-465bfc7e8c8d",
+    "Status": 200,
+    "Info": "OK"
+  },
+  {
+    "Name": "updatePatient",
+    "Method": "PATCH",
+    "Path": "/super-admin/patient/6e43b240-7dd9-4c4f-a793-72995063af22",
+    "Status": 200,
+    "Info": "OK"
+  }
+]
