@@ -19,7 +19,7 @@ export class AsrService {
   private validateAudioFile(file: Express.Multer.File) {
     if (!file.mimetype.startsWith('audio/')) {
       throw new BadRequestException(
-        'Invalid file type. Only audio and video files are allowed.',
+        'Invalid file type. Only audio files are allowed.',
       );
     }
 
