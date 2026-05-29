@@ -1,10 +1,14 @@
 # Egyptian ID OCR Microservice - Dockerfile
 # GPU-accelerated inference with PaddleOCR for Arabic text recognition
 
-FROM nvidia/cuda:12.6.3-cudnn-runtime-ubuntu22.04
+ARG CUDA_BASE_IMAGE=12.9.0-cudnn-runtime-ubuntu22.04
+FROM nvidia/cuda:${CUDA_BASE_IMAGE}
 
 # Prevent interactive prompts during build
 ENV DEBIAN_FRONTEND=noninteractive
+ENV PYTHONUNBUFFERED=1
+ENV NVIDIA_VISIBLE_DEVICES=all
+ENV NVIDIA_DRIVER_CAPABILITIES=compute,utility
 
 # Set working directory
 WORKDIR /app
@@ -30,11 +34,13 @@ RUN --mount=type=cache,target=/var/cache/apt \
 # Copy requirements first for better caching
 COPY ./apps/ocr/requirements.txt .
 
-# Install PaddlePaddle GPU (from Paddle's own CUDA 12.6 index)
+# Install PaddlePaddle GPU (from Paddle's CUDA index)
 # Leverage BuildKit cache so dependencies are reused across builds
+ARG PADDLE_VERSION=3.3.0
+ARG PADDLE_CUDA_INDEX=cu129
 RUN --mount=type=cache,target=/root/.cache/pip \
     python -m pip install --upgrade pip \
-    && python -m pip install paddlepaddle-gpu==3.2.0 -i https://www.paddlepaddle.org.cn/packages/stable/cu126/
+    && python -m pip install paddlepaddle-gpu==${PADDLE_VERSION} -i https://www.paddlepaddle.org.cn/packages/stable/${PADDLE_CUDA_INDEX}/
 
 # Install remaining Python dependencies
 RUN --mount=type=cache,target=/root/.cache/pip \
@@ -49,8 +55,3 @@ COPY ./apps/ocr/models ./models
 
 # Create logs directory (will be mounted as volume)
 RUN mkdir -p /app/logs
-
-# Set environment variables
-ENV PYTHONUNBUFFERED=1
-ENV NVIDIA_VISIBLE_DEVICES=all
-ENV NVIDIA_DRIVER_CAPABILITIES=compute,utility
