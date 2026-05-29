@@ -31,13 +31,6 @@ export class DoctorService {
     @Inject(Microservices.DOCTOR) private readonly doctorClient: ClientProxy,
   ) {}
 
-  private validateSocialSecurityNumber(socialSecurityNumber: string): void {
-    const regex = /^[23]\d{2}(0[1-9]|1[0-2])(0[1-9]|[12]\d|3[01])\d{7}$/;
-    if (!regex.test(socialSecurityNumber)) {
-      throw new BadRequestException('Invalid social security number format');
-    }
-  }
-
   private validateImageFile(image?: Express.Multer.File) {
     const imageTypeRegExp: RegExp = /(image\/jpeg|image\/jpg|image\/png)$/;
     const imageSize: number = 5 * 1024 * 1024; // 5 MB
