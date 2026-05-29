@@ -14,12 +14,12 @@ import {
 import { Inject, Injectable } from '@nestjs/common';
 import { ClientProxy, RpcException } from '@nestjs/microservices';
 import { InjectRepository } from '@nestjs/typeorm';
+import * as fs from 'fs/promises';
 import { lastValueFrom } from 'rxjs';
 import { IsNull, Repository } from 'typeorm';
 import { v4 as uuidv4 } from 'uuid';
-import { ClinicInternalPaginationRequestDto } from '../../super-admin/src/dtos';
 import { TranscribeAudioInternalDto } from '../../asr/src/dtos';
-import { SuperAdmin, Doctor, Patient } from '../../auth/src/entities';
+import { Doctor, Patient, SuperAdmin } from '../../auth/src/entities';
 import {
   LabAudioInternalDto,
   LabPhotoInternalDto,
@@ -28,6 +28,7 @@ import {
   ScanPhotoInternalDto,
   VisitAudioInternalDto,
 } from '../../cloud-storage/src/dtos';
+import { ClinicInternalPaginationRequestDto } from '../../super-admin/src/dtos';
 import { Clinic } from '../../super-admin/src/entities';
 import { MedicationDosage, MedicationPeriod, ScanTypes } from './constants';
 import {
@@ -42,7 +43,6 @@ import {
   UploadScanInternalDto,
 } from './dtos';
 import { Lab, Medication, Scan, Visit } from './entities';
-import * as fs from 'fs/promises';
 
 @Injectable()
 export class DoctorService {
@@ -255,9 +255,12 @@ export class DoctorService {
         );
         transcribeAudioDto.audio_base64 = audioBuffer.toString('base64');
       } catch (error) {
-        // @ts-ignore
-        this.logger.error(`Failed to read audio file: ${error.message}`);
-        throw new RpcException(new ErrorResponse('Failed to process audio file', 500));
+        const message =
+          error instanceof Error ? error.message : 'Unknown error';
+        this.logger.error(`Failed to read audio file: ${message}`);
+        throw new RpcException(
+          new ErrorResponse('Failed to process audio file', 500),
+        );
       }
     }
 
@@ -270,15 +273,6 @@ export class DoctorService {
     this.logger.log('Text is successfully extracted');
 
     return text.transcription;
-  }
-
-  private validateSocialSecurityNumber(socialSecurityNumber: string): void {
-    const regex = /^[23]\d{2}(0[1-9]|1[0-2])(0[1-9]|[12]\d|3[01])\d{7}$/;
-    if (!regex.test(socialSecurityNumber)) {
-      throw new RpcException(
-        new ErrorResponse('Invalid social security number format', 400),
-      );
-    }
   }
 
   private async deleteCloudStorageTemporaryFile(
@@ -317,9 +311,7 @@ export class DoctorService {
     return doctor;
   }
 
-  async getAllVisits(
-    paginationRequest: PaginationRequest,
-  ): Promise<
+  async getAllVisits(paginationRequest: PaginationRequest): Promise<
     PaginationResponse<{
       id: string;
       diagnoses: string;
@@ -584,9 +576,9 @@ export class DoctorService {
         patientIds[index],
         patient
           ? {
-            name: `${patient.user.firstName} ${patient.user.lastName}`,
-            id: patient.globalId,
-          }
+              name: `${patient.user.firstName} ${patient.user.lastName}`,
+              id: patient.globalId,
+            }
           : { name: 'UNKNOWN', id: 'UNKNOWN' },
       ]),
     );
@@ -697,9 +689,9 @@ export class DoctorService {
         doctorsUserId[index],
         doctor
           ? {
-            name: `${doctor.user.firstName} ${doctor.user.lastName}`,
-            speciality: doctor?.speciality ?? 'UNKNOWN',
-          }
+              name: `${doctor.user.firstName} ${doctor.user.lastName}`,
+              speciality: doctor?.speciality ?? 'UNKNOWN',
+            }
           : { name: 'UNKNOWN', speciality: 'UNKNOWN' },
       ]),
     );
@@ -826,9 +818,9 @@ export class DoctorService {
         doctorsIds[index],
         doctor
           ? {
-            name: `${doctor.user.firstName} ${doctor.user.lastName}`,
-            speciality: doctor.speciality,
-          }
+              name: `${doctor.user.firstName} ${doctor.user.lastName}`,
+              speciality: doctor.speciality,
+            }
           : { name: 'UNKNOWN', speciality: 'UNKNOWN' },
       ]),
     );
@@ -924,9 +916,9 @@ export class DoctorService {
         doctorsIds[index],
         doctor
           ? {
-            name: `${doctor.user.firstName} ${doctor.user.lastName}`,
-            speciality: doctor.speciality,
-          }
+              name: `${doctor.user.firstName} ${doctor.user.lastName}`,
+              speciality: doctor.speciality,
+            }
           : { name: 'UNKNOWN', speciality: 'UNKNOWN' },
       ]),
     );
@@ -1021,9 +1013,9 @@ export class DoctorService {
         doctorsIds[index],
         doctor
           ? {
-            name: `${doctor.user.firstName} ${doctor.user.lastName}`,
-            speciality: doctor.speciality,
-          }
+              name: `${doctor.user.firstName} ${doctor.user.lastName}`,
+              speciality: doctor.speciality,
+            }
           : { name: 'UNKNOWN', speciality: 'UNKNOWN' },
       ]),
     );
@@ -1068,11 +1060,16 @@ export class DoctorService {
   async createVisit(
     createVisitInternalDto: CreateVisitInternalDto,
   ): Promise<void> {
-    const patient = await this.getPatientByGlobalId(createVisitInternalDto.patientId);
-    if (!patient) throw new RpcException(new ErrorResponse('Patient not found!', 404));
+    const patient = await this.getPatientByGlobalId(
+      createVisitInternalDto.patientId,
+    );
+    if (!patient)
+      throw new RpcException(new ErrorResponse('Patient not found!', 404));
     this.logger.log('Patient is found');
 
-    const doctor = await this.getClinicalStaffByUserId(createVisitInternalDto.doctorUserId);
+    const doctor = await this.getClinicalStaffByUserId(
+      createVisitInternalDto.doctorUserId,
+    );
     if (!doctor) {
       throw new RpcException(
         new ErrorResponse(
@@ -1085,11 +1082,21 @@ export class DoctorService {
 
     this.logger.log('Fetching clinic...');
     const clinic = await this.getClinicById(doctor.clinicId);
-    if (!clinic) throw new RpcException(new ErrorResponse('Clinic not found!', 404));
+    if (!clinic)
+      throw new RpcException(new ErrorResponse('Clinic not found!', 404));
     this.logger.log('Clinic is found');
 
-    if (!createVisitInternalDto.diagnoses && (!createVisitInternalDto.audioFilePath || !createVisitInternalDto.audioMimetype)) {
-      throw new RpcException(new ErrorResponse('Either audio or written diagnoses must be provided', 400));
+    if (
+      !createVisitInternalDto.diagnoses &&
+      (!createVisitInternalDto.audioFilePath ||
+        !createVisitInternalDto.audioMimetype)
+    ) {
+      throw new RpcException(
+        new ErrorResponse(
+          'Either audio or written diagnoses must be provided',
+          400,
+        ),
+      );
     }
 
     const visitGlobalId = uuidv4();
@@ -1102,15 +1109,24 @@ export class DoctorService {
       clinicId: clinic.id,
     });
 
-    if (createVisitInternalDto.diagnoses) visit.diagnoses = createVisitInternalDto.diagnoses;
+    if (createVisitInternalDto.diagnoses)
+      visit.diagnoses = createVisitInternalDto.diagnoses;
 
-    if (createVisitInternalDto.audioFilePath && createVisitInternalDto.audioMimetype) {
+    if (
+      createVisitInternalDto.audioFilePath &&
+      createVisitInternalDto.audioMimetype
+    ) {
       const visitAudioInternalDto = new VisitAudioInternalDto(
-        visitGlobalId, patient.globalId, createVisitInternalDto.audioFilePath, createVisitInternalDto.audioMimetype,
+        visitGlobalId,
+        patient.globalId,
+        createVisitInternalDto.audioFilePath,
+        createVisitInternalDto.audioMimetype,
       );
 
       this.logger.log('Sending audio to Cloud Storage...');
-      visit.diagnosesAudioUrl = await this.uploadVisitAudio(visitAudioInternalDto);
+      visit.diagnosesAudioUrl = await this.uploadVisitAudio(
+        visitAudioInternalDto,
+      );
       this.logger.log('Cloud Storage replied successfully');
 
       if (!createVisitInternalDto.diagnoses) {
@@ -1123,7 +1139,9 @@ export class DoctorService {
         this.logger.log('ASR worker replied successfully');
       }
 
-      await this.deleteCloudStorageTemporaryFile(createVisitInternalDto.audioFilePath);
+      await this.deleteCloudStorageTemporaryFile(
+        createVisitInternalDto.audioFilePath,
+      );
     }
 
     await this.visitsRepository.insert(visit);
@@ -1708,9 +1726,9 @@ export class DoctorService {
         patientIds[index],
         patient
           ? {
-            name: `${patient.user.firstName} ${patient.user.lastName}`,
-            id: patient.globalId,
-          }
+              name: `${patient.user.firstName} ${patient.user.lastName}`,
+              id: patient.globalId,
+            }
           : { name: 'UNKNOWN', id: 'UNKNOWN' },
       ]),
     );
@@ -1720,10 +1738,10 @@ export class DoctorService {
         doctorUserIds[index],
         doctor
           ? {
-            name: `${doctor.user.firstName} ${doctor.user.lastName}`,
-            id: doctor.globalId,
-            speciality: doctor.speciality,
-          }
+              name: `${doctor.user.firstName} ${doctor.user.lastName}`,
+              id: doctor.globalId,
+              speciality: doctor.speciality,
+            }
           : { name: 'UNKNOWN', id: 'UNKNOWN', speciality: 'UNKNOWN' },
       ]),
     );
