@@ -9,7 +9,6 @@ import os
 import uuid
 import shutil
 from pathlib import Path
-import threading
 from concurrent.futures import ThreadPoolExecutor
 from ..config import logger
 
