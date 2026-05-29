@@ -17,4 +17,13 @@ export class AsrService {
 
     return res.status(result.status).json(result.message);
   }
+
+  async transcribe(filePath: string) {
+    return await firstValueFrom<{ transcription: string }>(
+      this.asrClient.send(
+        { cmd: AsrPatterns.TRANSCRIBE_AUDIO },
+        { file: filePath },
+      ),
+    );
+  }
 }
