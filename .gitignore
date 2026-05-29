@@ -36,11 +36,9 @@ lerna-debug.log*
 !.vscode/extensions.json
 
 # dotenv environment variable files
-.env
 .env.development.local
 .env.test.local
 .env.production.local
-.env.local
 
 # temp directory
 .temp
@@ -71,3 +69,4 @@ apps/ocr/.pytest_cache/
 apps/ocr/temp_uploads/
 apps/ocr/preprocess.py
 apps/ocr/.venv
+config.bat
