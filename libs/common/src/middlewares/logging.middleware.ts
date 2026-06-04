@@ -1,12 +1,12 @@
 import { ConfigService } from '@nestjs/config';
 import { NextFunction, Request, Response } from 'express';
 import { createLogger, format, Logger, transports } from 'winston';
+import DailyRotateFile from 'winston-daily-rotate-file';
 import { Environment } from '../constants/enums';
 
 export function LoggingMiddleware(config: ConfigService, serviceName: string) {
   const environment = config.get<Environment>('ENVIRONMENT');
 
-  const date = new Date().toISOString().split('T')[0];
   const logDir = `logs/${serviceName}`;
 
   // Create logger ONCE, not on every request
@@ -45,11 +45,17 @@ export function LoggingMiddleware(config: ConfigService, serviceName: string) {
       ),
     ),
     transports: [
-      new transports.File({
-        filename: `${logDir}/${date}-error.log`,
+      new DailyRotateFile({
+        dirname: logDir,
+        filename: '%DATE%-error.log',
+        datePattern: 'YYYY-MM-DD',
         level: 'error',
       }),
-      new transports.File({ filename: `${logDir}/${date}.log` }),
+      new DailyRotateFile({
+        dirname: logDir,
+        filename: '%DATE%.log',
+        datePattern: 'YYYY-MM-DD',
+      }),
     ],
   });
 

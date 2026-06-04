@@ -2,6 +2,7 @@ import { CallHandler, ExecutionContext, NestInterceptor } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { tap } from 'rxjs/operators';
 import { createLogger, format, Logger, transports } from 'winston';
+import DailyRotateFile from 'winston-daily-rotate-file';
 import { Environment } from '../constants/enums';
 
 export function LoggingInterceptor(
@@ -10,7 +11,6 @@ export function LoggingInterceptor(
 ): NestInterceptor {
   const environment = configService.get<Environment>('ENVIRONMENT');
 
-  const date = new Date().toISOString().split('T')[0];
   const logDir = `logs/${serviceName}`;
 
   const logger: Logger = createLogger({
@@ -48,11 +48,17 @@ export function LoggingInterceptor(
       ),
     ),
     transports: [
-      new transports.File({
-        filename: `${logDir}/${date}-error.log`,
+      new DailyRotateFile({
+        dirname: logDir,
+        filename: '%DATE%-error.log',
+        datePattern: 'YYYY-MM-DD',
         level: 'error',
       }),
-      new transports.File({ filename: `${logDir}/${date}.log` }),
+      new DailyRotateFile({
+        dirname: logDir,
+        filename: '%DATE%.log',
+        datePattern: 'YYYY-MM-DD',
+      }),
     ],
   });
 
