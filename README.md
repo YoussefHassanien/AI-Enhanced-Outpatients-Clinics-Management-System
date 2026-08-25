@@ -5,8 +5,7 @@
 
 A NestJS 11 / TypeScript monorepo with a public HTTP **API Gateway** in front of internal **RabbitMQ** microservices, two **Python GPU** AI services, a shared **PostgreSQL** database (TypeORM), media storage on **Cloudinary**, JWT auth via signed cookies, structured Winston logging, and a Docker‑based CI/CD pipeline that builds images to Docker Hub and deploys to AWS EC2 behind nginx + Let's Encrypt.
 
-
-https://github.com/user-attachments/assets/d2053335-8ec0-41e2-9a2f-acd8d1cc45b2
+https://github.com/user-attachments/assets/2077ab2a-3609-4f77-bd7e-d6e09819086a
 
 ---
 
